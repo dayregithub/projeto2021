@@ -9,8 +9,8 @@
       content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
     />
     <title>Papeled Maker — seu espaço maker online</title>
-    <script type="module" crossorigin src="./assets/index-CK-r2h3B.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-D-Tl_4ch.css">
+    <script type="module" crossorigin src="./assets/index-BjWkbxcA.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-nE46JkHB.css">
   </head>
   <body>
     <header class="site-header">
@@ -96,14 +96,21 @@
           <div class="catalog-toolbar">
             <div class="filter-group" role="group" aria-label="Filtrar modelos">
               <button data-filter="all" class="active" aria-pressed="true">
-                Todos os modelos <span>8</span></button
+                Todos os modelos <span>19</span></button
               ><button data-filter="laser" aria-pressed="false">
                 <span data-icon="sparkles"></span> Corte a laser</button
               ><button data-filter="print" aria-pressed="false">
                 <span data-icon="box"></span> Impressão 3D
               </button>
             </div>
-            <span id="model-count">8 modelos para explorar</span>
+            <label class="use-filter"
+              >Filtrar por uso<select
+                id="use-filter"
+                aria-label="Filtrar modelos por uso"
+              >
+                <option value="all">Todos os usos</option>
+              </select></label
+            ><span id="model-count">19 modelos para explorar</span>
           </div>
           <div id="resume-banner" hidden></div>
           <div class="model-grid" id="model-grid"></div>

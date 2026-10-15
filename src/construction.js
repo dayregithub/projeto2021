@@ -1,3 +1,4 @@
+import { familyFor } from "./models.js";
 import clipping from "polygon-clipping";
 export const JOINTS = {
   straight: "Reta",
@@ -11,12 +12,14 @@ export const LIDS = {
   hinged: "Dobradiça integrada",
 };
 export const supportsConstruction = (s) =>
-  !["drawers", "print", "printgrid"].includes(s.model);
+  !["drawers", "print", "printgrid"].includes(familyFor(s));
 export const lidType = (s) =>
   supportsConstruction(s)
     ? (s.lidType ??
-      (["lid", "sliding", "hinged"].includes(s.model)
-        ? { lid: "removable", sliding: "sliding", hinged: "hinged" }[s.model]
+      (["lid", "sliding", "hinged"].includes(familyFor(s))
+        ? { lid: "removable", sliding: "sliding", hinged: "hinged" }[
+            familyFor(s)
+          ]
         : "none"))
     : "none";
 export const jointType = (s) =>

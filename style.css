@@ -2650,3 +2650,71 @@ textarea {
     top: 20px;
   }
 }
+.catalog-toolbar {
+  flex-wrap: wrap;
+}
+.use-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 9px;
+  color: #8a9bb2;
+}
+.use-filter select {
+  max-width: 190px;
+  padding: 10px 25px 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: #637d9f;
+  font-size: 10px;
+}
+.product-size {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.1px;
+  color: #8ca1bc;
+  margin-top: 9px;
+}
+.model-card-info .process-chip {
+  margin-top: 9px;
+}
+@media (max-width: 850px) {
+  .use-filter {
+    margin-left: 0;
+  }
+  .catalog-toolbar {
+    row-gap: 12px;
+  }
+  .use-filter select {
+    max-width: 180px;
+  }
+}
+@media (max-width: 650px) {
+  .use-filter {
+    width: 100%;
+    font-size: 9px;
+    justify-content: space-between;
+  }
+  .use-filter select {
+    max-width: none;
+    width: calc(100% - 80px);
+    font-size: 11px;
+    padding: 11px;
+  }
+  .product-size {
+    font-size: 7px;
+    line-height: 1.6;
+  }
+}
+.model-image > img {
+  width: 110%;
+  max-width: 110%;
+  height: auto;
+  margin-top: 11px;
+  transition: transform 0.3s;
+}
+.model-card:hover .model-image > img {
+  transform: translateY(-5px);
+}

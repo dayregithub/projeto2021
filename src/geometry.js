@@ -10,157 +10,24 @@ import {
   LIDS,
   constructionNotes,
 } from "./construction.js";
-export const MODELS = [
-  {
-    id: "open",
-    name: "Caixa aberta",
-    tag: "ESSENCIAL",
-    category: "laser",
-    description: "Uma base versátil para guardar, presentear e criar.",
-    w: 200,
-    d: 150,
-    h: 80,
-    cols: 1,
-    rows: 1,
-  },
-  {
-    id: "grid",
-    name: "Divisórias em grade",
-    tag: "ORGANIZAÇÃO",
-    category: "laser",
-    description: "Cada peça no seu lugar. Defina linhas e colunas.",
-    w: 240,
-    d: 180,
-    h: 65,
-    cols: 3,
-    rows: 2,
-  },
-  {
-    id: "custom",
-    name: "Divisórias assimétricas",
-    tag: "DO SEU JEITO",
-    category: "laser",
-    description: "Um espaço maior e outros menores, na proporção certa.",
-    w: 260,
-    d: 180,
-    h: 70,
-    cols: 2,
-    rows: 2,
-  },
-  {
-    id: "lid",
-    name: "Caixa com tampa",
-    tag: "PROTEÇÃO",
-    category: "laser",
-    description: "Tampa removível com guia interna para manter tudo protegido.",
-    w: 200,
-    d: 160,
-    h: 90,
-    cols: 1,
-    rows: 1,
-  },
-  {
-    id: "drawers",
-    name: "Gaveteiro modular",
-    tag: "OFICINA",
-    category: "laser",
-    description: "Gavetas independentes para ferramentas e pequenas peças.",
-    w: 280,
-    d: 200,
-    h: 240,
-    cols: 2,
-    rows: 3,
-  },
-  {
-    id: "sliding",
-    name: "Caixa com tampa deslizante",
-    tag: "DESLIZE E ORGANIZE",
-    category: "laser",
-    description: "Tampa que corre em trilhos, sem precisar retirar.",
-    w: 220,
-    d: 180,
-    h: 85,
-    cols: 1,
-    rows: 1,
-  },
-  {
-    id: "hinged",
-    name: "Caixa com dobradiça integrada",
-    tag: "ABRE NOVAS IDEIAS",
-    category: "laser",
-    description: "Articulação recortada nas peças, com eixo ajustável.",
-    w: 200,
-    d: 160,
-    h: 80,
-    cols: 1,
-    rows: 1,
-  },
-  {
-    id: "print",
-    name: "Bandeja 3D",
-    tag: "IMPRESSÃO 3D",
-    category: "print",
-    description: "Uma peça só, com paredes e fundo ajustáveis.",
-    w: 140,
-    d: 100,
-    h: 35,
-    cols: 1,
-    rows: 1,
-  },
-  {
-    id: "printgrid",
-    name: "Organizador 3D",
-    tag: "IMPRESSÃO 3D",
-    category: "print",
-    description: "Compartimentos integrados, prontos para levar ao fatiador.",
-    w: 160,
-    d: 120,
-    h: 35,
-    cols: 3,
-    rows: 2,
-  },
-];
-export const modelById = (id) => MODELS.find((m) => m.id === id);
-export function defaults(id = "grid") {
-  const m = modelById(id);
-  return {
-    version: 1,
-    model: id,
-    name: m.name,
-    width: m.w,
-    depth: m.d,
-    height: m.h,
-    thickness: m.category === "print" ? 2 : 3,
-    cols: m.cols,
-    rows: m.rows,
-    ratio: 60,
-    clearance: 0.6,
-    finish: m.category === "print" ? "sage" : "natural",
-    joint: id === "hinged" ? "finger" : "straight",
-    fingerSize: 9,
-    lidType:
-      { lid: "removable", sliding: "sliding", hinged: "hinged" }[id] || "none",
-    lidHeight: 9,
-    pivotDiameter: 6,
-    lidOpening: id === "hinged" ? 100 : 55,
-  };
-}
+export { MODELS, modelById, defaults } from "./models.js";
+import { MODELS, modelById, defaults, familyFor } from "./models.js";
 export function compartmentCount(s) {
-  return s.model === "custom"
+  return familyFor(s) === "custom"
     ? 1 + s.rows
     : supportsGrid(s)
       ? s.rows * s.cols
       : 1;
 }
 export function supportsGrid(s) {
-  return ["grid", "custom", "drawers", "printgrid"].includes(s.model);
+  return ["grid", "custom", "drawers", "printgrid"].includes(familyFor(s));
 }
 export function cuts(s) {
   const { width: w, depth: d, thickness: t, cols, rows } = s;
   const iw = w - 2 * (t + wallInset(s)),
     id = d - 2 * t;
   const widths =
-    s.model === "custom"
+    familyFor(s) === "custom"
       ? [((iw - t) * s.ratio) / 100, (iw - t) * (1 - s.ratio / 100)]
       : Array.from({ length: cols }, () => (iw - (cols - 1) * t) / cols);
   const depths = Array.from(
@@ -267,9 +134,9 @@ export function validate(s) {
         "Cada compartimento precisa de pelo menos 15 mm livres. Reduza as divisões ou aumente a caixa.",
       );
   }
-  if (s.model === "custom" && s.cols !== 2)
+  if (familyFor(s) === "custom" && s.cols !== 2)
     errors.push("A divisão assimétrica utiliza duas colunas.");
-  if (s.model === "drawers") {
+  if (familyFor(s) === "drawers") {
     const g = drawerDimensions(s);
     if (
       g.dw - 2 * s.thickness < 20 ||
@@ -307,7 +174,7 @@ export function panels(s) {
   const list = [];
   const add = (name, width, height, extra = {}) =>
     list.push({ name, width, height, slots: [], ...extra });
-  if (s.model === "drawers") {
+  if (familyFor(s) === "drawers") {
     const { cw, ch, dw, dd, dh } = drawerDimensions(s);
     add("Estrutura · base", w, d);
     add("Estrutura · topo", w, d);
@@ -337,7 +204,7 @@ export function panels(s) {
   }
   const listBody = buildBoxPanels(s);
   const { inset, innerWidth, dividerTop } = shellMetrics(s);
-  if (["grid", "custom"].includes(s.model)) {
+  if (["grid", "custom"].includes(familyFor(s))) {
     const { xs, ys, widths } = cuts(s);
     const ih = dividerTop - t;
     const make = (name, width, slots, pose) => ({
@@ -347,7 +214,7 @@ export function panels(s) {
       slots,
       pose,
     });
-    if (s.model === "custom") {
+    if (familyFor(s) === "custom") {
       listBody.push(
         make("Divisória longitudinal", d - 2 * t, [], {
           origin: [xs[0], t, dividerTop],
@@ -539,8 +406,8 @@ export function stlTriangles(s) {
     throw Error("Projeto 3D inválido.");
   const { width: w, depth: d, height: h, thickness: t } = s;
   const { xs, ys } = cuts(s);
-  const vertical = s.model === "printgrid" ? xs : [],
-    horizontal = s.model === "printgrid" ? ys : [];
+  const vertical = familyFor(s) === "printgrid" ? xs : [],
+    horizontal = familyFor(s) === "printgrid" ? ys : [];
   const x = [
       ...new Set([0, t, ...vertical.flatMap((v) => [v, v + t]), w - t, w]),
     ].sort((a, b) => a - b),

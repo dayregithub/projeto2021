@@ -1,3 +1,4 @@
+import { familyFor, USAGES } from "./src/models.js";
 import {
   JOINTS,
   LIDS,
@@ -97,9 +98,19 @@ function getSaved() {
 function updateSavedCount() {
   $("#saved-count").textContent = getSaved().length;
 }
+const thumbnailCache = new Map();
+const svgImage = (svg) =>
+  "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+function thumbnail(m) {
+  if (!thumbnailCache.has(m.id))
+    thumbnailCache.set(
+      m.id,
+      svgImage(previewSVG(defaults(m.id), { opened: 0.25 })),
+    );
+  return thumbnailCache.get(m.id);
+}
 function card(m) {
-  const d = defaults(m.id);
-  return `<button class="model-card" data-model="${m.id}"><div class="model-image ${m.category === "print" ? "print-image" : ""}"><span class="model-badge">${m.tag}</span>${previewSVG(d, { opened: 0.25 })}<span class="card-open">${icon("arrow-up-right")}</span></div><div class="model-card-info"><h3>${m.name}</h3><p>${m.description}</p><span class="process-chip">${icon(m.category === "print" ? "box" : "sparkles")}${m.category === "print" ? "Impressão 3D" : "Corte a laser"}<span>·</span>${m.category === "print" ? "STL" : "SVG / DXF"}</span></div></button>`;
+  return `<button class="model-card" data-model="${m.id}"><div class="model-image ${m.category === "print" ? "print-image" : ""}"><span class="model-badge">${m.tag}</span><img src="${thumbnail(m)}" alt="" loading="lazy" decoding="async" width="600" height="410"><span class="card-open">${icon("arrow-up-right")}</span></div><div class="model-card-info"><h3>${m.name}</h3><p>${m.description}</p><span class="product-size">${m.w} × ${m.d} × ${m.h} mm · ajustável</span><span class="process-chip">${icon(m.category === "print" ? "box" : "sparkles")}${m.category === "print" ? "Impressão 3D" : "Corte a laser"}<span>·</span>${m.category === "print" ? "STL" : "SVG / DXF"}</span></div></button>`;
 }
 function renderCatalog() {
   const term = $("#search")
@@ -110,7 +121,9 @@ function renderCatalog() {
   const found = MODELS.filter(
     (m) =>
       (filter === "all" || m.category === filter) &&
-      (m.name + " " + m.description)
+      ($("#use-filter").value === "all" ||
+        m.usage === $("#use-filter").value) &&
+      (m.name + " " + m.description + " " + USAGES[m.usage])
         .toLocaleLowerCase("pt-BR")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -126,6 +139,7 @@ function renderCatalog() {
   );
   $("#clear-search")?.addEventListener("click", () => {
     $("#search").value = "";
+    $("#use-filter").value = "all";
     setFilter("all");
   });
   const draft = load(draftKey, null);
@@ -237,13 +251,14 @@ function renderEditor() {
   $("#editor-model-title").textContent = model.name;
   $("#canvas-process").textContent = isPrint ? "IMPRESSÃO 3D" : "CORTE A LASER";
   $("#division-fields").hidden = !supportsGrid(state);
-  $("#no-divisions").hidden = supportsGrid(state) || state.model === "drawers";
-  $("#cols-label").hidden = state.model === "custom";
-  $("#ratio-label").hidden = state.model !== "custom";
+  $("#no-divisions").hidden =
+    supportsGrid(state) || familyFor(state) === "drawers";
+  $("#cols-label").hidden = familyFor(state) === "custom";
+  $("#ratio-label").hidden = familyFor(state) !== "custom";
   $("#rows-title").textContent =
-    state.model === "custom" ? "Linhas à direita" : "Linhas";
+    familyFor(state) === "custom" ? "Linhas à direita" : "Linhas";
   $("#ratio-value").textContent = state.ratio + "%";
-  $("#drawer-open-label").hidden = state.model !== "drawers";
+  $("#drawer-open-label").hidden = familyFor(state) !== "drawers";
   const construction = supportsConstruction(state),
     lid = lidType(state);
   $("#construction-section").hidden = !construction;
@@ -279,20 +294,21 @@ function renderEditor() {
     hinged:
       "Suportes e braços recortados nas próprias peças. Usa dois eixos/pinos com retenção; não requer dobradiça metálica separada. Altura informada é a do corpo, sem tampa e suportes.",
   }[lid];
-  $("#clearance-label").hidden = state.model !== "drawers" && lid === "none";
+  $("#clearance-label").hidden =
+    familyFor(state) !== "drawers" && lid === "none";
   $("#material-hint").textContent = isPrint
     ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
     : "Use a espessura real da chapa. Cor apenas ilustrativa.";
   $("#finish-name").textContent = FINISHES[state.finish].label;
   if (supportsGrid(state) && valid) {
-    if (state.model === "drawers") {
+    if (familyFor(state) === "drawers") {
       const g = drawerDimensions(state);
       $("#compartment-info").textContent =
         `${state.rows * state.cols} gavetas · interior útil de cada uma: ${fmt(g.dw - 2 * state.thickness)} × ${fmt(g.dd - 2 * state.thickness)} × ${fmt(g.dh - state.thickness)} mm.`;
     } else {
       const c = cuts(state);
       $("#compartment-info").textContent =
-        state.model === "custom"
+        familyFor(state) === "custom"
           ? `${1 + state.rows} compartimentos · vão esquerdo de ${fmt(c.widths[0])} × ${fmt(state.depth - 2 * state.thickness)} mm e ${state.rows} vãos à direita de ${fmt(c.widths[1])} × ${fmt(c.depths[0])} mm.`
           : `${state.cols * state.rows} compartimentos · vãos de ${c.widths.map(fmt).join(" / ")} × ${fmt(c.depths[0])} mm.`;
     }
@@ -327,7 +343,7 @@ function renderEditor() {
   );
   const cells = compartmentCount(state);
   $("#project-stats").innerHTML =
-    `<div>${icon("ruler")}<span><strong>${state.width} × ${state.depth} × ${state.height}</strong><small>dimensões externas · mm</small></span></div><div>${icon("layers")}<span><strong>${isPrint ? "Peça única" : parts.length + " peças"}</strong><small>${isPrint ? "impressão em um sólido" : "para corte e montagem"}</small></span></div><div>${icon("grid")}<span><strong>${cells} ${state.model === "drawers" ? "gavetas" : cells === 1 ? "espaço" : "compartimentos"}</strong><small>organização do seu jeito</small></span></div>`;
+    `<div>${icon("ruler")}<span><strong>${state.width} × ${state.depth} × ${state.height}</strong><small>dimensões externas · mm</small></span></div><div>${icon("layers")}<span><strong>${isPrint ? "Peça única" : parts.length + " peças"}</strong><small>${isPrint ? "impressão em um sólido" : "para corte e montagem"}</small></span></div><div>${icon("grid")}<span><strong>${cells} ${familyFor(state) === "drawers" ? "gavetas" : cells === 1 ? "espaço" : "compartimentos"}</strong><small>organização do seu jeito</small></span></div>`;
   $("#assembly-title").textContent = isPrint
     ? "Peça única, pronta para o fatiador."
     : `${JOINTS[jointType(state)]} · ${LIDS[lidType(state)]}`;
@@ -346,13 +362,13 @@ function renderEditor() {
     ih = shellMetrics(state).dividerTop - state.thickness;
   const area = parts.reduce((sum, p) => sum + p.width * p.height, 0) / 1e6;
   $("#summary-metrics").innerHTML =
-    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${state.model === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${construction ? `<div><dt>União</dt><dd>${JOINTS[jointType(state)]}</dd></div><div><dt>Tampa</dt><dd>${LIDS[lidType(state)]}</dd></div>` : ""}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
+    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${familyFor(state) === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${construction ? `<div><dt>União</dt><dd>${JOINTS[jointType(state)]}</dd></div><div><dt>Tampa</dt><dd>${LIDS[lidType(state)]}</dd></div>` : ""}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
   $("#parts-title").textContent = isPrint
     ? "Sobre o arquivo"
     : "Lista de peças";
   $("#part-count").textContent = isPrint ? "STL" : parts.length;
   $("#parts-list").innerHTML = isPrint
-    ? `<li class="print-summary">${icon("box")}<strong>Um único sólido fechado</strong><p>Fundo, paredes${state.model === "printgrid" ? " e divisórias integradas" : ""}. Abra o STL no seu fatiador para estimar tempo e material.</p><small>Medidas do arquivo: ${state.width} × ${state.depth} × ${state.height} mm.</small></li>`
+    ? `<li class="print-summary">${icon("box")}<strong>Um único sólido fechado</strong><p>Fundo, paredes${familyFor(state) === "printgrid" ? " e divisórias integradas" : ""}. Abra o STL no seu fatiador para estimar tempo e material.</p><small>Medidas do arquivo: ${state.width} × ${state.depth} × ${state.height} mm.</small></li>`
     : parts
         .map(
           (p, i) =>
@@ -515,7 +531,7 @@ function updateQuote() {
 $("#quote-project").onclick = () => {
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${state.model === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${state.model === "drawers" || lidType(state) !== "none" ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Aba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\nReferência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Aba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\nReferência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-dialog").showModal();
 };
@@ -574,7 +590,7 @@ $("#drawer-open").oninput = (e) => {
   renderEditor();
 };
 $("#add-dividers").onclick = () => {
-  state.model = state.model === "print" ? "printgrid" : "grid";
+  state.model = familyFor(state) === "print" ? "printgrid" : "grid";
   state.cols = 2;
   state.rows = 2;
   if (state.name === modelById(state.model === "grid" ? "open" : "print").name)
@@ -605,6 +621,7 @@ $$("[data-filter]").forEach(
   (b) => (b.onclick = () => setFilter(b.dataset.filter)),
 );
 $("#search").oninput = renderCatalog;
+$("#use-filter").onchange = renderCatalog;
 $$("[data-view]").forEach(
   (b) =>
     (b.onclick = () => {
@@ -707,6 +724,11 @@ $("#hero-object").innerHTML = previewSVG(
   { ...defaults("grid"), finish: "natural" },
   { angle: 35 },
 );
+$("#use-filter").innerHTML =
+  '<option value="all">Todos os usos</option>' +
+  Object.entries(USAGES)
+    .map(([k, v]) => `<option value="${k}">${v}</option>`)
+    .join("");
 mountIcons();
 $('[data-filter="all"] span').textContent = MODELS.length;
 try {

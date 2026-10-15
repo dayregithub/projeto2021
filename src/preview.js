@@ -1,3 +1,4 @@
+import { familyFor } from "./models.js";
 import earcut from "earcut";
 import {
   supportsConstruction,
@@ -29,8 +30,9 @@ export const escapeHTML = (s) =>
       ],
   );
 export function sceneBoxes(s, { exploded = false, opened = 0.35 } = {}) {
-  const { width: w, depth: d, height: h, thickness: t, model, rows, cols } = s,
+  const { width: w, depth: d, height: h, thickness: t, rows, cols } = s,
     boxes = [];
+  const model = familyFor(s);
   const sep = exploded ? Math.min(w, d) * 0.15 : 0;
   const add = (x, y, z, a, b, c, kind = "body") =>
     boxes.push({ x, y, z, w: a, d: b, h: c, kind });

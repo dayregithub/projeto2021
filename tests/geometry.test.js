@@ -392,3 +392,60 @@ test("new settings survive JSON roundtrip and malformed construction options are
   assert.ok(validate({ ...s, joint: "invalid" }).length);
   assert.ok(validate({ ...defaults("print"), lidType: "hinged" }).length);
 });
+
+import { familyFor } from "../src/models.js";
+test("ten new product presets keep product identity and valid fabrication parameters", () => {
+  const ids = [
+    "tea",
+    "jewelry",
+    "pencilcase",
+    "cards",
+    "hardware",
+    "pencilholder",
+    "deskdrawers",
+    "painttray",
+    "compacthinge",
+    "compactslider",
+  ];
+  for (const id of ids) {
+    const s = defaults(id);
+    assert.deepEqual(validate(s), [], id);
+    assert.deepEqual(readProject(JSON.stringify(s)), s);
+    assert.equal(s.model, id);
+    assert.ok(familyFor(s));
+    if (id === "painttray") {
+      assert.equal(panels(s).length, 0);
+      assert.ok(stlTriangles(s).length > 200);
+    } else assert.ok(panels(s).length >= 5);
+  }
+  const tea = defaults("tea");
+  assert.equal(tea.lidType, "hinged");
+  assert.equal(tea.cols * tea.rows, 6);
+  assert.ok(panels(tea).some((p) => p.name === "Divisória longitudinal 1"));
+  const jewelry = defaults("jewelry");
+  assert.equal(familyFor(jewelry), "custom");
+  assert.equal(cuts(jewelry).widths.length, 2);
+  assert.ok(panels(jewelry).some((p) => p.name === "Divisória à direita 2"));
+  const drawer = defaults("deskdrawers");
+  assert.equal(drawer.rows, 3);
+  assert.equal(drawer.cols, 1);
+  assert.equal(
+    panels(drawer).filter((p) => p.name.includes("· base")).length,
+    4,
+  );
+  const compact = defaults("compacthinge");
+  assert.deepEqual(
+    [compact.width, compact.depth, compact.height, compact.thickness],
+    [106, 150, 50, 3],
+  );
+  const slider = defaults("compactslider");
+  assert.deepEqual(
+    [slider.width, slider.depth, slider.height, slider.thickness],
+    [125, 100, 40, 3],
+  );
+});
+test("3D miniature tray remains watertight and has eight integrated compartments", () => {
+  const s = defaults("painttray");
+  assert.equal(s.cols * s.rows, 8);
+  assert.ok(checkManifold(stlTriangles(s)) > 0);
+});

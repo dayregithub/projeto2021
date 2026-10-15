@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { MODELS } from "../../src/models.js";
 const open = async (page, model) => {
   await page.goto("/");
   await page.locator(`[data-model="${model}"]`).click();
@@ -7,16 +8,18 @@ const open = async (page, model) => {
 };
 test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(9);
+  await expect(page.locator(".model-card")).toHaveCount(MODELS.length);
   await page.locator('[data-filter="print"]').click();
-  await expect(page.locator(".model-card")).toHaveCount(2);
+  await expect(page.locator(".model-card")).toHaveCount(
+    MODELS.filter((m) => m.category === "print").length,
+  );
   await page.locator('[data-filter="all"]').click();
   await page.locator("#search").fill("divisorias");
   await expect(page.locator(".model-card")).toHaveCount(2);
   await page.locator("#search").fill("semresultado");
   await expect(page.locator(".empty-state")).toBeVisible();
   await page.locator("#clear-search").click();
-  await expect(page.locator(".model-card")).toHaveCount(9);
+  await expect(page.locator(".model-card")).toHaveCount(MODELS.length);
 });
 test("grid edits update geometry, panel count, validity and downloadable files", async ({
   page,
@@ -307,13 +310,11 @@ test("legacy projects remain editable; removed model is absent; print and drawer
     clearance: 0.6,
     finish: "natural",
   };
-  await page
-    .locator("#project-file")
-    .setInputFiles({
-      name: "antigo.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(legacy)),
-    });
+  await page.locator("#project-file").setInputFiles({
+    name: "antigo.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(legacy)),
+  });
   await expect(page.locator("#editor-model-title")).toHaveText("Caixa aberta");
   await expect(page.locator('[data-joint="straight"]')).toHaveAttribute(
     "aria-pressed",
@@ -352,4 +353,87 @@ test("hinge controls work on small screens without overflow or script errors", a
     fullPage: true,
   });
   expect(errors).toEqual([]);
+});
+
+test("usage and process filters combine and reset after an empty search", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.selectOption("#use-filter", "desk");
+  await expect(page.locator(".model-card")).toHaveCount(
+    MODELS.filter((m) => m.usage === "desk").length,
+  );
+  await page.locator('[data-filter="laser"]').click();
+  await expect(page.locator(".model-card")).toHaveCount(
+    MODELS.filter((m) => m.usage === "desk" && m.category === "laser").length,
+  );
+  await expect(page.locator('[data-model="deskdrawers"]')).toBeVisible();
+  await page.locator("#search").fill("semresultados");
+  await page.locator("#clear-search").click();
+  await expect(page.locator("#use-filter")).toHaveValue("all");
+  await expect(page.locator(".model-card")).toHaveCount(MODELS.length);
+});
+test("new models expose the right family controls and preserve preset identity", async ({
+  page,
+}) => {
+  await open(page, "tea");
+  await expect(page.locator("#lid-type")).toHaveValue("hinged");
+  await expect(page.locator("#cols")).toHaveValue("3");
+  await expect(page.locator("#rows")).toHaveValue("2");
+  await expect(page.locator("#part-count")).toHaveText("14");
+  await page.locator("#project-name").fill("Meu porta-chás");
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#editor-model-title")).toHaveText(
+    "Porta-chás articulado",
+  );
+  await expect(page.locator("#project-name")).toHaveValue("Meu porta-chás");
+  await page.locator("#quote-project").click();
+  expect(await page.locator("#quote-message").inputValue()).toContain(
+    "Modelo: Porta-chás articulado",
+  );
+  await page.keyboard.press("Escape");
+  await open(page, "jewelry");
+  await expect(page.locator("#ratio-label")).toBeVisible();
+  await expect(page.locator("#compartment-info")).toContainText(
+    "4 compartimentos",
+  );
+  await open(page, "deskdrawers");
+  await expect(page.locator("#drawer-open-label")).toBeVisible();
+  await expect(page.locator("#construction-section")).toBeHidden();
+  await expect(page.locator("#parts-list")).toContainText("Gaveta 3.1");
+  await open(page, "painttray");
+  await expect(page.locator('[data-view="2d"]')).toBeDisabled();
+  await expect(page.locator("#project-stats")).toContainText(
+    "8 compartimentos",
+  );
+  await page.locator("#export-project").click();
+  const event = page.waitForEvent("download");
+  await page.locator('[data-export="stl"]').click();
+  expect((await event).suggestedFilename()).toBe("bandeja-para-miniaturas.stl");
+});
+test("compact SVG-inspired presets open with specified dimensions and mobile filtering fits", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await open(page, "compacthinge");
+  await expect(page.locator("#width")).toHaveValue("106");
+  await expect(page.locator("#depth")).toHaveValue("150");
+  await expect(page.locator("#height")).toHaveValue("50");
+  await page.locator("#back-models").click();
+  await page.selectOption("#use-filter", "gifts");
+  await page.locator('[data-model="compactslider"]').click();
+  await expect(page.locator("#width")).toHaveValue("125");
+  await expect(page.locator("#lid-type")).toHaveValue("sliding");
+  await page.locator("#back-models").click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/papeled-new-products-mobile.png",
+    fullPage: true,
+  });
 });
