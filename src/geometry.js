@@ -1,7 +1,15 @@
+import { decoratePanels, DECORATIONS, validEngraving } from "./decoration.js";
+import { buildDrawerCabinet, attachDividers } from "./assemblies.js";
+import { resolvedJoint, JOINT_GROUPS } from "./joinery.js";
 import {
+  HINGES,
+  hingeType,
+  hingeDimensions,
   buildBoxPanels,
   circle,
   supportsConstruction,
+  supportsJoinery,
+  railWidth,
   lidType,
   jointType,
   wallInset,
@@ -70,7 +78,7 @@ export function validate(s) {
   for (const [key, min, max] of [
     ["fingerSize", 3, 60],
     ["lidHeight", 3, 40],
-    ["pivotDiameter", 3, 12],
+    ["pivotDiameter", 3, 30],
     ["lidOpening", 0, 110],
   ])
     if (!Number.isFinite(s[key]) || s[key] < min || s[key] > max)
@@ -79,14 +87,58 @@ export function validate(s) {
       );
   if (!Object.hasOwn(JOINTS, s.joint) || !Object.hasOwn(LIDS, s.lidType))
     errors.push("Escolha um tipo de união e de tampa válido.");
+  if (!supportsJoinery(s) && (s.joint !== "straight" || s.lidType !== "none"))
+    errors.push(
+      "Impressão 3D usa peça única, sem uniões de montagem ou tampas de caixa a laser.",
+    );
+  for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
+    if (
+      !Object.hasOwn(JOINT_GROUPS, s[key]) &&
+      !(key === "dividerJoint" && s[key] === "cross")
+    )
+      errors.push("Escolha uma união válida para cada conjunto.");
+  if (familyFor(s) === "drawers" && s.lidType !== "none")
+    errors.push("Gaveteiros usam um topo estrutural, não tampa de caixa.");
+  if (!Object.hasOwn(HINGES, s.hingeType))
+    errors.push("Escolha um mecanismo de dobradiça válido.");
+  if (!Object.hasOwn(DECORATIONS, s.lidCutout))
+    errors.push("Escolha um recorte decorativo válido.");
+  if (!validEngraving(s.engraveName))
+    errors.push(
+      "Nome: até 30 caracteres, letras, números, espaços, acentos, ponto, hífen e &.",
+    );
   if (
-    !supportsConstruction(s) &&
-    (s.joint !== "straight" || s.lidType !== "none")
+    !Number.isFinite(s.decorationSize) ||
+    s.decorationSize < 10 ||
+    s.decorationSize > 60 ||
+    !Number.isFinite(s.engraveSize) ||
+    s.engraveSize < 3 ||
+    s.engraveSize > 16
+  )
+    errors.push("Ajuste os tamanhos de recorte (10–60%) e gravação (3–16 mm).");
+  if (
+    (s.lidCutout !== "none" || s.engraveName) &&
+    (!supportsConstruction(s) || lidType(s) === "none")
+  )
+    errors.push("Adicione uma tampa para aplicar recortes e gravação.");
+  if (errors.length) return errors;
+  if (
+    lidType(s) === "hinged" &&
+    hingeType(s) === "tabbed" &&
+    s.pivotDiameter < Math.SQRT2 * s.thickness + s.clearance
   )
     errors.push(
-      "Tampas e uniões são opções dos modelos de caixa a laser; gaveteiros e impressão 3D usam sua própria construção.",
+      "Alojamento do pivô pequeno: use diâmetro maior que a diagonal da haste (espessura × √2), mais a folga.",
     );
-  if (errors.length) return errors;
+  if (lidType(s) === "hinged" && hingeType(s) === "laser") {
+    const hd = hingeDimensions(s);
+    if (s.pivotDiameter <= Math.hypot(hd.keyWidth, hd.keyHeight) + 0.5)
+      errors.push(
+        "Aumente o diâmetro do disco-pivô ou reduza a espessura: o rasgo do eixo precisa deixar material ao redor.",
+      );
+    if (hd.radius >= s.height - s.thickness)
+      errors.push("Aumente a altura do corpo para acomodar o suporte do pivô.");
+  }
   const metrics = shellMetrics(s),
     span = metrics.frontHeight - s.thickness;
   if (supportsConstruction(s) && metrics.innerWidth < 15)
@@ -147,6 +199,67 @@ export function validate(s) {
         "As gavetas ficaram pequenas demais. Aumente a caixa ou reduza linhas, colunas ou espessura.",
       );
   }
+  if (supportsJoinery(s)) {
+    const divider = resolvedJoint(s, "dividerJoint"),
+      lid = resolvedJoint(s, "lidJoint"),
+      rails = resolvedJoint(s, "railJoint");
+    if (supportsGrid(s) && divider === "tslot" && familyFor(s) !== "drawers") {
+      const dims = cuts(s);
+      if (
+        Math.min(...dims.widths, ...dims.depths) < 34 ||
+        shellMetrics(s).dividerTop - s.thickness < 18
+      )
+        errors.push(
+          "Divisórias em T precisam de vãos de pelo menos 34 mm e altura livre de 18 mm.",
+        );
+    }
+    if (
+      lidType(s) === "hinged" &&
+      hingeType(s) !== "tabbed" &&
+      lid === "tslot" &&
+      s.lidHeight < 18
+    )
+      errors.push("União T na tampa precisa de aba com pelo menos 18 mm.");
+    if (
+      lidType(s) === "removable" &&
+      shellMetrics(s).dividerTop < 2 * s.thickness
+    )
+      errors.push(
+        "Aumente a altura do corpo para acomodar a guia da tampa e seus encaixes.",
+      );
+    if (
+      lidType(s) === "sliding" &&
+      shellMetrics(s).innerWidth < 2 * railWidth(s) + 4
+    )
+      errors.push("Aumente a largura para acomodar os trilhos e suas uniões.");
+    if (familyFor(s) === "drawers") {
+      const g = drawerDimensions(s),
+        k =
+          resolvedJoint(s, "drawerJoint") === "tslot"
+            ? Math.max(2 * s.thickness, 6.4)
+            : 0;
+      if (
+        g.dw - 2 * (k + s.thickness) < 20 ||
+        g.dd - 2 * (k + s.thickness) < 20
+      )
+        errors.push(
+          "A união das gavetas deixou pouco espaço: aumente as medidas ou reduza as divisões.",
+        );
+      if (
+        resolvedJoint(s, "drawerJoint") === "tslot" &&
+        (g.dw - 2 * (k + s.thickness) < 34 ||
+          g.dd - 2 * (k + s.thickness) < 34 ||
+          g.dh - s.thickness < 40)
+      )
+        errors.push(
+          "Gavetas em T precisam de mais espaço para os canais das porcas.",
+        );
+      if (divider === "tslot" && g.ch < 34)
+        errors.push(
+          "Separadores em T do gaveteiro precisam de níveis com ao menos 34 mm livres.",
+        );
+    }
+  }
   return errors;
 }
 export function drawerDimensions(s) {
@@ -159,11 +272,12 @@ export function drawerDimensions(s) {
     rows,
     clearance: c,
   } = s;
+  const m = s.joint === "tslot" ? Math.max(2 * t, 6.4) : 0;
   return {
-    cw: (w - (cols + 1) * t) / cols,
+    cw: (w - 2 * m - (cols + 1) * t) / cols,
     ch: (h - (rows + 1) * t) / rows,
-    dd: d - t - 2 * c,
-    dw: (w - (cols + 1) * t) / cols - 2 * c,
+    dd: d - m - t - 2 * c,
+    dw: (w - 2 * m - (cols + 1) * t) / cols - 2 * c,
     dh: (h - (rows + 1) * t) / rows - 2 * c,
   };
 }
@@ -174,36 +288,15 @@ export function panels(s) {
   const list = [];
   const add = (name, width, height, extra = {}) =>
     list.push({ name, width, height, slots: [], ...extra });
-  if (familyFor(s) === "drawers") {
-    const { cw, ch, dw, dd, dh } = drawerDimensions(s);
-    add("Estrutura · base", w, d);
-    add("Estrutura · topo", w, d);
-    add("Estrutura · fundo", w, h - 2 * t);
-    for (let i = 0; i < 2; i++)
-      add(`Estrutura · lateral ${i + 1}`, d - t, h - 2 * t);
-    for (let r = 1; r < rows; r++) add(`Prateleira ${r}`, w - 2 * t, d - t);
-    for (let r = 0; r < rows; r++)
-      for (let c = 1; c < cols; c++)
-        add(`Separador · nível ${r + 1} / ${c}`, d - t, ch);
-    for (let r = 0; r < rows; r++)
-      for (let c = 0; c < cols; c++) {
-        const prefix = `Gaveta ${r + 1}.${c + 1}`;
-        add(`${prefix} · base`, dw, dd);
-        add(`${prefix} · frente`, dw, dh - t, {
-          hole: {
-            x: dw / 2,
-            y: Math.min(12, (dh - t) / 2),
-            r: Math.min(5, (dh - t) / 5),
-          },
-        });
-        add(`${prefix} · traseira`, dw, dh - t);
-        add(`${prefix} · lateral A`, dd - 2 * t, dh - t);
-        add(`${prefix} · lateral B`, dd - 2 * t, dh - t);
-      }
-    return list;
-  }
+  if (familyFor(s) === "drawers")
+    return buildDrawerCabinet(s, drawerDimensions(s));
   const listBody = buildBoxPanels(s);
   const { inset, innerWidth, dividerTop } = shellMetrics(s);
+  if (
+    ["grid", "custom"].includes(familyFor(s)) &&
+    resolvedJoint(s, "dividerJoint") !== "cross"
+  )
+    return decoratePanels(s, attachDividers(s, listBody, cuts(s)));
   if (["grid", "custom"].includes(familyFor(s))) {
     const { xs, ys, widths } = cuts(s);
     const ih = dividerTop - t;
@@ -271,7 +364,7 @@ export function panels(s) {
       );
     }
   }
-  return listBody;
+  return decoratePanels(s, listBody);
 }
 
 export function panelOutline(p) {
@@ -343,7 +436,7 @@ const esc = (s) =>
 export function exportSVG(s) {
   const l = layoutPanels(s);
   if (!l.items.length) throw Error("Sem peças para exportar.");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${l.width}mm" height="${l.height}mm" viewBox="0 0 ${l.width} ${l.height}"><title>${esc(s.name)} — Papeled Maker</title><desc>${esc(constructionNotes(s))} Milímetros. Contornos de corte, sem compensação de kerf.</desc><g fill="none" stroke="#ff0000" stroke-width="0.1">${l.items
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${l.width}mm" height="${l.height}mm" viewBox="0 0 ${l.width} ${l.height}"><title>${esc(s.name)} — Papeled Maker</title><desc>${esc(constructionNotes(s))} Milímetros. Contornos de corte, sem compensação de kerf.</desc><g id="CUT" fill="none" stroke="#ff0000" stroke-width="0.1">${l.items
     .map(
       (p) =>
         `<g><title>${esc(p.name)}</title>${panelContours(p)
@@ -353,7 +446,9 @@ export function exportSVG(s) {
           )
           .join("")}</g>`,
     )
-    .join("")}</g></svg>`;
+    .join(
+      "",
+    )}</g><g id="ENGRAVE" fill="none" stroke="#0000ff" stroke-width="0.15">${l.items.flatMap((p) => (p.engravingPaths || []).map((line) => `<path d="${line.map((v, i) => `${i ? "L" : "M"}${+(p.x + v[0]).toFixed(4)} ${+(p.y + v[1]).toFixed(4)}`).join(" ")}"/>`)).join("")}</g></svg>`;
 }
 export function exportDXF(s) {
   const l = layoutPanels(s);
@@ -396,6 +491,27 @@ export function exportDXF(s) {
       );
       for (const [x, y] of pts)
         out.push("10", String(x + p.x), "20", String(l.height - y - p.y));
+    }
+  for (const p of l.items)
+    for (const pts of p.engravingPaths || []) {
+      out.push(
+        "0",
+        "LWPOLYLINE",
+        "100",
+        "AcDbEntity",
+        "8",
+        "ENGRAVE",
+        "62",
+        "5",
+        "100",
+        "AcDbPolyline",
+        "90",
+        String(pts.length),
+        "70",
+        "0",
+      );
+      for (const [x, y] of pts)
+        out.push("10", String(p.x + x), "20", String(l.height - p.y - y));
     }
   out.push("0", "ENDSEC", "0", "EOF");
   return out.join("\n");
@@ -524,6 +640,10 @@ export function readProject(input) {
     );
   const s = defaults(raw.model);
   for (const k of Object.keys(s)) if (k in raw) s[k] = raw[k];
+  if (raw.hingeType === undefined && raw.lidType === "hinged")
+    s.hingeType = "hardware";
+  if (raw.dividerJoint === undefined && familyFor(s) === "grid")
+    s.dividerJoint = "cross";
   if (typeof s.name !== "string" || !s.name.trim() || s.name.length > 80)
     throw Error("Nome do projeto inválido.");
   if (!["natural", "walnut", "sage", "coral"].includes(s.finish))

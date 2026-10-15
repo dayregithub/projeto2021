@@ -1,10 +1,15 @@
+import { DECORATIONS } from "./src/decoration.js";
+import { JOINT_GROUPS, resolvedJoint } from "./src/joinery.js";
 import { familyFor, USAGES } from "./src/models.js";
 import {
+  HINGES,
+  hingeType,
   JOINTS,
   LIDS,
   lidType,
   jointType,
   supportsConstruction,
+  supportsJoinery,
   shellMetrics,
   constructionNotes,
 } from "./src/construction.js";
@@ -215,9 +220,16 @@ function syncFields() {
     "lidHeight",
     "pivotDiameter",
     "lidOpening",
+    "decorationSize",
+    "engraveSize",
   ])
     $("#" + k).value = state[k];
   $("#lid-type").value = state.lidType;
+  $("#hinge-type").value = state.hingeType;
+  for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
+    $("#" + key).value = state[key];
+  $("#lid-cutout").value = state.lidCutout;
+  $("#engraveName").value = state.engraveName;
   $("#project-name").value = state.name;
   $("#finish-name").textContent = FINISHES[state.finish].label;
   $("#finishes").innerHTML = Object.entries(FINISHES)
@@ -261,9 +273,25 @@ function renderEditor() {
   $("#drawer-open-label").hidden = familyFor(state) !== "drawers";
   const construction = supportsConstruction(state),
     lid = lidType(state);
-  $("#construction-section").hidden = !construction;
+  const canJoin = supportsJoinery(state);
+  $("#construction-section").hidden = !canJoin;
+  $("#lid-joint-label").hidden =
+    lid === "none" || (lid === "hinged" && hingeType(state) === "tabbed");
+  $("#divider-joint-label").hidden = !supportsGrid(state);
+  $("#rail-joint-label").hidden = lid !== "sliding";
+  $("#drawer-joint-label").hidden = familyFor(state) !== "drawers";
+  $("#decoration-section").hidden = lid === "none";
+  $("#decoration-size-label").hidden = state.lidCutout === "none";
+  $("#decoration-size-value").textContent = state.decorationSize + "%";
+  $("#engrave-size-value").textContent = state.engraveSize + " mm";
   $("#lid-section").hidden = !construction;
-  $("#finger-size-label").hidden = jointType(state) !== "finger";
+  $("#finger-size-label").hidden = ![
+    state.joint,
+    ...["lidJoint", "dividerJoint", "railJoint", "drawerJoint"].map((k) =>
+      resolvedJoint(state, k),
+    ),
+  ].includes("finger");
+  $("#lidHeight").closest("label").hidden = hingeType(state) === "tabbed";
   $("#finger-size-value").textContent = state.fingerSize + " mm";
   $$("[data-joint]").forEach((b) => {
     const active = b.dataset.joint === jointType(state);
@@ -275,9 +303,19 @@ function renderEditor() {
     finger:
       "Dentes complementares na base e quinas. O passo se ajusta para fechar cada borda.",
     tslot:
-      "Abas e rasgos T nas quinas. Requer 4 parafusos e porcas M3; base colada. As laterais ficam recuadas para acomodar os parafusos.",
+      "Abas e canais T com conjuntos M3 nas ligações. Veja a quantidade calculada no resumo. Ajuste o comprimento dos parafusos à chapa e aos canais.",
   }[jointType(state)];
   $("#hinge-fields").hidden = lid !== "hinged";
+  $("#hinge-mechanism").hidden = lid !== "hinged";
+  $("#hinge-guide").hidden = lid !== "hinged" || hingeType(state) !== "laser";
+  $("#integral-guide").hidden =
+    lid !== "hinged" || hingeType(state) !== "tabbed";
+  $("#pivot-label").textContent =
+    hingeType(state) === "laser"
+      ? "Ø do disco-pivô (mm)"
+      : hingeType(state) === "tabbed"
+        ? "Ø do alojamento (mm)"
+        : "Ø do eixo externo (mm)";
   $("#lid-opening-label").hidden = lid === "none";
   $("#toggle-lid").hidden = lid === "none";
   $("#lid-opening-value").textContent =
@@ -290,10 +328,16 @@ function renderEditor() {
     removable:
       "Tampa solta com guia inferior. As divisórias são rebaixadas para fechar sem colisão.",
     sliding:
-      "Inclui quatro trilhos colados por dentro e frente rebaixada. A tampa desliza para a frente.",
+      "Inclui quatro trilhos internos com a união selecionada e frente rebaixada. A tampa desliza para a frente.",
     hinged:
       "Suportes e braços recortados nas próprias peças. Usa dois eixos/pinos com retenção; não requer dobradiça metálica separada. Altura informada é a do corpo, sem tampa e suportes.",
   }[lid];
+  if (lid === "hinged" && hingeType(state) === "tabbed")
+    $("#lid-hint").textContent =
+      "A haste está integrada ao contorno da tampa e gira nas laterais, como no novo SVG de referência. Sem discos, eixos separados ou parafusos.";
+  if (lid === "hinged" && hingeType(state) === "laser")
+    $("#lid-hint").textContent =
+      "Sem eixos comprados: dois discos e dois eixos retangulares são recortados na chapa. Os braços giram ao redor dos discos. Consulte a montagem abaixo.";
   $("#clearance-label").hidden =
     familyFor(state) !== "drawers" && lid === "none";
   $("#material-hint").textContent = isPrint
@@ -302,9 +346,13 @@ function renderEditor() {
   $("#finish-name").textContent = FINISHES[state.finish].label;
   if (supportsGrid(state) && valid) {
     if (familyFor(state) === "drawers") {
-      const g = drawerDimensions(state);
+      const g = drawerDimensions(state),
+        inset =
+          resolvedJoint(state, "drawerJoint") === "tslot"
+            ? Math.max(2 * state.thickness, 6.4)
+            : 0;
       $("#compartment-info").textContent =
-        `${state.rows * state.cols} gavetas · interior útil de cada uma: ${fmt(g.dw - 2 * state.thickness)} × ${fmt(g.dd - 2 * state.thickness)} × ${fmt(g.dh - state.thickness)} mm.`;
+        `${state.rows * state.cols} gavetas · interior útil de cada uma: ${fmt(g.dw - 2 * (state.thickness + inset))} × ${fmt(g.dd - 2 * (state.thickness + inset))} × ${fmt(g.dh - state.thickness)} mm.`;
     } else {
       const c = cuts(state);
       $("#compartment-info").textContent =
@@ -360,9 +408,10 @@ function renderEditor() {
   const iw = shellMetrics(state).innerWidth,
     id = state.depth - 2 * state.thickness,
     ih = shellMetrics(state).dividerTop - state.thickness;
+  const fasteners = parts.reduce((n, p) => n + (p.m3Fasteners || 0), 0);
   const area = parts.reduce((sum, p) => sum + p.width * p.height, 0) / 1e6;
   $("#summary-metrics").innerHTML =
-    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${familyFor(state) === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${construction ? `<div><dt>União</dt><dd>${JOINTS[jointType(state)]}</dd></div><div><dt>Tampa</dt><dd>${LIDS[lidType(state)]}</dd></div>` : ""}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
+    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${familyFor(state) === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${canJoin ? `<div><dt>Fixação T</dt><dd>${fasteners} conjuntos M3</dd></div><div><dt>União</dt><dd>${JOINTS[jointType(state)]}</dd></div><div><dt>Tampa</dt><dd>${LIDS[lidType(state)]}</dd></div>` : ""}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
   $("#parts-title").textContent = isPrint
     ? "Sobre o arquivo"
     : "Lista de peças";
@@ -531,7 +580,7 @@ function updateQuote() {
 $("#quote-project").onclick = () => {
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Aba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\nReferência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-dialog").showModal();
 };
@@ -549,9 +598,15 @@ for (const key of [
   "lidHeight",
   "pivotDiameter",
   "lidOpening",
+  "decorationSize",
+  "engraveSize",
 ])
   $("#" + key).addEventListener("input", (e) => {
     state[key] = e.target.value === "" ? NaN : Number(e.target.value);
+    if (["decorationSize", "engraveSize"].includes(key)) {
+      state.lidOpening = 0;
+      $("#lidOpening").value = 0;
+    }
     renderEditor();
     persistDraft();
   });
@@ -559,6 +614,7 @@ $$("[data-joint]").forEach(
   (b) =>
     (b.onclick = () => {
       state.joint = b.dataset.joint;
+      ensureJoinSizes();
       renderEditor();
       persistDraft();
     }),
@@ -567,6 +623,11 @@ $("#lid-type").onchange = (e) => {
   state.lidType = e.target.value;
   if (state.lidType === "hinged") state.lidOpening = 100;
   else state.lidOpening = 55;
+  if (state.lidType === "none") {
+    state.lidCutout = "none";
+    state.engraveName = "";
+  }
+  ensureJoinSizes();
   syncFields();
   renderEditor();
   persistDraft();
@@ -575,6 +636,57 @@ $("#toggle-lid").onclick = () => {
   state.lidOpening =
     state.lidOpening > 0 ? 0 : lidType(state) === "hinged" ? 100 : 75;
   $("#lidOpening").value = state.lidOpening;
+  renderEditor();
+  persistDraft();
+};
+$("#hinge-type").onchange = (e) => {
+  state.hingeType = e.target.value;
+  ensureJoinSizes();
+  if (state.hingeType === "tabbed")
+    state.pivotDiameter =
+      Math.ceil((Math.SQRT2 * state.thickness + state.clearance + 0.05) * 10) /
+      10;
+  syncFields();
+  renderEditor();
+  persistDraft();
+};
+function ensureJoinSizes() {
+  if (
+    lidType(state) === "hinged" &&
+    hingeType(state) !== "tabbed" &&
+    resolvedJoint(state, "lidJoint") === "tslot" &&
+    state.lidHeight < 18
+  ) {
+    state.lidHeight = 18;
+    $("#lidHeight").value = 18;
+  }
+}
+for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
+  $("#" + key).onchange = (e) => {
+    state[key] = e.target.value;
+    ensureJoinSizes();
+    renderEditor();
+    persistDraft();
+  };
+$("#inherit-all-joints").onclick = () => {
+  for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
+    state[key] = "inherit";
+  ensureJoinSizes();
+  syncFields();
+  renderEditor();
+  persistDraft();
+};
+$("#lid-cutout").onchange = (e) => {
+  state.lidCutout = e.target.value;
+  state.lidOpening = 0;
+  $("#lidOpening").value = 0;
+  renderEditor();
+  persistDraft();
+};
+$("#engraveName").oninput = (e) => {
+  state.engraveName = e.target.value;
+  state.lidOpening = 0;
+  $("#lidOpening").value = 0;
   renderEditor();
   persistDraft();
 };
@@ -729,6 +841,14 @@ $("#use-filter").innerHTML =
   Object.entries(USAGES)
     .map(([k, v]) => `<option value="${k}">${v}</option>`)
     .join("");
+for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
+  $("#" + key).innerHTML =
+    Object.entries(JOINT_GROUPS)
+      .map(([k, v]) => `<option value="${k}">${v}</option>`)
+      .join("") +
+    (key === "dividerJoint"
+      ? '<option value="cross">Meio encaixe (projeto anterior)</option>'
+      : "");
 mountIcons();
 $('[data-filter="all"] span').textContent = MODELS.length;
 try {

@@ -2718,3 +2718,55 @@ textarea {
 .model-card:hover .model-image > img {
   transform: translateY(-5px);
 }
+#hinge-mechanism {
+  margin-top: 14px;
+}
+#hinge-guide,
+#joint-details {
+  font-size: 10px;
+  color: #758ca9;
+  line-height: 1.75;
+  border: 1px solid #e1e9f5;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 13px;
+  background: #f8faff;
+}
+#hinge-guide summary,
+#joint-details summary {
+  cursor: pointer;
+  font-weight: 550;
+  color: #577fb8;
+}
+#hinge-guide ol {
+  padding-left: 18px;
+}
+#hinge-guide li {
+  margin: 9px 0;
+}
+#hinge-guide p {
+  font-size: 9px;
+  color: #92a4bc;
+}
+#joint-details .field-label {
+  margin-top: 12px;
+}
+#joint-details select {
+  display: block;
+  margin-top: 6px;
+}
+#decoration-section .field-label {
+  margin-top: 17px;
+}
+#decoration-section .range-label {
+  margin-bottom: 20px;
+}
+@media (max-width: 650px) {
+  #hinge-guide,
+  #joint-details {
+    font-size: 11px;
+  }
+  #hinge-guide p {
+    font-size: 10px;
+  }
+}

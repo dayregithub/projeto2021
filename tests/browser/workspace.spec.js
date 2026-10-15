@@ -27,12 +27,12 @@ test("grid edits update geometry, panel count, validity and downloadable files",
   await open(page, "grid");
   await page.locator("#width").fill("300");
   await page.locator("#cols").fill("4");
-  await expect(page.locator("#part-count")).toHaveText("9");
+  await expect(page.locator("#part-count")).toHaveText("12");
   await expect(page.locator("#project-stats")).toContainText(
     "8 compartimentos",
   );
   await page.locator('[data-view="2d"]').click();
-  await expect(page.locator("#preview path")).toHaveCount(9);
+  await expect(page.locator("#preview path")).toHaveCount(12);
   await page.locator("#export-project").click();
   const wait = page.waitForEvent("download");
   await page.locator('[data-export="svg"]').click();
@@ -49,7 +49,7 @@ test("grid edits update geometry, panel count, validity and downloadable files",
     return [numbers[2] - numbers[0], numbers[5] - numbers[1]];
   }, svg);
   expect(baseDimensions).toEqual([300, 180]);
-  expect((svg.match(/<path /g) || []).length).toBe(9);
+  expect((svg.match(/<path /g) || []).length).toBe(12);
   const parsed = await page.evaluate(
     (s) =>
       new DOMParser()
@@ -89,7 +89,7 @@ test("asymmetric divisions, camera, exploded view and model switching", async ({
   await expect(page.locator("#editor-model-title")).toHaveText(
     "Divisórias em grade",
   );
-  await expect(page.locator("#part-count")).toHaveText("7");
+  await expect(page.locator("#part-count")).toHaveText("8");
 });
 test("saved projects survive reload, can update without duplicates and be deleted", async ({
   page,
@@ -259,9 +259,9 @@ test("all three lids support open-close, real panels and partitions", async ({
 }) => {
   await open(page, "grid");
   for (const [lid, count] of [
-    ["removable", "10"],
-    ["sliding", "13"],
-    ["hinged", "14"],
+    ["removable", "12"],
+    ["sliding", "16"],
+    ["hinged", "18"],
   ]) {
     await page.selectOption("#lid-type", lid);
     await expect(page.locator("#part-count")).toHaveText(count);
@@ -324,7 +324,7 @@ test("legacy projects remain editable; removed model is absent; print and drawer
   await expect(page.locator("#export-project")).toBeEnabled();
   await page.locator("#back-models").click();
   await page.locator('[data-model="drawers"]').click();
-  await expect(page.locator("#construction-section")).toBeHidden();
+  await expect(page.locator("#construction-section")).toBeVisible();
   await expect(page.locator("#lid-section")).toBeHidden();
 });
 test("hinge controls work on small screens without overflow or script errors", async ({
@@ -380,7 +380,7 @@ test("new models expose the right family controls and preserve preset identity",
   await expect(page.locator("#lid-type")).toHaveValue("hinged");
   await expect(page.locator("#cols")).toHaveValue("3");
   await expect(page.locator("#rows")).toHaveValue("2");
-  await expect(page.locator("#part-count")).toHaveText("14");
+  await expect(page.locator("#part-count")).toHaveText("18");
   await page.locator("#project-name").fill("Meu porta-chás");
   await page.locator("#save-project").click();
   await page.waitForTimeout(400);
@@ -401,7 +401,7 @@ test("new models expose the right family controls and preserve preset identity",
   );
   await open(page, "deskdrawers");
   await expect(page.locator("#drawer-open-label")).toBeVisible();
-  await expect(page.locator("#construction-section")).toBeHidden();
+  await expect(page.locator("#construction-section")).toBeVisible();
   await expect(page.locator("#parts-list")).toContainText("Gaveta 3.1");
   await open(page, "painttray");
   await expect(page.locator('[data-view="2d"]')).toBeDisabled();
@@ -436,4 +436,68 @@ test("compact SVG-inspired presets open with specified dimensions and mobile fil
     path: "/tmp/papeled-new-products-mobile.png",
     fullPage: true,
   });
+});
+
+test("new integral shaft lid supports cutouts and names with separate manufacturing layers and JSON persistence", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "heartbox");
+  await expect(page.locator("#hinge-type")).toHaveValue("tabbed");
+  await expect(page.locator("#part-count")).toHaveText("6");
+  await expect(page.locator("#integral-guide")).toBeVisible();
+  await page.locator("#engraveName").fill("João & Ana");
+  await expect(page.locator("#lidOpening")).toHaveValue("0");
+  await page.selectOption("#lid-cutout", "star");
+  await page.locator("#export-project").click();
+  let wait = page.waitForEvent("download");
+  await page.locator('[data-export="svg"]').click();
+  const svg = await readFile(await (await wait).path(), "utf8");
+  expect(svg).toContain('id="ENGRAVE"');
+  expect(svg.split('id="ENGRAVE"')[1]).toContain("<path");
+  wait = page.waitForEvent("download");
+  await page.locator('[data-export="json"]').click();
+  const json = JSON.parse(await readFile(await (await wait).path(), "utf8"));
+  expect(json).toMatchObject({
+    hingeType: "tabbed",
+    lidCutout: "star",
+    engraveName: "João & Ana",
+  });
+  await page.keyboard.press("Escape");
+  await page.selectOption("#hinge-type", "laser");
+  await expect(page.locator("#hinge-guide")).toBeVisible();
+  await expect(page.locator("#parts-list")).toContainText("Disco-pivô");
+  await expect(page.locator("#parts-list")).toContainText("Eixo recortado");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
+test("laser subassemblies inherit or override joints while printing stays single-piece", async ({
+  page,
+}) => {
+  await open(page, "grid");
+  await page.locator("#joint-details summary").click();
+  await page.selectOption("#dividerJoint", "finger");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await page.selectOption("#lid-type", "sliding");
+  await page.selectOption("#railJoint", "tslot");
+  await page.selectOption("#lidJoint", "finger");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await page.locator('[data-joint="tslot"]').click();
+  await page.locator("#inherit-all-joints").click();
+  await expect(page.locator("#railJoint")).toHaveValue("inherit");
+  await page.selectOption("#lid-type", "hinged");
+  await expect(page.locator("#lidHeight")).toHaveValue("18");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await open(page, "drawers");
+  await expect(page.locator("#construction-section")).toBeVisible();
+  await page.locator('[data-joint="finger"]').click();
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await page.locator("#joint-details summary").click();
+  await page.selectOption("#drawerJoint", "straight");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await open(page, "print");
+  await expect(page.locator("#construction-section")).toBeHidden();
+  await expect(page.locator("#decoration-section")).toBeHidden();
 });

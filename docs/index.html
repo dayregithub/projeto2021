@@ -9,8 +9,8 @@
       content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
     />
     <title>Papeled Maker — seu espaço maker online</title>
-    <script type="module" crossorigin src="./assets/index-BjWkbxcA.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-nE46JkHB.css">
+    <script type="module" crossorigin src="./assets/index-BOOsqHRL.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BGb_gDC9.css">
   </head>
   <body>
     <header class="site-header">
@@ -96,7 +96,7 @@
           <div class="catalog-toolbar">
             <div class="filter-group" role="group" aria-label="Filtrar modelos">
               <button data-filter="all" class="active" aria-pressed="true">
-                Todos os modelos <span>19</span></button
+                Todos os modelos <span>20</span></button
               ><button data-filter="laser" aria-pressed="false">
                 <span data-icon="sparkles"></span> Corte a laser</button
               ><button data-filter="print" aria-pressed="false">
@@ -110,7 +110,7 @@
               >
                 <option value="all">Todos os usos</option>
               </select></label
-            ><span id="model-count">19 modelos para explorar</span>
+            ><span id="model-count">20 modelos para explorar</span>
           </div>
           <div id="resume-banner" hidden></div>
           <div class="model-grid" id="model-grid"></div>
@@ -266,7 +266,7 @@
               /></label>
             </div>
             <div class="control-section" id="construction-section">
-              <h3><span>03</span> União das peças</h3>
+              <h3><span>03</span> União principal</h3>
               <div
                 class="joint-options"
                 role="group"
@@ -298,6 +298,32 @@
                 ><input type="range" id="fingerSize" min="3" max="60" step="1"
               /></label>
               <p class="field-hint" id="joint-hint"></p>
+              <details id="joint-details">
+                <summary>Uniões por conjunto</summary>
+                <label id="lid-joint-label" class="field-label"
+                  >Tampa<select class="text-input" id="lidJoint"></select
+                ></label>
+                <label id="divider-joint-label" class="field-label"
+                  >Divisórias / prateleiras<select
+                    class="text-input"
+                    id="dividerJoint"
+                  ></select
+                ></label>
+                <label id="rail-joint-label" class="field-label"
+                  >Trilhos<select class="text-input" id="railJoint"></select
+                ></label>
+                <label id="drawer-joint-label" class="field-label"
+                  >Gavetas<select class="text-input" id="drawerJoint"></select
+                ></label>
+                <button id="inherit-all-joints" class="button subtle">
+                  Aplicar principal a todos os conjuntos
+                </button>
+                <p class="field-hint">
+                  Por padrão, todos seguem a união principal. Você pode escolher
+                  uma união diferente por conjunto. O alojamento de giro da
+                  dobradiça continua circular para permitir movimento.
+                </p>
+              </details>
             </div>
             <div class="control-section" id="lid-section">
               <h3><span>04</span> Tampa</h3>
@@ -308,6 +334,19 @@
                 <option value="sliding">Deslizante em trilhos</option>
                 <option value="hinged">Dobradiça integrada</option>
               </select>
+              <div id="hinge-mechanism" hidden>
+                <label class="field-label" for="hinge-type"
+                  >Mecanismo da dobradiça</label
+                ><select class="text-input" id="hinge-type">
+                  <option value="laser">
+                    Discos e eixos recortados — sem ferragens
+                  </option>
+                  <option value="tabbed">
+                    Haste na própria tampa — sem ferragens
+                  </option>
+                  <option value="hardware">Eixo externo (opcional)</option>
+                </select>
+              </div>
               <div id="hinge-fields" class="split-fields" hidden>
                 <label
                   >Altura da aba (mm)<input
@@ -318,11 +357,12 @@
                     step="0.5"
                 /></label>
                 <label
-                  >Ø do pivô (mm)<input
+                  ><span id="pivot-label">Ø do disco-pivô (mm)</span
+                  ><input
                     id="pivotDiameter"
                     type="number"
                     min="3"
-                    max="12"
+                    max="30"
                     step="0.5"
                 /></label>
               </div>
@@ -334,9 +374,80 @@
                 Fechar tampa
               </button>
               <p class="field-hint" id="lid-hint"></p>
+              <p class="field-hint" id="integral-guide" hidden>
+                A haste faz parte da tampa: monte seus dois extremos nos
+                alojamentos das laterais antes de fechar o corpo. Esta tampa é
+                uma peça única; não há junção de placas na própria tampa.
+              </p>
+              <details id="hinge-guide" hidden>
+                <summary>Montar o pivô sem ferragens</summary>
+                <ol>
+                  <li>
+                    Corte os dois discos-pivô e os dois eixos retangulares na
+                    mesma chapa.
+                  </li>
+                  <li>
+                    Passe cada eixo pelo rasgo da lateral do corpo e pelo rasgo
+                    do disco correspondente.
+                  </li>
+                  <li>
+                    O disco fica dentro do furo circular do braço; a tampa gira
+                    ao redor dele.
+                  </li>
+                  <li>
+                    Monte e esquadre a tampa antes de fixar os encaixes
+                    retangulares. Use cola só nesses encaixes; mantenha os
+                    braços livres para girar.
+                  </li>
+                </ol>
+                <p>
+                  O encaixe precisa ser testado na espessura real. O eixo é uma
+                  peça retangular recortada, sem rosca.
+                </p>
+              </details>
+            </div>
+            <div class="control-section" id="decoration-section" hidden>
+              <h3><span>05</span> Personalize a tampa</h3>
+              <label class="field-label" for="lid-cutout"
+                >Recorte decorativo</label
+              ><select class="text-input" id="lid-cutout">
+                <option value="none">Sem recorte</option>
+                <option value="heart">Coração</option>
+                <option value="circle">Círculo</option>
+                <option value="star">Estrela</option>
+                <option value="flower">Flor</option>
+              </select>
+              <label class="range-label" id="decoration-size-label"
+                >Tamanho do recorte <output id="decoration-size-value"></output
+                ><input
+                  id="decorationSize"
+                  type="range"
+                  min="10"
+                  max="60"
+                  step="1"
+              /></label>
+              <label class="field-label" for="engraveName"
+                >Nome para gravação</label
+              ><input
+                class="text-input"
+                id="engraveName"
+                type="text"
+                maxlength="30"
+                placeholder="Ex.: João & Ana"
+                autocomplete="off"
+              />
+              <label class="range-label"
+                >Tamanho máximo do nome <output id="engrave-size-value"></output
+                ><input id="engraveSize" type="range" min="3" max="16" step="1"
+              /></label>
+              <p class="field-hint">
+                Corte em vermelho (CUT); gravação em azul (ENGRAVE). Letras
+                maiúsculas em traço simples, com acentos; o texto se ajusta para
+                caber na área segura. A prévia fecha a tampa ao personalizar.
+              </p>
             </div>
             <div class="control-section">
-              <h3><span>05</span> Material e acabamento</h3>
+              <h3><span>06</span> Material e acabamento</h3>
               <div class="split-fields">
                 <label
                   >Espessura (mm)<input
@@ -522,10 +633,11 @@
       </ol>
       <div class="export-note">
         Corte a laser: união reta, dedo ou T; tampas removível, deslizante ou
-        com dobradiça integrada. A união T e o pivô da tampa articulada exigem
-        parafusos/pinos. Os arquivos não compensam a largura do corte (kerf).
-        Faça um teste de material antes da produção final. A cor é apenas
-        ilustrativa.
+        com dobradiça integrada. A união T exige conjuntos M3. As dobradiças
+        recortadas podem usar discos/eixos na própria chapa ou haste na tampa,
+        sem ferragens. O modo de eixo externo permanece disponível para projetos
+        anteriores. Os arquivos não compensam a largura do corte (kerf). Faça um
+        teste de material antes da produção final. A cor é apenas ilustrativa.
       </div>
       <button class="button primary full" data-close>
         Vamos criar <span data-icon="arrow-right"></span>

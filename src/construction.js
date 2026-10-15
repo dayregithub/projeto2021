@@ -1,3 +1,9 @@
+import {
+  joinContact,
+  makePanel,
+  rectanglePose,
+  resolvedJoint,
+} from "./joinery.js";
 import { familyFor } from "./models.js";
 import clipping from "polygon-clipping";
 export const JOINTS = {
@@ -5,12 +11,20 @@ export const JOINTS = {
   finger: "Dedo",
   tslot: "T (parafuso e porca)",
 };
+export const HINGES = {
+  laser: "Discos e eixos recortados",
+  tabbed: "Haste integrada à tampa",
+  hardware: "Eixo externo (projeto anterior)",
+};
+export const hingeType = (s) => s.hingeType ?? "laser";
 export const LIDS = {
   none: "Sem tampa",
   removable: "Removível com guia",
   sliding: "Deslizante",
   hinged: "Dobradiça integrada",
 };
+export const supportsJoinery = (s) =>
+  !["print", "printgrid"].includes(familyFor(s));
 export const supportsConstruction = (s) =>
   !["drawers", "print", "printgrid"].includes(familyFor(s));
 export const lidType = (s) =>
@@ -23,9 +37,19 @@ export const lidType = (s) =>
         : "none"))
     : "none";
 export const jointType = (s) =>
-  supportsConstruction(s) ? (s.joint ?? "straight") : "straight";
+  supportsJoinery(s) ? (s.joint ?? "straight") : "straight";
 export const wallInset = (s) =>
-  jointType(s) === "tslot" ? Math.max(2 * s.thickness, 6.4) : 0;
+  supportsConstruction(s) && jointType(s) === "tslot"
+    ? Math.max(2 * s.thickness, 6.4)
+    : 0;
+export const railWidth = (s) =>
+  resolvedJoint(s, "railJoint") === "tslot" ? 18 : s.thickness;
+export const guideDepth = (s) =>
+  resolvedJoint(s, "lidJoint") === "tslot"
+    ? 18
+    : resolvedJoint(s, "lidJoint") === "finger"
+      ? 2 * s.thickness
+      : s.thickness;
 export function shellMetrics(s) {
   const t = s.thickness,
     c = s.clearance,
@@ -40,8 +64,10 @@ export function shellMetrics(s) {
       type === "sliding"
         ? s.height - 3 * t - 3 * c
         : type === "removable"
-          ? s.height - t - c
-          : s.height,
+          ? s.height - guideDepth(s) - c
+          : type === "hinged" && hingeType(s) === "tabbed"
+            ? s.height - t / 2 - c
+            : s.height,
   };
 }
 export function hingeDimensions(s) {
@@ -50,7 +76,14 @@ export function hingeDimensions(s) {
     radius,
     y: -radius,
     z: s.height,
-    holeRadius: (s.pivotDiameter + s.clearance) / 2,
+    holeRadius:
+      hingeType(s) === "tabbed"
+        ? s.pivotDiameter / 2
+        : (s.pivotDiameter + s.clearance) / 2,
+    discRadius: s.pivotDiameter / 2,
+    keyWidth: s.thickness,
+    keyHeight: Math.max(s.thickness, s.pivotDiameter / 2),
+    shaftLength: 2 * s.thickness + s.clearance,
   };
 }
 const rect = (x, y, w, h) => [
@@ -233,15 +266,41 @@ export function buildBoxPanels(s) {
   if (type === "hinged") {
     const { radius: r, holeRadius } = hingeDimensions(s);
     const ear = union(circle(-r, 0, r), rect(-r, 0, r + t, r));
-    left = diff(union(left, ear), circle(-r, 0, holeRadius));
+    const hd = hingeDimensions(s);
+    left = diff(
+      union(left, ear),
+      hingeType(s) === "laser"
+        ? rect(
+            -r - hd.keyWidth / 2,
+            -hd.keyHeight / 2,
+            hd.keyWidth,
+            hd.keyHeight,
+          )
+        : circle(-r, 0, holeRadius),
+    );
     right = left;
+    // Relieve the rear corners where the fixed ears and external arms cross
+    // the back plane. Integral bridges also need clearance above the back.
+    const notch = m.inset + t + c;
+    back = diff(
+      back,
+      rect(0, 0, notch, r + c),
+      rect(w - notch, 0, notch, r + c),
+    );
+    if (hingeType(s) === "tabbed") back = diff(back, rect(0, 0, w, t / 2 + c));
   }
   body.push(normalizePanel("Base", base, basePose(0, 0, 0), { role: "base" }));
   body.push(
-    normalizePanel("Frente", front, frontPose(0, d - t, fh), { role: "front" }),
+    normalizePanel("Frente", front, frontPose(0, d - t, fh), {
+      role: "front",
+      m3Fasteners: joint === "tslot" ? 2 : 0,
+    }),
   );
   body.push(
-    normalizePanel("Traseira", back, frontPose(0, 0, h), { role: "back" }),
+    normalizePanel("Traseira", back, frontPose(0, 0, h), {
+      role: "back",
+      m3Fasteners: joint === "tslot" ? 2 : 0,
+    }),
   );
   body.push(
     normalizePanel("Lateral esquerda", left, sidePose(m.inset, 0, h), {
@@ -253,23 +312,80 @@ export function buildBoxPanels(s) {
       role: "side",
     }),
   );
+  if (joint === "tslot") {
+    const basePart = body[0];
+    joinContact(
+      basePart,
+      body[1],
+      [0, d - t / 2, t],
+      [w, d - t / 2, t],
+      [0, 0, -1],
+      joint,
+      s,
+    );
+    joinContact(
+      basePart,
+      body[2],
+      [0, t / 2, t],
+      [w, t / 2, t],
+      [0, 0, -1],
+      joint,
+      s,
+    );
+    for (const [p, x] of [
+      [body[3], m.inset + t / 2],
+      [body[4], w - m.inset - t / 2],
+    ])
+      joinContact(basePart, p, [x, t, t], [x, d - t, t], [0, 0, -1], joint, s);
+  }
   const add = (name, shape, pose, extra = {}) =>
     body.push(normalizePanel(name, shape, pose, extra));
   if (type === "removable") {
     add("Tampa removível", rect(0, 0, w, d), basePose(0, 0, h), {
       group: "lid",
+      role: "lid-panel",
+      coverArea: { x: 0, y: 0, width: w, height: d },
+    });
+    if (resolvedJoint(s, "lidJoint") === "straight")
+      add(
+        "Guia da tampa",
+        rect(0, 0, m.innerWidth - 2 * c, d - 2 * t - 2 * c),
+        basePose(m.inset + t + c, t + c, h - t),
+        { group: "lid" },
+      );
+  }
+  if (type === "removable" && resolvedJoint(s, "lidJoint") !== "straight") {
+    const gw = m.innerWidth - 2 * c,
+      gd = d - 2 * t - 2 * c,
+      gx = m.inset + t + c,
+      gy = t + c,
+      gh = guideDepth(s),
+      k = resolvedJoint(s, "lidJoint") === "tslot" ? Math.max(2 * t, 6.4) : 0;
+    add("Guia · frente", rect(0, 0, gw, gh), frontPose(gx, gy + gd - t, h), {
+      group: "lid",
+      role: "guide-front",
+    });
+    add("Guia · traseira", rect(0, 0, gw, gh), frontPose(gx, gy, h), {
+      group: "lid",
+      role: "guide-back",
     });
     add(
-      "Guia da tampa",
-      rect(0, 0, m.innerWidth - 2 * c, d - 2 * t - 2 * c),
-      basePose(m.inset + t + c, t + c, h - t),
-      { group: "lid" },
+      "Guia · lateral esquerda",
+      rect(0, 0, gd - 2 * t, gh),
+      sidePose(gx + k, gy + t, h),
+      { group: "lid", role: "guide-left" },
+    );
+    add(
+      "Guia · lateral direita",
+      rect(0, 0, gd - 2 * t, gh),
+      sidePose(gx + gw - k - t, gy + t, h),
+      { group: "lid", role: "guide-right" },
     );
   }
   if (type === "sliding") {
     for (const [side, x] of [
       ["esquerda", m.inset + t],
-      ["direita", w - m.inset - 2 * t],
+      ["direita", w - m.inset - t - railWidth(s)],
     ])
       for (const [level, z] of [
         ["inferior", h - 3 * t - 2 * c],
@@ -277,18 +393,27 @@ export function buildBoxPanels(s) {
       ])
         add(
           `Trilho ${side} · ${level}`,
-          rect(0, 0, d - 2 * t, t),
+          rect(0, 0, d - 2 * t, railWidth(s)),
           { origin: [x, t, z], u: [0, 1, 0], v: [1, 0, 0], normal: [0, 0, 1] },
-          { role: "rail" },
+          { role: "rail", railSide: side, railZ: z },
         );
     add(
       "Tampa deslizante",
       rect(0, 0, m.innerWidth - 2 * c, d - t - c),
       basePose(m.inset + t + c, t + c, h - 2 * t - c),
-      { group: "lid" },
+      {
+        group: "lid",
+        role: "lid-panel",
+        coverArea: {
+          x: 0,
+          y: 0,
+          width: m.innerWidth - 2 * c,
+          height: d - t - c,
+        },
+      },
     );
   }
-  if (type === "hinged") {
+  if (type === "hinged" && hingeType(s) !== "tabbed") {
     const { radius: r, holeRadius } = hingeDimensions(s),
       lh = s.lidHeight;
     const rail = diff(
@@ -304,13 +429,17 @@ export function buildBoxPanels(s) {
       "Tampa articulada · painel",
       rect(0, 0, lidWidth, d),
       basePose(-t - c, 0, h + c + lh),
-      { group: "lid" },
+      {
+        group: "lid",
+        role: "lid-panel",
+        coverArea: { x: 0, y: 0, width: lidWidth, height: d },
+      },
     );
     add(
       "Tampa articulada · aba frontal",
       rect(0, 0, lidWidth, lh),
       frontPose(-t - c, d - t, h + c + lh),
-      { group: "lid" },
+      { group: "lid", role: "lid-front" },
     );
     for (const [label, x] of [
       ["esquerdo", m.inset - t - c],
@@ -318,38 +447,189 @@ export function buildBoxPanels(s) {
     ])
       add(`Braço articulado ${label}`, rail, sidePose(x, 0, h), {
         group: "lid",
+        role: label === "esquerdo" ? "lid-left" : "lid-right",
       });
-    for (let i = 0; i < 2; i++)
-      add(
-        `Arruela do pivô ${i + 1}`,
-        diff(circle(0, 0, r), circle(0, 0, holeRadius)),
-        sidePose(i === 0 ? m.inset - 2 * t - c : w - m.inset + c + t, -r, h),
-        { group: "hinge-hardware" },
-      );
+    if (hingeType(s) === "laser") {
+      const hd = hingeDimensions(s);
+      for (const [label, discX, shaftX] of [
+        ["esquerdo", m.inset - t - c, m.inset - t - c],
+        ["direito", w - m.inset + c, w - m.inset - t],
+      ]) {
+        add(
+          `Disco-pivô ${label}`,
+          diff(
+            circle(0, 0, hd.discRadius),
+            rect(-t / 2, -hd.keyHeight / 2, t, hd.keyHeight),
+          ),
+          sidePose(discX, -r, h),
+          { group: "hinge-cut", role: "pivot-disc" },
+        );
+        add(
+          `Eixo recortado ${label}`,
+          rect(0, 0, hd.shaftLength, hd.keyHeight),
+          frontPose(shaftX, -r - t / 2, h + hd.keyHeight / 2),
+          { group: "hinge-cut", role: "pivot-key" },
+        );
+      }
+    } else {
+      for (let i = 0; i < 2; i++)
+        add(
+          `Arruela do pivô ${i + 1}`,
+          diff(circle(0, 0, r), circle(0, 0, holeRadius)),
+          sidePose(i === 0 ? m.inset - 2 * t - c : w - m.inset + c + t, -r, h),
+          { group: "hinge-hardware" },
+        );
+    }
   }
+  if (type === "hinged" && hingeType(s) === "tabbed") {
+    const hd = hingeDimensions(s),
+      gx = m.inset + t + c,
+      gy = t + c,
+      cw = m.innerWidth - 2 * c,
+      cd = d - 2 * t - 2 * c,
+      bridge = Math.max(2 * t, 5),
+      minY = hd.y - t / 2;
+    const plate = union(
+      rect(gx, gy, cw, cd),
+      rect(m.inset, hd.y - t / 2, w - 2 * m.inset, t),
+      rect(gx, hd.y + t / 2, bridge, gy - hd.y - t / 2),
+      rect(gx + cw - bridge, hd.y + t / 2, bridge, gy - hd.y - t / 2),
+    );
+    add("Tampa com haste integral", plate, basePose(0, 0, h - t / 2), {
+      group: "lid",
+      role: "lid-panel",
+      coverArea: { x: gx - m.inset, y: gy - minY, width: cw, height: cd },
+    });
+  }
+  applyLidJoinery(s, body);
   return body;
+}
+function applyLidJoinery(s, parts) {
+  const t = s.thickness,
+    c = s.clearance,
+    w = s.width,
+    d = s.depth,
+    h = s.height,
+    m = shellMetrics(s),
+    lid = parts.find((p) => p.role === "lid-panel"),
+    type = lidType(s),
+    joint = resolvedJoint(s, "lidJoint");
+  if (!lid) return;
+  const join = (receiver, male, a, b, v, style = joint) =>
+    joinContact(receiver, male, a, b, v, style, s);
+  if (type === "removable" && joint !== "straight") {
+    const gx = m.inset + t + c,
+      gy = t + c,
+      gw = m.innerWidth - 2 * c,
+      gd = d - 2 * t - 2 * c,
+      gh = guideDepth(s),
+      k = joint === "tslot" ? Math.max(2 * t, 6.4) : 0;
+    const front = parts.find((p) => p.role === "guide-front"),
+      back = parts.find((p) => p.role === "guide-back"),
+      sides = [
+        parts.find((p) => p.role === "guide-left"),
+        parts.find((p) => p.role === "guide-right"),
+      ];
+    for (const [p, x] of [
+      [sides[0], gx + k + t / 2],
+      [sides[1], gx + gw - k - t / 2],
+    ]) {
+      join(lid, p, [x, gy + t, h], [x, gy + gd - t, h], [0, 0, 1]);
+      join(back, p, [x, gy + t, h - gh], [x, gy + t, h], [0, -1, 0]);
+      join(front, p, [x, gy + gd - t, h - gh], [x, gy + gd - t, h], [0, 1, 0]);
+    }
+    join(lid, back, [gx, gy + t / 2, h], [gx + gw, gy + t / 2, h], [0, 0, 1]);
+    join(
+      lid,
+      front,
+      [gx, gy + gd - t / 2, h],
+      [gx + gw, gy + gd - t / 2, h],
+      [0, 0, 1],
+    );
+  }
+  if (type === "hinged" && hingeType(s) !== "tabbed") {
+    const z = h + c + s.lidHeight,
+      front = parts.find((p) => p.role === "lid-front"),
+      left = parts.find((p) => p.role === "lid-left"),
+      right = parts.find((p) => p.role === "lid-right");
+    for (const [p, x] of [
+      [left, m.inset - t / 2 - c],
+      [right, w - m.inset + c + t / 2],
+    ]) {
+      join(lid, p, [x, 0, z], [x, d - t, z], [0, 0, 1]);
+      join(front, p, [x, d - t, h + c], [x, d - t, z], [0, 1, 0]);
+    }
+    join(
+      lid,
+      front,
+      [-t - c, d - t / 2, z],
+      [w + t + c, d - t / 2, z],
+      [0, 0, 1],
+    );
+  }
+  if (type === "sliding") {
+    for (const rail of parts.filter((p) => p.role === "rail")) {
+      const left = rail.railSide === "esquerda",
+        x = left ? m.inset + t : w - m.inset - t,
+        wall = parts.filter((p) => p.role === "side")[left ? 0 : 1];
+      join(
+        wall,
+        rail,
+        [x, t, rail.railZ + t / 2],
+        [x, d - t, rail.railZ + t / 2],
+        left ? [-1, 0, 0] : [1, 0, 0],
+        resolvedJoint(s, "railJoint"),
+      );
+    }
+    const hh = joint === "tslot" ? 18 : 12,
+      gx = m.inset + t + c,
+      width = m.innerWidth - 2 * c,
+      z = h - t - c;
+    const handle = makePanel(
+      "Puxador frontal da tampa",
+      width,
+      hh,
+      frontPose(gx, d - t, z + hh),
+      { group: "lid", role: "lid-handle" },
+    );
+    parts.push(handle);
+    join(
+      lid,
+      handle,
+      [gx, d - t / 2, z],
+      [gx + width, d - t / 2, z],
+      [0, 0, -1],
+    );
+  }
 }
 export function constructionNotes(s) {
   if (!supportsConstruction(s))
-    return "Gaveteiro com junções retas e colagem. As novas uniões e tampas estão disponíveis nos modelos de caixa.";
+    return `Estrutura ${JOINTS[jointType(s)]}; prateleiras/separadores ${JOINTS[resolvedJoint(s, "dividerJoint")]}; gavetas ${JOINTS[resolvedJoint(s, "drawerJoint")]}. União T usa conjuntos M3. Confira as peças e a quantidade de fixações no projeto.`;
   const joints = {
     straight: "União reta com colagem.",
     finger:
       "Encaixes de dedo na base e nas quinas. Use cola após conferir o ajuste.",
     tslot:
-      "União T nas quinas: 4 parafusos M3 e 4 porcas M3 (canal de 14,4 mm; ajuste o comprimento à chapa); a base e as divisórias são coladas.",
+      "União T nas quinas: parafusos e porcas M3 nas quinas e na base (canal de 14,4 mm; ajuste o comprimento à chapa). A quantidade depende das ligações selecionadas.",
   };
   const lids = {
     none: "",
     removable:
-      " A guia é colada sob a tampa; divisórias são rebaixadas para permitir o fechamento.",
-    sliding:
-      " Cole os quatro trilhos nas laterais internas. A tampa entra pela frente; as divisórias ficam abaixo do canal.",
-    hinged: ` Dobradiça recortada nas laterais e braços da tampa. Monte com 2 pinos ou parafusos de Ø${s.pivotDiameter} mm e retenção. Comprimento útil mínimo do eixo: ${Number((3 * s.thickness + s.clearance).toFixed(1))} mm, mais a fixação. Não cole a articulação.`,
+      resolvedJoint(s, "lidJoint") === "straight"
+        ? " A guia é colada sob a tampa; divisórias são rebaixadas para permitir o fechamento."
+        : ` Moldura inferior com união ${JOINTS[resolvedJoint(s, "lidJoint")]}; divisórias ficam abaixo da guia.`,
+    sliding: ` Fixe os quatro trilhos nas laterais internas com união ${JOINTS[resolvedJoint(s, "railJoint")]}. A tampa entra pela frente; as divisórias ficam abaixo do canal.`,
+    hinged:
+      hingeType(s) === "tabbed"
+        ? ` Haste de pivô recortada na própria tampa, apoiada nos furos circulares das laterais. Monte a tampa entre as laterais antes de fechar a caixa; não cole a região de giro. Não precisa de discos separados nem de eixo comprado.`
+        : hingeType(s) === "laser"
+          ? ` Pivô sem ferragens: corte 2 discos-pivô e 2 eixos retangulares junto com as demais peças. Encaixe os eixos nos rasgos do corpo e dos discos; os braços giram ao redor dos discos. Fixe somente os encaixes retangulares; não cole braços aos discos. Monte e confira o espaçamento da tampa antes de fixar os eixos.`
+          : ` Dobradiça recortada nas laterais e braços da tampa. Monte com 2 pinos ou parafusos de Ø${s.pivotDiameter} mm e retenção. Comprimento útil mínimo do eixo: ${Number((3 * s.thickness + s.clearance).toFixed(1))} mm, mais a fixação. Não cole a articulação.`,
   };
   return (
     joints[jointType(s)] +
     lids[lidType(s)] +
+    ` Uniões: tampa ${JOINTS[resolvedJoint(s, "lidJoint")]}; divisórias ${JOINTS[resolvedJoint(s, "dividerJoint")] || "Cruzada"}.` +
     " Sem compensação de kerf; teste uma amostra na espessura real antes da fabricação."
   );
 }

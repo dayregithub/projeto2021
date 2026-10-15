@@ -55,8 +55,8 @@ test("butt-joint box uses external dimensions and subtracts material on inner pa
   near(Math.max(...b.map((p) => p.y + p.d)), 150);
   near(Math.max(...b.map((p) => p.z + p.h)), 80);
 });
-test("grid dividers intersect at matching half-depth slots and preserve compartment widths", () => {
-  const s = defaults("grid"),
+test("legacy grid dividers intersect at matching half-depth slots and preserve compartment widths", () => {
+  const s = { ...defaults("grid"), dividerJoint: "cross" },
     c = cuts(s),
     p = panels(s);
   near(
@@ -251,7 +251,7 @@ test("catalog removes access bin, keeps three lid presets and migrates legacy pr
 test("every joint and lid combination exports finite, connected, bounded contours and matching DXF paths", () => {
   for (const joint of Object.keys(JOINTS))
     for (const lidType of Object.keys(LIDS)) {
-      const s = { ...defaults("grid"), joint, lidType };
+      const s = { ...defaults("grid"), joint, lidType, lidHeight: 20 };
       assert.deepEqual(validate(s), [], joint + " " + lidType);
       const p = panels(s);
       let loops = 0;
@@ -356,7 +356,12 @@ test("sliding rails have clearance above partitions and match the lid width and 
     near(part.height + t, m.dividerTop);
 });
 test("hinge body and lid use coaxial holes, external cheeks and a variable pin diameter", () => {
-  const s = defaults("hinged"),
+  const s = {
+      ...defaults("hinged"),
+      hingeType: "hardware",
+      lidJoint: "straight",
+      pivotDiameter: 6,
+    },
     p = panels(s),
     hinge = hingeDimensions(s);
   const parts = p.filter(
@@ -425,7 +430,9 @@ test("ten new product presets keep product identity and valid fabrication parame
   const jewelry = defaults("jewelry");
   assert.equal(familyFor(jewelry), "custom");
   assert.equal(cuts(jewelry).widths.length, 2);
-  assert.ok(panels(jewelry).some((p) => p.name === "Divisória à direita 2"));
+  assert.ok(
+    panels(jewelry).some((p) => p.name === "Divisória transversal 2 · vão 2"),
+  );
   const drawer = defaults("deskdrawers");
   assert.equal(drawer.rows, 3);
   assert.equal(drawer.cols, 1);
@@ -448,4 +455,185 @@ test("3D miniature tray remains watertight and has eight integrated compartments
   const s = defaults("painttray");
   assert.equal(s.cols * s.rows, 8);
   assert.ok(checkManifold(stlTriangles(s)) > 0);
+});
+
+test("all laser assemblies have connected plates and no sampled material collisions at shared joints", () => {
+  let seed = 8913;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const bounds = (p, t) => {
+    const pts = p.shape
+      .flat(2)
+      .flatMap(([x, y]) =>
+        [0, t].map((z) =>
+          p.pose.origin.map(
+            (v, i) =>
+              v + p.pose.u[i] * x + p.pose.v[i] * y + p.pose.normal[i] * z,
+          ),
+        ),
+      );
+    return [0, 1, 2].map((i) => [
+      Math.min(...pts.map((p) => p[i])),
+      Math.max(...pts.map((p) => p[i])),
+    ]);
+  };
+  for (const id of [
+    "grid",
+    "custom",
+    "drawers",
+    "lid",
+    "sliding",
+    "hinged",
+    "heartbox",
+  ])
+    for (const joint of ["straight", "finger", "tslot"]) {
+      const s = { ...defaults(id), joint, lidHeight: 20 };
+      assert.deepEqual(validate(s), []);
+      const ps = panels(s),
+        t = s.thickness;
+      for (const p of ps)
+        assert.equal(p.shape.length, 1, `${id}/${joint}/${p.name} detached`);
+      const bs = ps.map((p) => bounds(p, t));
+      for (let i = 0; i < ps.length; i++)
+        for (let j = i + 1; j < ps.length; j++) {
+          const range = bs[i].map((p, k) => [
+            Math.max(p[0], bs[j][k][0]),
+            Math.min(p[1], bs[j][k][1]),
+          ]);
+          if (range.some(([lo, hi]) => hi - lo < 1e-5)) continue;
+          for (let k = 0; k < 200; k++) {
+            const point = range.map(
+              ([lo, hi]) => lo + (0.001 + 0.998 * random()) * (hi - lo),
+            );
+            assert.ok(
+              !(insidePanel(ps[i], point, t) && insidePanel(ps[j], point, t)),
+              `${id}/${joint}: ${ps[i].name} overlaps ${ps[j].name} at ${point}`,
+            );
+          }
+        }
+    }
+});
+
+test("cut-out pivots fill keyed mortises, clear circular bearings and require no external shaft", () => {
+  const s = defaults("compacthinge"),
+    p = panels(s),
+    t = s.thickness,
+    hd = hingeDimensions(s);
+  assert.equal(s.hingeType, "laser");
+  assert.equal(p.filter((p) => p.role === "pivot-disc").length, 2);
+  assert.equal(p.filter((p) => p.role === "pivot-key").length, 2);
+  assert.equal(p.filter((p) => p.group === "hinge-hardware").length, 0);
+  for (const key of p.filter((p) => p.role === "pivot-key")) {
+    near(key.width, 2 * t + s.clearance);
+    near(key.height, hd.keyHeight);
+    const mid = key.pose.origin.map(
+      (v, i) =>
+        v +
+        (key.pose.u[i] * key.width) / 2 +
+        (key.pose.v[i] * key.height) / 2 +
+        (key.pose.normal[i] * t) / 2,
+    );
+    assert.ok(insidePanel(key, mid, t));
+    for (const fixed of p.filter(
+      (p) =>
+        p.role === "pivot-disc" ||
+        p.role === "side" ||
+        p.role?.startsWith("lid-"),
+    ))
+      assert.equal(
+        insidePanel(fixed, mid, t),
+        false,
+        `${fixed.name} blocks the rectangular key`,
+      );
+  }
+  assert.match(exportSVG(s), /2 discos-pivô e 2 eixos retangulares/);
+});
+
+test("integral lid shaft spans bearing centers and square section fits the circular bore", () => {
+  const s = defaults("heartbox"),
+    p = panels(s),
+    hd = hingeDimensions(s),
+    lid = p.find((p) => p.role === "lid-panel");
+  assert.equal(p.length, 6);
+  assert.ok(s.pivotDiameter > Math.SQRT2 * s.thickness + s.clearance);
+  for (const x of [s.thickness / 2, s.width - s.thickness / 2]) {
+    assert.ok(insidePanel(lid, [x, hd.y, hd.z], s.thickness));
+    assert.ok(
+      !p
+        .filter((p) => p.role === "side")
+        .some((p) => insidePanel(p, [x, hd.y, hd.z], s.thickness)),
+    );
+  }
+  assert.ok(validate({ ...s, pivotDiameter: 3 }).length);
+});
+
+test("decorative cutouts stay inside connected lids and engraving exports as open vector paths on separate layers", () => {
+  for (const lidType of ["removable", "sliding", "hinged"])
+    for (const lidCutout of ["heart", "circle", "star", "flower"]) {
+      const s = {
+          ...defaults("open"),
+          lidType,
+          lidCutout,
+          engraveName: "João & Ana",
+          lidOpening: 0,
+        },
+        lid = panels(s).find((p) => p.role === "lid-panel");
+      assert.deepEqual(validate(s), []);
+      assert.equal(lid.shape.length, 1);
+      assert.ok(lid.shape[0].length >= 2);
+      assert.ok(lid.engravingPaths.length > 10);
+      for (const line of lid.engravingPaths)
+        for (const point of line)
+          assert.ok(
+            inRing(point, lid.shape[0][0]) &&
+              !lid.shape[0].slice(1).some((r) => inRing(point, r)),
+            "engraving crosses cutout or outer edge",
+          );
+      const svg = exportSVG(s),
+        engrave = svg.split('id="ENGRAVE"')[1];
+      assert.match(svg, /id="CUT"/);
+      assert.match(engrave, /<path d="M/);
+      assert.doesNotMatch(engrave, /Z|<text/);
+      const dxf = exportDXF(s);
+      assert.match(dxf, /8\nENGRAVE\n62\n5/);
+      assert.match(dxf, /70\n0/);
+      const restored = readProject({ ...s });
+      assert.equal(restored.engraveName, s.engraveName);
+      assert.equal(restored.lidCutout, lidCutout);
+    }
+  assert.ok(
+    validate({ ...defaults("heartbox"), engraveName: "<script>" }).length,
+  );
+});
+
+test("per-assembly overrides change real plates while printed solids retain their single-piece construction", () => {
+  for (const [id, key] of [
+    ["grid", "dividerJoint"],
+    ["lid", "lidJoint"],
+    ["sliding", "railJoint"],
+    ["drawers", "drawerJoint"],
+  ]) {
+    const s = {
+      ...defaults(id),
+      joint: "straight",
+      height: 240,
+      lidHeight: 20,
+    };
+    const a = JSON.stringify(panels(s));
+    for (const style of ["finger", "tslot"]) {
+      const b = { ...s, [key]: style };
+      assert.deepEqual(validate(b), []);
+      assert.notEqual(JSON.stringify(panels(b)), a);
+    }
+  }
+  for (const id of MODELS.filter((m) => m.category === "print").map(
+    (m) => m.id,
+  )) {
+    const s = defaults(id);
+    assert.equal(s.joint, "straight");
+    assert.equal(s.lidType, "none");
+    assert.ok(validate({ ...s, joint: "finger" }).length);
+  }
 });

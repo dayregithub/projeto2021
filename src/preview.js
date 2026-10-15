@@ -185,7 +185,7 @@ function originalEdge(a, b, original) {
     });
   });
 }
-function panelFaces(s, { exploded = false } = {}) {
+function panelFaces(s, { exploded = false, opened = 0.35 } = {}) {
   const out = [],
     sep = exploded ? Math.min(s.width, s.depth) * 0.15 : 0;
   const rotate = (v, point = false) => {
@@ -215,6 +215,9 @@ function panelFaces(s, { exploded = false } = {}) {
       if (p.role === "front") a[1] += sep;
       if (p.role === "back") a[1] -= sep;
       if (p.role === "side") a[0] += pose.origin[0] < s.width / 2 ? -sep : sep;
+      if (p.group === "drawer")
+        a[1] +=
+          opened * drawerDimensions(s).dd * (p.drawerRow % 2 === 0 ? 0.5 : 1);
       if (p.group === "lid") {
         const type = lidType(s);
         if (type === "hinged") a = rotate(a, true);
@@ -225,6 +228,29 @@ function panelFaces(s, { exploded = false } = {}) {
       }
       return a;
     };
+    for (const line of p.engravingPaths || [])
+      for (let i = 1; i < line.length; i++) {
+        const a = line[i - 1],
+          b = line[i],
+          dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          len = Math.hypot(dx, dy);
+        if (len < 1e-7) continue;
+        const k = 0.1 / len,
+          vs = [
+            [a[0] - dy * k, a[1] + dx * k],
+            [b[0] - dy * k, b[1] + dx * k],
+            [b[0] + dy * k, b[1] - dx * k],
+            [a[0] + dy * k, a[1] - dx * k],
+          ].map((v) => world(v, s.thickness + 0.025));
+        out.push({
+          world: vs,
+          normal,
+          original: vs,
+          ink: true,
+          kind: "engraving",
+        });
+      }
     for (const poly of panelPolygons(p)) {
       const rings = poly.map((r) => {
         const a = r.map((v) => [...v]);
@@ -304,17 +330,21 @@ export function previewSVG(
     (x * sa + y * ca) * 0.48 - z,
   ];
   const faces = [];
-  if (supportsConstruction(s)) {
-    for (const f of panelFaces(s, { exploded })) {
+  if (modelById(s.model).category === "laser") {
+    for (const f of panelFaces(s, { exploded, opened })) {
       if (f.normal[0] * sa + f.normal[1] * ca + f.normal[2] * 0.48 <= 1e-8)
         continue;
       const len = Math.hypot(...f.normal),
         light =
           1 + (0.16 * f.normal[2]) / len - (0.12 * Math.abs(f.normal[0])) / len;
-      faces.push({ ...f, fill: shade(base, light), stroke: shade(base, 0.66) });
+      faces.push({
+        ...f,
+        fill: f.ink ? "#81512f" : shade(base, light),
+        stroke: f.ink ? "#81512f" : shade(base, 0.66),
+      });
     }
   }
-  for (const b of supportsConstruction(s)
+  for (const b of modelById(s.model).category === "laser"
     ? []
     : sceneBoxes(s, { exploded, opened })) {
     const { x, y, z, w, d, h, kind } = b;
@@ -393,7 +423,7 @@ export function cutPreviewSVG(s) {
           )
           .join(
             " ",
-          )}" fill="#e7c17c" fill-rule="evenodd" stroke="#936d36" stroke-width=".7"/><text x="${p.x + 3}" y="${p.y + Math.min(p.height - 2, 10)}" font-family="sans-serif" font-size="6" fill="#5b482f">${i + 1}</text></g>`,
+          )}" fill="#e7c17c" fill-rule="evenodd" stroke="#936d36" stroke-width=".7"/><text x="${p.x + 3}" y="${p.y + Math.min(p.height - 2, 10)}" font-family="sans-serif" font-size="6" fill="#5b482f">${i + 1}</text>${(p.engravingPaths || []).map((line) => `<path d="${line.map((v, j) => `${j ? "L" : "M"}${p.x + v[0]} ${p.y + v[1]}`).join(" ")}" fill="none" stroke="#4266bd" stroke-width=".35"/>`).join("")}</g>`,
     )
     .join("")}</svg>`;
 }
