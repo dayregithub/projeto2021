@@ -264,6 +264,22 @@
                   <span data-icon="grid"></span> Adicionar divisórias
                 </button>
               </div>
+              <div id="drawer-grip-controls" hidden>
+                <label class="range-label" for="drawerGripWidth"
+                  >Largura do recorte do puxador
+                  <output id="drawer-grip-value">18 mm</output
+                  ><input
+                    id="drawerGripWidth"
+                    type="range"
+                    min="4"
+                    max="80"
+                    step="0.1"
+                    value="18"
+                /></label>
+                <p class="field-hint" id="drawer-grip-hint">
+                  O recorte permanece aberto no topo de todas as gavetas.
+                </p>
+              </div>
               <label id="drawer-open-label" class="range-label" hidden
                 >Abertura na prévia <output id="drawer-open-value">35%</output
                 ><input

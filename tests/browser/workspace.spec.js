@@ -696,3 +696,32 @@ test("mobile pinch zoom works without horizontal page overflow", async ({
   await page.locator("#zoom-reset").click();
   await expect(page.locator("#zoom-reset")).toHaveText("100%");
 });
+
+test("drawer pull slider updates real cuts, saves its size and appears in the quote", async ({
+  page,
+}) => {
+  await open(page, "drawers");
+  await expect(page.locator("#drawer-grip-controls")).toBeVisible();
+  await expect(page.locator("#drawer-grip-value")).toHaveText("18 mm");
+  await page.locator("#drawerGripWidth").fill("8");
+  await expect(page.locator("#drawer-grip-value")).toHaveText("8 mm");
+  const small = await page.locator("#preview").innerHTML();
+  await page.locator("#drawerGripWidth").fill("28");
+  await expect(page.locator("#drawer-grip-value")).toHaveText("28 mm");
+  expect(await page.locator("#preview").innerHTML()).not.toBe(small);
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#drawerGripWidth")).toHaveValue("28");
+  await page.locator("#quote-project").click();
+  await expect(page.locator("#quote-message")).toHaveValue(/28 mm de largura/);
+  await page.keyboard.press("Escape");
+  await page.locator("#export-project").click();
+  const wait = page.waitForEvent("download");
+  await page.locator('[data-export="json"]').click();
+  const data = JSON.parse(await readFile(await (await wait).path(), "utf8"));
+  expect(data.drawerGripWidth).toBe(28);
+  await open(page, "open");
+  await expect(page.locator("#drawer-grip-controls")).toBeHidden();
+});

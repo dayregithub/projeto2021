@@ -1,3 +1,4 @@
+import { drawerGripDimensions } from "./src/assemblies.js";
 import { createViewport } from "./src/viewport.js";
 import { PRINT_LIDS, printDimensions } from "./src/print3d.js";
 import { DECORATIONS } from "./src/decoration.js";
@@ -237,6 +238,7 @@ function syncFields() {
     "ratio",
     "clearance",
     "fingerSize",
+    "drawerGripWidth",
     "lidHeight",
     "pivotDiameter",
     "lidOpening",
@@ -294,6 +296,16 @@ function renderEditor() {
     familyFor(state) === "custom" ? "Linhas à direita" : "Linhas";
   $("#ratio-value").textContent = state.ratio + "%";
   $("#drawer-open-label").hidden = familyFor(state) !== "drawers";
+  $("#drawer-grip-controls").hidden = familyFor(state) !== "drawers";
+  if (familyFor(state) === "drawers" && valid) {
+    const grip = drawerGripDimensions(state, drawerDimensions(state));
+    $("#drawerGripWidth").max = grip.maxWidth;
+    $("#drawerGripWidth").value = grip.width;
+    $("#drawer-grip-value").textContent = fmt(grip.width) + " mm";
+    $("#drawer-grip-hint").textContent =
+      `Profundidade do recorte: ${fmt(grip.depth)} mm. Aplicado a todas as gavetas; a largura máxima acompanha as medidas da frente.`;
+  }
+
   const construction = supportsConstruction(state),
     lid = lidType(state);
   const canJoin = supportsJoinery(state);
@@ -702,7 +714,7 @@ $("#quote-share").onclick = async () => {
 $("#quote-project").onclick = async () => {
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-package-status").textContent = "Preparando arquivos do projeto…";
   $("#quote-package").hidden = true;
@@ -748,6 +760,7 @@ for (const key of [
   "ratio",
   "clearance",
   "fingerSize",
+  "drawerGripWidth",
   "lidHeight",
   "pivotDiameter",
   "lidOpening",

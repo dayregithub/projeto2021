@@ -9,8 +9,8 @@
       content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
     />
     <title>Papeled Maker — seu espaço maker online</title>
-    <script type="module" crossorigin src="./assets/index-BZof1ErZ.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/geometry-DvEp2Bih.js">
+    <script type="module" crossorigin src="./assets/index-DBFUFpkz.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/geometry-UBSz3Fj_.js">
     <link rel="stylesheet" crossorigin href="./assets/index-DGcvjbW6.css">
   </head>
   <body>
@@ -265,6 +265,22 @@
                 <button class="button subtle" id="add-dividers">
                   <span data-icon="grid"></span> Adicionar divisórias
                 </button>
+              </div>
+              <div id="drawer-grip-controls" hidden>
+                <label class="range-label" for="drawerGripWidth"
+                  >Largura do recorte do puxador
+                  <output id="drawer-grip-value">18 mm</output
+                  ><input
+                    id="drawerGripWidth"
+                    type="range"
+                    min="4"
+                    max="80"
+                    step="0.1"
+                    value="18"
+                /></label>
+                <p class="field-hint" id="drawer-grip-hint">
+                  O recorte permanece aberto no topo de todas as gavetas.
+                </p>
               </div>
               <label id="drawer-open-label" class="range-label" hidden
                 >Abertura na prévia <output id="drawer-open-value">35%</output

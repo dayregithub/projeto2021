@@ -86,6 +86,12 @@ export function validate(s) {
       errors.push(
         `${{ fingerSize: "Tamanho do dedo", lidHeight: "Altura da aba", pivotDiameter: "Diâmetro do pivô", lidOpening: "Abertura da tampa" }[key]}: use um valor entre ${min} e ${max}.`,
       );
+  if (
+    !Number.isFinite(s.drawerGripWidth) ||
+    s.drawerGripWidth < 4 ||
+    s.drawerGripWidth > 80
+  )
+    errors.push("Largura do puxador: use um valor entre 4 e 80 mm.");
   if (!Object.hasOwn(JOINTS, s.joint) || !Object.hasOwn(LIDS, s.lidType))
     errors.push("Escolha um tipo de união e de tampa válido.");
   if (!supportsJoinery(s) && (s.joint !== "straight" || s.lidType !== "none"))

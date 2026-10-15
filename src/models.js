@@ -324,6 +324,7 @@ export function defaults(id = "grid") {
     finish: m.category === "print" ? "sage" : "natural",
     joint: m.family === "hinged" ? "finger" : "straight",
     fingerSize: 9,
+    drawerGripWidth: 18,
     lidType:
       { lid: "removable", sliding: "sliding", hinged: "hinged" }[m.family] ||
       "none",

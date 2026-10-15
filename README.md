@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 22 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 23 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -116,3 +116,7 @@ A avaliação agrupou itens pela construção, reunindo caixas abertas, tampas e
 A montagem 3D e a vista de peças 2D têm zoom independente entre 50% e 400%. Use os botões +/−, a roda do mouse, a pinça com dois dedos ou as teclas +/− com a prévia em foco. Clique na porcentagem, ou pressione 0/Home, para ajustar novamente à tela. Arraste para mover peças em 2D; em 3D, arraste para girar e use Shift + arrastar para mover. Restaurar a câmera também restaura o zoom da vista atual. A câmera é temporária e não altera dimensões, projetos exportados ou arquivos de fabricação.
 
 `src/viewport.js` concentra a câmera, zoom e gestos, sem recalcular as peças. Os testes de navegador incluem limites do zoom, roda do mouse, teclado, movimentação 2D e pinça no celular.
+
+## Tamanho do puxador das gavetas
+
+Nos dois pontos de partida de gaveteiro, “Largura do recorte do puxador” ajusta o recorte semicircular de todas as frentes. A largura é informada em mm e a profundidade corresponde à metade dela. O limite acompanha a largura e a altura útil da frente para preservar material e encaixes. A escolha atualiza montagem, peças 2D, SVG/DXF/PDF/STL, ZIP e resumo de orçamento. É preservada no JSON e nos projetos salvos. Projetos anteriores recebem o valor nominal de 18 mm, limitado pelas dimensões da frente, reproduzindo o tamanho anterior.

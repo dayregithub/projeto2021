@@ -12,6 +12,11 @@ import {
 import { wallInset, shellMetrics } from "./construction.js";
 const front = (x, y, z) => pose(x, y, z, [1, 0, 0], [0, 0, -1], [0, 1, 0]);
 const side = (x, y, z) => pose(x, y, z, [0, 1, 0], [0, 0, -1], [1, 0, 0]);
+export function drawerGripDimensions(s, g) {
+  const maxWidth = Math.min(80, (g.dh - s.thickness) / 2, g.dw / 3);
+  const width = Math.min(s.drawerGripWidth, maxWidth);
+  return { width, depth: width / 2, maxWidth };
+}
 export function buildDrawerCabinet(s, g) {
   const { width: w, depth: d, height: h, thickness: t, rows, cols } = s,
     { cw, ch, dw, dd, dh } = g,
@@ -191,7 +196,7 @@ export function buildDrawerCabinet(s, g) {
             grip: {
               x: dw / 2,
               y: 0,
-              r: Math.min(9, (dh - t) / 4, dw / 6),
+              r: drawerGripDimensions(s, g).depth,
             },
           },
         ),

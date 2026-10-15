@@ -821,3 +821,42 @@ test("catalog groups share construction and preserve all twenty distinct preset 
   assert.equal(findCatalogGroups({ category: "print" }).length, 1);
   assert.equal(findCatalogGroups({ term: "xyzsemresultado" }).length, 0);
 });
+
+import { drawerGripDimensions } from "../src/assemblies.js";
+test("drawer pull width changes every notch, respects panel limits and survives project import", () => {
+  for (const id of ["drawers", "deskdrawers"])
+    for (const joint of ["straight", "finger", "tslot"]) {
+      let previous = "";
+      for (const drawerGripWidth of [4, 12, 24, 80]) {
+        const s = { ...defaults(id), joint, drawerGripWidth },
+          g = drawerDimensions(s),
+          grip = drawerGripDimensions(s, g),
+          p = panels(s);
+        assert.deepEqual(validate(s), []);
+        assert.ok(
+          grip.width <= g.dw / 3 && grip.depth <= (g.dh - s.thickness) / 4,
+        );
+        for (const front of p.filter(
+          (p) => p.group === "drawer" && p.role === "front",
+        )) {
+          near(front.grip.r, grip.width / 2);
+          assert.equal(front.shape.length, 1);
+          const center = [
+            front.pose.origin[0] + front.grip.x,
+            front.pose.origin[1] + s.thickness / 2,
+            front.pose.origin[2] - grip.depth * 0.8,
+          ];
+          assert.equal(insidePanel(front, center, s.thickness), false);
+        }
+        const svg = exportSVG(s);
+        if (drawerGripWidth <= 24) assert.notEqual(svg, previous);
+        previous = svg;
+        assert.equal(readProject(s).drawerGripWidth, drawerGripWidth);
+      }
+    }
+  const old = defaults("drawers");
+  delete old.drawerGripWidth;
+  assert.equal(readProject(old).drawerGripWidth, 18);
+  for (const drawerGripWidth of [NaN, 0, 81, "20"])
+    assert.ok(validate({ ...defaults("drawers"), drawerGripWidth }).length);
+});
