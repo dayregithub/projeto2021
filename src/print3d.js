@@ -1,3 +1,4 @@
+import { letterContours } from "./lettering.js";
 import Module from "manifold-3d";
 import { familyFor } from "./models.js";
 const wasmUrl = new URL(
@@ -90,7 +91,8 @@ const tube = (x, len, y, z, r) =>
     keep(keep(Manifold.cylinder(len, r, r, 32)).rotate([0, 90, 0])),
   );
 export function meshTriangles(geometry) {
-  const mesh = geometry.getMesh(),
+  const simplified = geometry.simplify(0.0001);
+  const mesh = simplified.getMesh(),
     out = [];
   for (let i = 0; i < mesh.triVerts.length; i += 3)
     out.push(
@@ -99,6 +101,7 @@ export function meshTriangles(geometry) {
         return [0, 1, 2].map((k) => mesh.vertProperties[index + k]);
       }),
     );
+  simplified.delete();
   return out;
 }
 export function extrudedTriangles(polygons, height) {
@@ -111,6 +114,70 @@ export function extrudedTriangles(polygons, height) {
     solid?.delete();
     cross.delete();
   }
+}
+export function brushOpenings(s) {
+  const count = s.brushHoles,
+    inside = s.width / 2 - s.thickness - s.clearance,
+    orbit = count > 1 ? inside * 0.55 : 0;
+  const maxRadius = Math.min(
+    inside - orbit - s.thickness,
+    count > 1
+      ? orbit * Math.sin(Math.PI / count) - s.thickness / 2
+      : inside - s.thickness,
+    15,
+  );
+  const radius = Math.min(s.brushHoleDiameter / 2, maxRadius);
+  return {
+    radius,
+    maxDiameter: 2 * maxRadius,
+    centers: Array.from({ length: count }, (_, i) => [
+      s.width / 2 + orbit * Math.cos((2 * Math.PI * i) / count + Math.PI / 4),
+      s.depth / 2 + orbit * Math.sin((2 * Math.PI * i) / count + Math.PI / 4),
+    ]),
+  };
+}
+export function signProfileRings(s) {
+  const glyphs = letterContours(s).glyphs.map(
+    (rs) => new CrossSection(rs, "EvenOdd"),
+  );
+  let profile;
+  try {
+    profile = CrossSection.union(glyphs);
+    return profile.toPolygons();
+  } finally {
+    profile?.delete();
+    for (const glyph of glyphs) glyph.delete();
+  }
+}
+function signParts(s) {
+  const { glyphs } = letterContours(s),
+    glyphShapes = glyphs.map((rs) => keep(new CrossSection(rs, "EvenOdd"))),
+    text = union(...glyphShapes),
+    baseZ = s.signBase ? s.thickness : 0;
+  let solid = slab(
+    text,
+    baseZ - (s.signBase ? 0.03 : 0),
+    s.height - baseZ + (s.signBase ? 0.03 : 0),
+  );
+  if (s.signBase)
+    solid = union(
+      solid,
+      slab(
+        roundedOutline(s.width, s.depth, Math.min(3, s.depth / 8)),
+        0,
+        s.thickness,
+      ),
+    );
+  const pieces = solid.decompose(),
+    part = {
+      id: "letreiro",
+      name: s.signBase ? "Letreiro com base" : "Letras sem base",
+      triangles: meshTriangles(solid),
+      volume: solid.volume(),
+      componentCount: pieces.length,
+    };
+  for (const p of pieces) p.delete();
+  return [part];
 }
 const cache = new Map();
 export function printParts(s) {
@@ -125,18 +192,28 @@ export function printParts(s) {
     s.clearance,
     s.cornerRadius,
     s.printLid,
+    s.brushShape,
+    s.brushHoles,
+    s.brushHoleDiameter,
+    s.signText,
+    s.signFont,
+    s.signTextHeight,
+    s.signBase,
   ]);
   if (cache.has(key)) return cache.get(key);
   allocated = [];
   try {
-    const {
-        width: w,
-        depth: d,
-        height: h,
-        thickness: t,
-        clearance: c,
-        cornerRadius: r,
-      } = s,
+    if (familyFor(s) === "lettering") {
+      const parts = signParts(s);
+      cache.set(key, parts);
+      if (cache.size > 8) cache.delete(cache.keys().next().value);
+      return parts;
+    }
+    const { width: w, depth: d, height: h, thickness: t, clearance: c } = s,
+      r =
+        familyFor(s) === "toothbrush" && s.brushShape === "round"
+          ? w / 2 - 0.001
+          : s.cornerRadius,
       kind = s.printLid,
       {
         lip,
@@ -146,8 +223,15 @@ export function printParts(s) {
         hingeY: hy,
         dividerTop,
       } = printDimensions(s);
-    const outer = roundedOutline(w, d, r),
-      inner = roundedOutline(w - 2 * t, d - 2 * t, Math.max(0, r - t), t, t);
+    const profile = (width, depth, radius, x = 0, y = 0) =>
+      familyFor(s) === "toothbrush" && s.brushShape === "round"
+        ? translate(
+            [x + width / 2, y + depth / 2],
+            keep(CrossSection.circle(width / 2, 96)),
+          )
+        : roundedOutline(width, depth, radius, x, y);
+    const outer = profile(w, d, r),
+      inner = profile(w - 2 * t, d - 2 * t, Math.max(0, r - t), t, t);
     let body = slab(outer, 0, h),
       lid = null,
       pin = null;
@@ -174,14 +258,14 @@ export function printParts(s) {
         body = subtract(body, slab(inner, dividerTop, h - dividerTop + 0.1));
     } else body = subtract(body, slab(inner, t, h));
     if (kind === "inner") {
-      const guideOuter = roundedOutline(
+      const guideOuter = profile(
         w - 2 * t - 2 * c,
         d - 2 * t - 2 * c,
         Math.max(0, r - t - c),
         t + c,
         t + c,
       );
-      const guideInner = roundedOutline(
+      const guideInner = profile(
         w - 4 * t - 2 * c,
         d - 4 * t - 2 * c,
         Math.max(0, r - 2 * t - c),
@@ -194,18 +278,30 @@ export function printParts(s) {
       );
     }
     if (kind === "outer") {
-      const capOuter = roundedOutline(
+      const capOuter = profile(
         w + 2 * (c + t),
         d + 2 * (c + t),
         r + c + t,
         -c - t,
         -c - t,
       );
-      const capInner = roundedOutline(w + 2 * c, d + 2 * c, r + c, -c, -c);
+      const capInner = profile(w + 2 * c, d + 2 * c, r + c, -c, -c);
       lid = union(
         slab(capOuter, h + c, t),
         slab(subtract(capOuter, capInner), h + c - lip, lip + 0.05),
       );
+    }
+    if (familyFor(s) === "toothbrush" && lid && s.brushHoles > 0) {
+      const openings = brushOpenings(s);
+      for (const [x, y] of openings.centers) {
+        const hole = translate(
+          [x, y, h + c - 0.1],
+          keep(
+            Manifold.cylinder(t + 0.2, openings.radius, openings.radius, 32),
+          ),
+        );
+        lid = subtract(lid, hole);
+      }
     }
     if (kind === "hinged") {
       const middleX = w * 0.35,

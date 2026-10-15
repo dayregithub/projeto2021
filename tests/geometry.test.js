@@ -801,8 +801,8 @@ import {
   variationsFor,
   findCatalogGroups,
 } from "../src/models.js";
-test("catalog groups share construction and preserve all twenty distinct preset IDs", () => {
-  assert.equal(CATALOG_GROUPS.length, 3);
+test("catalog groups share construction and preserve every distinct preset ID", () => {
+  assert.equal(CATALOG_GROUPS.length, 5);
   assert.equal(variationsFor("laser-boxes").length, 15);
   assert.equal(variationsFor("laser-drawers").length, 2);
   assert.equal(variationsFor("printed-boxes").length, 3);
@@ -818,7 +818,7 @@ test("catalog groups share construction and preserve all twenty distinct preset 
     findCatalogGroups({ term: "coração" })[0].matches[0].id,
     "heartbox",
   );
-  assert.equal(findCatalogGroups({ category: "print" }).length, 1);
+  assert.equal(findCatalogGroups({ category: "print" }).length, 3);
   assert.equal(findCatalogGroups({ term: "xyzsemresultado" }).length, 0);
 });
 
@@ -859,4 +859,73 @@ test("drawer pull width changes every notch, respects panel limits and survives 
   assert.equal(readProject(old).drawerGripWidth, 18);
   for (const drawerGripWidth of [NaN, 0, 81, "20"])
     assert.ok(validate({ ...defaults("drawers"), drawerGripWidth }).length);
+});
+
+import { LETTER_FONTS, letterContours } from "../src/lettering.js";
+import { brushOpenings } from "../src/print3d.js";
+test("toothbrush holder supports both shapes and closed or perforated fitted lids", () => {
+  for (const brushShape of ["round", "square"])
+    for (const printLid of ["none", "outer"])
+      for (const brushHoles of [0, 1, 4, 6]) {
+        const s = {
+            ...defaults("toothbrush"),
+            brushShape,
+            printLid,
+            brushHoles,
+          },
+          parts = printParts(s);
+        assert.deepEqual(validate(s), []);
+        assert.equal(parts.length, printLid === "none" ? 1 : 2);
+        for (const p of parts) {
+          assert.equal(p.componentCount, 1);
+          assert.ok(checkManifold(p.triangles) > 0);
+        }
+        near(parts[0].lidInterference, 0);
+        if (printLid === "outer" && brushHoles)
+          assert.ok(brushOpenings(s).radius >= 2);
+        const read = readProject(s);
+        assert.equal(read.brushShape, brushShape);
+        assert.equal(read.brushHoles, brushHoles);
+      }
+  assert.ok(
+    validate({ ...defaults("toothbrush"), brushShape: "triangle" }).length,
+  );
+  assert.ok(validate({ ...defaults("toothbrush"), depth: 80 }).length);
+});
+test("all ten real lettering fonts produce distinct, watertight text with preserved counters and accents", () => {
+  assert.equal(LETTER_FONTS.length, 10);
+  const volumes = [];
+  for (const font of LETTER_FONTS) {
+    const s = {
+        ...defaults("lettering"),
+        signText: "O",
+        signFont: font.id,
+        signBase: false,
+      },
+      p = printParts(s)[0],
+      rings = letterContours(s).glyphs.flat(),
+      area = (r) =>
+        r.reduce((n, a, i) => {
+          const b = r[(i + 1) % r.length];
+          return n + a[0] * b[1] - b[0] * a[1];
+        }, 0) / 2;
+    assert.deepEqual(validate(s), []);
+    const volume = checkManifold(p.triangles);
+    assert.ok(
+      Math.abs(
+        volume - Math.abs(rings.reduce((n, r) => n + area(r), 0)) * s.height,
+      ) < 0.05,
+      font.id + " counter area mismatch",
+    );
+    volumes.push(volume.toFixed(1));
+    const name = { ...s, signText: "João & Ana", signBase: true },
+      parts = printParts(name);
+    assert.equal(parts[0].componentCount, 1);
+    assert.ok(checkManifold(parts[0].triangles) > 0);
+    assert.equal(readProject(name).signFont, font.id);
+  }
+  assert.equal(new Set(volumes).size, 10);
+  for (const signText of ["", "   ", "🚀", "<script>"])
+    assert.ok(validate({ ...defaults("lettering"), signText }).length);
+  assert.ok(validate({ ...defaults("lettering"), signFont: "unknown" }).length);
 });

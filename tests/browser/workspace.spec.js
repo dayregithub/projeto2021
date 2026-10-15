@@ -13,16 +13,16 @@ const open = async (page, model) => {
 };
 test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(3);
+  await expect(page.locator(".model-card")).toHaveCount(5);
   await page.locator('[data-filter="print"]').click();
-  await expect(page.locator(".model-card")).toHaveCount(1);
+  await expect(page.locator(".model-card")).toHaveCount(3);
   await page.locator('[data-filter="all"]').click();
   await page.locator("#search").fill("divisorias");
   await expect(page.locator(".model-card")).toHaveCount(1);
   await page.locator("#search").fill("semresultado");
   await expect(page.locator(".empty-state")).toBeVisible();
   await page.locator("#clear-search").click();
-  await expect(page.locator(".model-card")).toHaveCount(3);
+  await expect(page.locator(".model-card")).toHaveCount(5);
 });
 test("grid edits update geometry, panel count, validity and downloadable files", async ({
   page,
@@ -369,7 +369,7 @@ test("usage and process filters combine and reset after an empty search", async 
   await page.locator("#search").fill("semresultados");
   await page.locator("#clear-search").click();
   await expect(page.locator("#use-filter")).toHaveValue("all");
-  await expect(page.locator(".model-card")).toHaveCount(3);
+  await expect(page.locator(".model-card")).toHaveCount(5);
 });
 test("new models expose the right family controls and preserve preset identity", async ({
   page,
@@ -579,9 +579,9 @@ test("grouped catalog removes duplicate cards while variations and saved preset 
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(3);
+  await expect(page.locator(".model-card")).toHaveCount(5);
   await expect(page.locator("#model-count")).toHaveText(
-    "3 grupos · 20 variações",
+    "5 grupos · 22 variações",
   );
   await page.locator("#search").fill("chá");
   await expect(page.locator(".model-card")).toHaveCount(1);
@@ -724,4 +724,56 @@ test("drawer pull slider updates real cuts, saves its size and appears in the qu
   expect(data.drawerGripWidth).toBe(28);
   await open(page, "open");
   await expect(page.locator("#drawer-grip-controls")).toBeHidden();
+});
+
+test("new toothbrush product changes shape, lid and hole count while keeping its dimensions and STL", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "toothbrush");
+  await expect(page.locator("#brush-options")).toBeVisible();
+  await expect(page.locator("#depth")).toBeDisabled();
+  await page.locator("#width").fill("80");
+  await expect(page.locator("#depth")).toHaveValue("80");
+  const round = await page.locator("#preview").innerHTML();
+  await page.selectOption("#brush-shape", "square");
+  expect(await page.locator("#preview").innerHTML()).not.toBe(round);
+  await page.selectOption("#print-lid", "outer");
+  await expect(page.locator("#brush-lid-options")).toBeVisible();
+  await page.locator("#brushHoles").fill("0");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await page.locator("#export-project").click();
+  const wait = page.waitForEvent("download");
+  await page.locator('[data-export="stl"]').click();
+  expect(await readFile(await (await wait).path(), "utf8")).toContain(
+    "facet normal",
+  );
+  expect(errors).toEqual([]);
+});
+test("lettering uses ten selectable fonts, real geometry, saved text and printable ZIP output", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "lettering");
+  await expect(page.locator("#sign-font option")).toHaveCount(10);
+  await page.locator("#signText").fill("João & Ana");
+  const common = await page.locator("#preview").innerHTML();
+  await page.selectOption("#sign-font", "dancing-script");
+  expect(await page.locator("#preview").innerHTML()).not.toBe(common);
+  await page.selectOption("#sign-base", "no");
+  await expect(page.locator("#sign-hint")).toContainText("independentes");
+  await page.selectOption("#sign-base", "yes");
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#signText")).toHaveValue("João & Ana");
+  await expect(page.locator("#sign-font")).toHaveValue("dancing-script");
+  const wait = page.waitForEvent("download");
+  await page.locator("#quote-project").click();
+  const file = await wait;
+  expect(file.suggestedFilename()).toMatch(/\.zip$/);
+  await expect(page.locator("#quote-message")).toHaveValue(/Dancing Script/);
+  expect(errors).toEqual([]);
 });

@@ -282,6 +282,38 @@ MODELS.push(
     },
   },
 );
+MODELS.push(
+  {
+    id: "toothbrush",
+    family: "toothbrush",
+    name: "Porta-escovas de dentes",
+    tag: "BANHEIRO ORGANIZADO",
+    category: "print",
+    usage: "home",
+    description:
+      "Porta-escovas simples, redondo ou quadrado, com tampa opcional.",
+    w: 75,
+    d: 75,
+    h: 105,
+    cols: 1,
+    rows: 1,
+  },
+  {
+    id: "lettering",
+    family: "lettering",
+    name: "Letreiro 3D personalizado",
+    tag: "SEU NOME EM 3D",
+    category: "print",
+    usage: "gifts",
+    description: "Nomes e frases com dez fontes comuns, formais e manuscritas.",
+    w: 200,
+    d: 60,
+    h: 8,
+    cols: 1,
+    rows: 1,
+    preset: { finish: "coral" },
+  },
+);
 const baseUsages = {
   open: "home",
   grid: "workshop",
@@ -333,6 +365,13 @@ export function defaults(id = "grid") {
     cornerRadius: 0,
     printLid: "none",
     printOpening: 70,
+    brushShape: "round",
+    brushHoles: 4,
+    brushHoleDiameter: 14,
+    signText: "Papeled Maker",
+    signFont: "roboto",
+    signTextHeight: 32,
+    signBase: true,
     hingeType: "laser",
     lidCutout: "none",
     decorationSize: 50,
@@ -378,6 +417,24 @@ export const CATALOG_GROUPS = [
     description:
       "Corpo em peça única, com cantos ajustáveis, divisórias e tampas opcionais.",
   },
+  {
+    id: "toothbrushes",
+    name: "Porta-escovas 3D",
+    category: "print",
+    defaultModel: "toothbrush",
+    tag: "REDONDO OU QUADRADO",
+    description:
+      "Formato, medidas e tampa ajustáveis para organizar suas escovas.",
+  },
+  {
+    id: "lettering",
+    name: "Letreiros 3D",
+    category: "print",
+    defaultModel: "lettering",
+    tag: "10 FONTES PARA CRIAR",
+    description:
+      "Personalize nomes e frases. Escolha fontes comuns, formais ou manuscritas.",
+  },
 ];
 export const catalogGroupFor = (id) => {
   const m = modelById(typeof id === "string" ? id : id.model);
@@ -386,11 +443,15 @@ export const catalogGroupFor = (id) => {
     : CATALOG_GROUPS.find(
         (g) =>
           g.id ===
-          (m.category === "print"
-            ? "printed-boxes"
-            : m.family === "drawers"
-              ? "laser-drawers"
-              : "laser-boxes"),
+          (m.family === "toothbrush"
+            ? "toothbrushes"
+            : m.family === "lettering"
+              ? "lettering"
+              : m.category === "print"
+                ? "printed-boxes"
+                : m.family === "drawers"
+                  ? "laser-drawers"
+                  : "laser-boxes"),
       );
 };
 export const variationsFor = (group) =>

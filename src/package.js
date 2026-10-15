@@ -1,3 +1,6 @@
+import { familyFor } from "./models.js";
+import { LETTER_FONTS } from "./lettering.js";
+import { brushOpenings, signProfileRings } from "./print3d.js";
 import { zipSync, strToU8 } from "fflate";
 import { jsPDF } from "jspdf";
 import {
@@ -26,6 +29,35 @@ export const projectFilename = (s) =>
     .replace(/^-|-$/g, "") || "projeto";
 const printed = (s) => modelById(s.model).category === "print";
 export function referenceContours(s) {
+  if (familyFor(s) === "lettering")
+    return [
+      ...(s.signBase
+        ? [outlinePoints(s.width, s.depth, Math.min(3, s.depth / 8))]
+        : []),
+      ...signProfileRings(s),
+    ];
+  if (familyFor(s) === "toothbrush") {
+    const r = s.brushShape === "round" ? s.width / 2 - 0.001 : s.cornerRadius;
+    return [
+      outlinePoints(s.width, s.depth, r),
+      outlinePoints(
+        s.width - 2 * s.thickness,
+        s.depth - 2 * s.thickness,
+        Math.max(0, r - s.thickness),
+        s.thickness,
+        s.thickness,
+      ),
+      ...(s.printLid !== "none"
+        ? brushOpenings(s).centers.map(([x, y]) =>
+            Array.from({ length: 32 }, (_, i) => [
+              x + brushOpenings(s).radius * Math.cos((i * Math.PI) / 16),
+              y + brushOpenings(s).radius * Math.sin((i * Math.PI) / 16),
+            ]),
+          )
+        : []),
+    ];
+  }
+
   const t = s.thickness,
     r = s.cornerRadius;
   return [
@@ -179,13 +211,37 @@ export function projectPDF(s) {
     doc.setFontSize(12);
     doc.text(s.name, 15, 32);
     doc.setFontSize(10);
+    const special =
+      familyFor(s) === "lettering"
+        ? [
+            `Texto: ${s.signText}`,
+            `Fonte: ${LETTER_FONTS.find((f) => f.id === s.signFont).label}`,
+            `Base: ${s.signBase ? "sim" : "nao"} | altura total ${s.height} mm`,
+          ]
+        : familyFor(s) === "toothbrush"
+          ? [
+              `Porta-escovas ${s.brushShape === "round" ? "redondo" : "quadrado"}`,
+              s.printLid === "none"
+                ? "Sem tampa"
+                : `Aberturas na tampa: ${s.brushHoles}`,
+            ]
+          : [];
     const lines = [
+      ...special,
       `Corpo: ${s.width} x ${s.depth} x ${s.height} mm`,
-      `Parede / fundo: ${s.thickness} mm`,
+      familyFor(s) === "lettering"
+        ? s.signBase
+          ? `Base: ${s.thickness} mm`
+          : `Letras: ${s.height} mm de espessura`
+        : `Parede / fundo: ${s.thickness} mm`,
       `Raio dos cantos: ${s.cornerRadius} mm`,
       `Tampa: ${PRINT_LIDS[s.printLid]}`,
       `Folga por lado: ${s.clearance} mm`,
-      "Corpo em peca unica. Tampa e pino, quando presentes, separados.",
+      familyFor(s) === "lettering"
+        ? s.signBase
+          ? "Letras em relevo unidas a base."
+          : "Letras e acentos podem ser pecas independentes."
+        : "Corpo em peca unica. Tampa e pino, quando presentes, separados.",
       "Vistas ilustrativas: dimensoes declaradas prevalecem.",
       "Use os arquivos STL para imprimir; SVG/DXF sao referencias.",
     ];
@@ -200,7 +256,7 @@ export function projectPDF(s) {
         doc,
         r.map(([x, y]) => [x * scale, y * scale]),
         15,
-        115,
+        115 + special.length * 7,
       );
   }
   doc.setProperties({

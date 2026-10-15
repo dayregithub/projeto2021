@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 23 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 25 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -84,7 +84,7 @@ Projetos JSON e projetos locais anteriores continuam aceitos. Arquivos sem os ca
 
 ## Catálogo por uso
 
-O catálogo mostra três grupos: caixas e organizadores a laser, gaveteiros a laser e caixas e organizadores 3D. Os 20 modelos anteriores permanecem como variações iniciais, selecionadas dentro do editor. Porta-chás, porta-joias, estojo para lápis, caixa para cartas, organizador de componentes, porta-lápis de bancada, mini gaveteiro, bandeja para miniaturas e duas caixas compactas usam famílias de construção já validadas, com combinações próprias de medidas, divisões e tampas. Não são dez mecanismos novos. A identidade do produto permanece no JSON, nos projetos salvos e no orçamento; os controles e arquivos de fabricação respeitam sua família.
+O catálogo mostra cinco grupos: caixas e organizadores a laser, gaveteiros a laser, caixas e organizadores 3D, porta-escovas e letreiros 3D. Os 20 modelos anteriores permanecem como variações iniciais, selecionadas dentro do editor. Porta-chás, porta-joias, estojo para lápis, caixa para cartas, organizador de componentes, porta-lápis de bancada, mini gaveteiro, bandeja para miniaturas e duas caixas compactas usam famílias de construção já validadas, com combinações próprias de medidas, divisões e tampas. Não são dez mecanismos novos. A identidade do produto permanece no JSON, nos projetos salvos e no orçamento; os controles e arquivos de fabricação respeitam sua família.
 
 O catálogo combina busca, processo de fabricação e filtro de uso (casa, escritório, oficina, presentes, jogos/miniaturas). As medidas iniciais aparecem nos cartões e podem ser editadas. Miniaturas são imagens SVG geradas uma vez por modelo e carregadas sob demanda.
 
@@ -120,3 +120,15 @@ A montagem 3D e a vista de peças 2D têm zoom independente entre 50% e 400%. Us
 ## Tamanho do puxador das gavetas
 
 Nos dois pontos de partida de gaveteiro, “Largura do recorte do puxador” ajusta o recorte semicircular de todas as frentes. A largura é informada em mm e a profundidade corresponde à metade dela. O limite acompanha a largura e a altura útil da frente para preservar material e encaixes. A escolha atualiza montagem, peças 2D, SVG/DXF/PDF/STL, ZIP e resumo de orçamento. É preservada no JSON e nos projetos salvos. Projetos anteriores recebem o valor nominal de 18 mm, limitado pelas dimensões da frente, reproduzindo o tamanho anterior.
+
+## Novos produtos: porta-escovas e letreiros 3D
+
+O catálogo agora tem cinco grupos e 22 pontos de partida: os três grupos anteriores mais Porta-escovas 3D e Letreiros 3D. Os projetos antigos continuam usando os mesmos IDs.
+
+O porta-escovas tem formato redondo ou quadrado, largura/lado e altura ajustáveis. Largura e profundidade acompanham uma à outra para preservar o formato. A tampa externa é opcional; ela pode ser fechada (zero aberturas) ou ter de uma a seis aberturas para escovas. O diâmetro real das aberturas respeita o material disponível e é mostrado no editor. Corpo e tampa são sólidos separados, com a folga aplicada ao encaixe. O corpo redondo usa 96 segmentos no perímetro. Não houve impressão física do produto; teste o encaixe e o material.
+
+Os letreiros aceitam até 36 caracteres, com acentos portugueses, números e pontuação simples. Fontes: Roboto, Lato, Montserrat e Oswald (comuns); Merriweather, Playfair Display e Lora (formais); Pacifico, Dancing Script e Caveat (manuscritas). O tamanho máximo das letras se ajusta à área informada, preservando a proporção; o editor mostra as dimensões resultantes. Com base, o relevo se une à placa numa peça. Sem base, letras, pontos e acentos podem ser peças independentes. A altura total controla a extrusão em Z; com base, sua espessura é descontada do relevo. Confira detalhes finos e orientação no fatiador.
+
+As dez fontes são arquivos locais, com contornos reais: a malha STL usa os mesmos desenhos da prévia. `npm run build:fonts` regenera `src/font-data.json` a partir dos arquivos WOFF dos pacotes Fontsource. Esses pacotes e OpenType.js são dependências de desenvolvimento, usadas na geração; não há consulta a serviços de fontes no navegador. Licenças dos desenhos tipográficos estão em `public/font-licenses/` e acompanham a publicação. A malha usa uma simplificação com tolerância de 0,0001 mm antes da conversão para STL, evitando faces degeneradas na tampa circular.
+
+STL, projeto JSON, PDF, SVG/DXF de referência e ZIP de orçamento incluem as personalizações. SVG/DXF continuam sendo referências dimensionais para esses produtos de impressão 3D, não arquivos para corte a laser.

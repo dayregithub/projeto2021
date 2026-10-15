@@ -1,4 +1,5 @@
-import { PRINT_LIDS, printLayout } from "./print3d.js";
+import { validSignText, LETTER_FONTS } from "./lettering.js";
+import { PRINT_LIDS, printLayout, brushOpenings } from "./print3d.js";
 import { decoratePanels, DECORATIONS, validEngraving } from "./decoration.js";
 import { buildDrawerCabinet, attachDividers } from "./assemblies.js";
 import { resolvedJoint, JOINT_GROUPS } from "./joinery.js";
@@ -65,7 +66,7 @@ export function validate(s) {
   for (const [k, label, min, max] of [
     ["width", "Largura", 40, 1000],
     ["depth", "Profundidade", 40, 1000],
-    ["height", "Altura", 15, 700],
+    ["height", "Altura", familyFor(s) === "lettering" ? 3 : 15, 700],
     ["thickness", "Espessura", 1, 12],
     ["cols", "Colunas", 1, 5],
     ["rows", "Linhas", 1, 5],
@@ -151,6 +152,53 @@ export function validate(s) {
       s.depth <= 4 * s.thickness + 2 * s.clearance + 4)
   )
     errors.push("A tampa interna precisa de mais espaço para a guia.");
+  if (familyFor(s) === "toothbrush") {
+    if (!["round", "square"].includes(s.brushShape))
+      errors.push("Escolha formato redondo ou quadrado.");
+    if (s.width !== s.depth)
+      errors.push(
+        "O porta-escovas usa a mesma medida na largura e na profundidade.",
+      );
+    if (!["none", "outer"].includes(s.printLid))
+      errors.push("Porta-escovas: escolha sem tampa ou tampa externa.");
+    if (
+      !Number.isInteger(s.brushHoles) ||
+      s.brushHoles < 0 ||
+      s.brushHoles > 6 ||
+      !Number.isFinite(s.brushHoleDiameter) ||
+      s.brushHoleDiameter < 4 ||
+      s.brushHoleDiameter > 30
+    )
+      errors.push("Tampa: use de 0 a 6 aberturas com diâmetro de 4 a 30 mm.");
+    if (
+      s.printLid !== "none" &&
+      s.brushHoles > 0 &&
+      brushOpenings(s).maxDiameter < 4
+    )
+      errors.push(
+        "Aumente a largura ou reduza a espessura para acomodar as aberturas.",
+      );
+  }
+  if (familyFor(s) === "lettering") {
+    if (!validSignText(s))
+      errors.push(
+        "Letreiro: use de 1 a 36 caracteres com letras, números, acentos e pontuação simples.",
+      );
+    if (!LETTER_FONTS.some((f) => f.id === s.signFont))
+      errors.push("Escolha uma fonte disponível.");
+    if (
+      !Number.isFinite(s.signTextHeight) ||
+      s.signTextHeight < 8 ||
+      s.signTextHeight > 150 ||
+      typeof s.signBase !== "boolean"
+    )
+      errors.push("Altura do texto: de 8 a 150 mm; escolha se deseja base.");
+    if (s.printLid !== "none") errors.push("Letreiros não usam tampa.");
+    if (s.signBase && s.height <= s.thickness + 0.5)
+      errors.push(
+        "A altura total deve deixar pelo menos 0,5 mm de relevo sobre a base.",
+      );
+  }
   if (errors.length) return errors;
   if (
     lidType(s) === "hinged" &&
@@ -207,7 +255,10 @@ export function validate(s) {
     errors.push(
       "A altura da aba da tampa deve ser pelo menos igual à espessura.",
     );
-  if (2 * s.thickness >= Math.min(s.width, s.depth, s.height))
+  if (
+    familyFor(s) !== "lettering" &&
+    2 * s.thickness >= Math.min(s.width, s.depth, s.height)
+  )
     errors.push("A espessura precisa deixar espaço livre no interior.");
   if (supportsGrid(s)) {
     const c = cuts(s);
@@ -550,7 +601,11 @@ export function exportDXF(s) {
 export function stlTriangles(s) {
   if (validate(s).length || modelById(s.model).category !== "print")
     throw Error("Projeto 3D inválido.");
-  if (s.cornerRadius > 0 || s.printLid !== "none")
+  if (
+    ["toothbrush", "lettering"].includes(familyFor(s)) ||
+    s.cornerRadius > 0 ||
+    s.printLid !== "none"
+  )
     return printLayout(s).flatMap((p) => p.triangles);
   const { width: w, depth: d, height: h, thickness: t } = s;
   const { xs, ys } = cuts(s);

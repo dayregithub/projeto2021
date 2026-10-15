@@ -1,3 +1,5 @@
+import { LETTER_FONTS, letterContours } from "./src/lettering.js";
+import { brushOpenings } from "./src/print3d.js";
 import { drawerGripDimensions } from "./src/assemblies.js";
 import { createViewport } from "./src/viewport.js";
 import { PRINT_LIDS, printDimensions } from "./src/print3d.js";
@@ -43,6 +45,16 @@ import {
 import { icon, mountIcons } from "./src/icons.js";
 const $ = (s) => document.querySelector(s),
   $$ = (s) => [...document.querySelectorAll(s)];
+$("#sign-font").innerHTML = [...new Set(LETTER_FONTS.map((f) => f.group))]
+  .map(
+    (group) =>
+      `<optgroup label="${group}">${LETTER_FONTS.filter(
+        (f) => f.group === group,
+      )
+        .map((f) => `<option value="${f.id}">${f.label}</option>`)
+        .join("")}</optgroup>`,
+  )
+  .join("");
 const storageKey = "papeled-projects-v1",
   draftKey = "papeled-draft-v1";
 let state = defaults(),
@@ -246,10 +258,17 @@ function syncFields() {
     "engraveSize",
     "cornerRadius",
     "printOpening",
+    "brushHoles",
+    "brushHoleDiameter",
+    "signTextHeight",
   ])
     $("#" + k).value = state[k];
   $("#lid-type").value = state.lidType;
   $("#print-lid").value = state.printLid;
+  $("#brush-shape").value = state.brushShape;
+  $("#signText").value = state.signText;
+  $("#sign-font").value = state.signFont;
+  $("#sign-base").value = state.signBase ? "yes" : "no";
   $("#hinge-type").value = state.hingeType;
   for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
     $("#" + key).value = state[key];
@@ -285,11 +304,46 @@ function renderEditor() {
     errors = validate(state),
     valid = !errors.length,
     parts = valid ? panels(state) : [];
+  const isBrush = familyFor(state) === "toothbrush",
+    isSign = familyFor(state) === "lettering";
+  $("#brush-options").hidden = !isBrush;
+  $("#sign-options").hidden = !isSign;
+  $("#brush-lid-options").hidden = !isBrush || state.printLid === "none";
+  $("#depth").disabled = isBrush;
+  $("#width-title").textContent = isBrush
+    ? state.brushShape === "round"
+      ? "Diâmetro"
+      : "Lado"
+    : "Largura";
+  $("#height-title").textContent = isSign ? "Altura total" : "Altura";
+  $("#height").min = isSign ? 3 : 15;
+  for (const option of $("#print-lid").options)
+    option.disabled = option.hidden =
+      isBrush && !["none", "outer"].includes(option.value);
+  $("#sign-text-height-value").textContent = state.signTextHeight + " mm";
+  $('label[for="cornerRadius"]').hidden =
+    isBrush && state.brushShape === "round";
+  $("#cornerRadius").hidden = isBrush && state.brushShape === "round";
+  if (isBrush && valid) {
+    const holes = brushOpenings(state);
+    $("#brush-hole-value").textContent =
+      fmt(Math.max(0, holes.radius * 2)) + " mm";
+  }
+  if (isSign && valid) {
+    const letters = letterContours(state);
+    $("#sign-hint").textContent =
+      `Texto final: ${fmt(letters.width)} × ${fmt(letters.height)} mm. Ajuste automático para caber na área. ` +
+      (state.signBase
+        ? "A base conecta letras e acentos numa peça."
+        : "Sem base, letras e acentos podem ser peças independentes; organize no fatiador.");
+  }
+
   $("#editor-model-title").textContent = model.name;
   $("#canvas-process").textContent = isPrint ? "IMPRESSÃO 3D" : "CORTE A LASER";
   $("#division-fields").hidden = !supportsGrid(state);
+  $("#division-fields").closest(".control-section").hidden = isBrush || isSign;
   $("#no-divisions").hidden =
-    supportsGrid(state) || familyFor(state) === "drawers";
+    supportsGrid(state) || familyFor(state) === "drawers" || isBrush || isSign;
   $("#cols-label").hidden = familyFor(state) === "custom";
   $("#ratio-label").hidden = familyFor(state) !== "custom";
   $("#rows-title").textContent =
@@ -310,7 +364,7 @@ function renderEditor() {
     lid = lidType(state);
   const canJoin = supportsJoinery(state);
   $("#construction-section").hidden = !canJoin;
-  $("#print-options").hidden = !isPrint;
+  $("#print-options").hidden = !isPrint || isSign;
   $("#print-opening-label").hidden = !isPrint || state.printLid === "none";
   $("#print-opening-value").textContent =
     state.printOpening + (state.printLid === "hinged" ? "°" : "%");
@@ -389,9 +443,15 @@ function renderEditor() {
     familyFor(state) !== "drawers" &&
     lid === "none" &&
     !(isPrint && state.printLid !== "none");
-  $("#material-hint").textContent = isPrint
-    ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
-    : "Use a espessura real da chapa. Cor apenas ilustrativa.";
+  $("#thickness-title").textContent = isSign
+    ? "Espessura da base (mm)"
+    : "Espessura (mm)";
+  $("#thickness").closest("label").hidden = isSign && !state.signBase;
+  $("#material-hint").textContent = isSign
+    ? "A altura total inclui base e relevo do texto. Sem base, define a espessura das letras."
+    : isPrint
+      ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
+      : "Use a espessura real da chapa. Cor apenas ilustrativa.";
   $("#finish-name").textContent = FINISHES[state.finish].label;
   if (supportsGrid(state) && valid) {
     if (familyFor(state) === "drawers") {
@@ -479,6 +539,18 @@ function renderEditor() {
             `<li><span class="part-index">${i + 1}</span><div><strong>${esc(p.name)}</strong><small>${fmt(p.width)} × ${fmt(p.height)} mm</small></div><span>1×</span></li>`,
         )
         .join("");
+  if (isSign) {
+    const letters = letterContours(state);
+    $("#summary-metrics").innerHTML =
+      `<dl><div><dt>Texto</dt><dd>${esc(state.signText)}</dd></div><div><dt>Fonte</dt><dd>${LETTER_FONTS.find((f) => f.id === state.signFont).label}</dd></div><div><dt>Texto final</dt><dd>${fmt(letters.width)} × ${fmt(letters.height)} mm</dd></div><div><dt>Altura total</dt><dd>${state.height} mm</dd></div><div><dt>Base</dt><dd>${state.signBase ? "Sim · " + state.thickness + " mm" : "Sem base"}</dd></div></dl>`;
+    $("#assembly-title").textContent = "Seu texto, em volume.";
+    $("#assembly-text").textContent =
+      "A fonte escolhida também define os contornos do STL. Confira os detalhes finos no fatiador.";
+    $("#parts-list").innerHTML =
+      `<li class="print-summary"><strong>${state.signBase ? "Letreiro unido à base" : "Letras e detalhes separados"}</strong><p>${state.signBase ? "Base e texto em uma peça imprimível." : "O STL pode conter várias peças, incluindo pontos e acentos."}</p></li>`;
+    $("#project-stats").innerHTML =
+      `<div><strong>${fmt(letters.width)} × ${fmt(letters.height)} mm</strong><small>texto final</small></div><div><strong>${state.height} mm</strong><small>altura total</small></div><div><strong>${LETTER_FONTS.find((f) => f.id === state.signFont).label}</strong><small>fonte do letreiro</small></div>`;
+  }
 }
 function download(content, filename, type) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -714,7 +786,7 @@ $("#quote-share").onclick = async () => {
 $("#quote-project").onclick = async () => {
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-package-status").textContent = "Preparando arquivos do projeto…";
   $("#quote-package").hidden = true;
@@ -768,9 +840,16 @@ for (const key of [
   "engraveSize",
   "cornerRadius",
   "printOpening",
+  "brushHoles",
+  "brushHoleDiameter",
+  "signTextHeight",
 ])
   $("#" + key).addEventListener("input", (e) => {
     state[key] = e.target.value === "" ? NaN : Number(e.target.value);
+    if (key === "width" && familyFor(state) === "toothbrush") {
+      state.depth = state.width;
+      $("#depth").value = state.depth;
+    }
     if (["decorationSize", "engraveSize"].includes(key)) {
       state.lidOpening = 0;
       $("#lidOpening").value = 0;
@@ -787,6 +866,26 @@ $$("[data-joint]").forEach(
       persistDraft();
     }),
 );
+$("#brush-shape").onchange = (e) => {
+  state.brushShape = e.target.value;
+  renderEditor();
+  persistDraft();
+};
+$("#signText").oninput = (e) => {
+  state.signText = e.target.value;
+  renderEditor();
+  persistDraft();
+};
+$("#sign-font").onchange = (e) => {
+  state.signFont = e.target.value;
+  renderEditor();
+  persistDraft();
+};
+$("#sign-base").onchange = (e) => {
+  state.signBase = e.target.value === "yes";
+  renderEditor();
+  persistDraft();
+};
 $("#print-lid").onchange = (e) => {
   state.printLid = e.target.value;
   state.printOpening = state.printLid === "hinged" ? 70 : 55;

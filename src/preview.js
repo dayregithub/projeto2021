@@ -343,7 +343,9 @@ export function previewSVG(
   }
   const advancedPrint =
     modelById(s.model).category === "print" &&
-    (s.cornerRadius > 0 || s.printLid !== "none");
+    (["toothbrush", "lettering"].includes(familyFor(s)) ||
+      s.cornerRadius > 0 ||
+      s.printLid !== "none");
   if (advancedPrint) {
     const { hingeY, hingeZ } = printDimensions(s),
       angle = (s.printOpening * Math.PI) / 180;

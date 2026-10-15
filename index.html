@@ -95,7 +95,7 @@
           <div class="catalog-toolbar">
             <div class="filter-group" role="group" aria-label="Filtrar modelos">
               <button data-filter="all" class="active" aria-pressed="true">
-                Todos os modelos <span>3</span></button
+                Todos os modelos <span>5</span></button
               ><button data-filter="laser" aria-pressed="false">
                 <span data-icon="sparkles"></span> Corte a laser</button
               ><button data-filter="print" aria-pressed="false">
@@ -109,7 +109,7 @@
               >
                 <option value="all">Todos os usos</option>
               </select></label
-            ><span id="model-count">3 grupos · 20 variações</span>
+            ><span id="model-count">5 grupos · 22 variações</span>
           </div>
           <div id="resume-banner" hidden></div>
           <div class="model-grid" id="model-grid"></div>
@@ -204,7 +204,8 @@
               </h3>
               <div class="dimension-fields">
                 <label
-                  >Largura<input
+                  ><span id="width-title">Largura</span
+                  ><input
                     type="number"
                     id="width"
                     min="40"
@@ -212,7 +213,8 @@
                     step="1"
                     inputmode="decimal" /></label
                 ><label
-                  >Profundidade<input
+                  ><span id="depth-title">Profundidade</span
+                  ><input
                     type="number"
                     id="depth"
                     min="40"
@@ -220,7 +222,8 @@
                     step="1"
                     inputmode="decimal" /></label
                 ><label
-                  >Altura<input
+                  ><span id="height-title">Altura</span
+                  ><input
                     type="number"
                     id="height"
                     min="15"
@@ -431,6 +434,64 @@
                 </p>
               </details>
             </div>
+            <div class="control-section" id="brush-options" hidden>
+              <h3><span>02</span> Porta-escovas</h3>
+              <label class="field-label" for="brush-shape">Formato</label
+              ><select class="text-input" id="brush-shape">
+                <option value="round">Redondo</option>
+                <option value="square">Quadrado</option>
+              </select>
+              <div id="brush-lid-options" hidden>
+                <label class="field-label" for="brushHoles"
+                  >Aberturas na tampa (0 = fechada)</label
+                ><input
+                  class="text-input"
+                  type="number"
+                  id="brushHoles"
+                  min="0"
+                  max="6"
+                  step="1"
+                /><label class="range-label" for="brushHoleDiameter"
+                  >Diâmetro das aberturas <output id="brush-hole-value"></output
+                  ><input
+                    type="range"
+                    id="brushHoleDiameter"
+                    min="4"
+                    max="30"
+                    step="0.5"
+                /></label>
+              </div>
+              <p class="field-hint">
+                A largura define o diâmetro ou o lado. A tampa é opcional e pode
+                ter aberturas para apoiar as escovas.
+              </p>
+            </div>
+            <div class="control-section" id="sign-options" hidden>
+              <h3><span>02</span> Seu letreiro</h3>
+              <label class="field-label" for="signText">Texto do letreiro</label
+              ><input
+                class="text-input"
+                id="signText"
+                maxlength="36"
+                placeholder="Digite um nome ou frase"
+              /><label class="field-label" for="sign-font">Fonte</label
+              ><select class="text-input" id="sign-font"></select
+              ><label class="range-label" for="signTextHeight"
+                >Altura máxima das letras
+                <output id="sign-text-height-value"></output
+                ><input
+                  type="range"
+                  id="signTextHeight"
+                  min="8"
+                  max="150"
+                  step="1" /></label
+              ><label class="field-label" for="sign-base">Montagem</label
+              ><select class="text-input" id="sign-base">
+                <option value="yes">Texto em relevo sobre base</option>
+                <option value="no">Letras sem base</option>
+              </select>
+              <p class="field-hint" id="sign-hint"></p>
+            </div>
             <div class="control-section" id="print-options" hidden>
               <h3><span>04</span> Cantos e tampa 3D</h3>
               <label class="field-label" for="cornerRadius"
@@ -506,7 +567,8 @@
               <h3><span>06</span> Material e acabamento</h3>
               <div class="split-fields">
                 <label
-                  >Espessura (mm)<input
+                  ><span id="thickness-title">Espessura (mm)</span
+                  ><input
                     id="thickness"
                     type="number"
                     min="1"

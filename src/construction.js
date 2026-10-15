@@ -24,9 +24,11 @@ export const LIDS = {
   hinged: "Dobradiça integrada",
 };
 export const supportsJoinery = (s) =>
-  !["print", "printgrid"].includes(familyFor(s));
+  !["print", "printgrid", "toothbrush", "lettering"].includes(familyFor(s));
 export const supportsConstruction = (s) =>
-  !["drawers", "print", "printgrid"].includes(familyFor(s));
+  !["drawers", "print", "printgrid", "toothbrush", "lettering"].includes(
+    familyFor(s),
+  );
 export const lidType = (s) =>
   supportsConstruction(s)
     ? (s.lidType ??
