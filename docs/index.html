@@ -1,72 +1,484 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f5f4ef"><title>Papeled Maker — corte a laser e impressão 3D</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
-:root{font-family:'DM Sans',sans-serif;color:#2b302c;background:#f8f8f4;font-synthesis:none;--orange:#dd653e;--line:#dddfd6}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:25px}body{margin:0}button,input,select,textarea{font:inherit}button,a,input,select{ -webkit-tap-highlight-color:transparent}button,a{touch-action:manipulation}button{cursor:pointer}a{color:inherit;text-decoration:none}header,main,footer{max-width:1320px;margin:auto}header{height:106px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:0 44px}.brand{font-family:Manrope,sans-serif;font-size:40px;letter-spacing:-3px;font-weight:800;line-height:1;position:relative}.brand>span{font:14px 'DM Sans';vertical-align:top;letter-spacing:0;margin-left:4px}.brand small{display:block;font:8px 'DM Sans';letter-spacing:2.3px;margin-top:9px}nav{display:flex;gap:34px;font-size:13px}.contact{border:1px solid #b7bdb0;border-radius:5px;padding:13px 18px;font-size:12px}.contact span{margin-left:25px}main{padding:0 44px}.intro{padding:62px 0 37px}.eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:600;display:flex;align-items:center;gap:9px}.eyebrow>span{width:7px;height:7px;background:var(--orange);border-radius:50%}h1{font-family:Manrope,sans-serif;font-size:clamp(44px,5.2vw,69px);font-weight:500;letter-spacing:-3.5px;line-height:1.12;margin:22px 0}h1 em{font-style:normal;color:var(--orange)}.intro-bottom{display:flex;justify-content:space-between;align-items:end}.intro-bottom p{font-size:14px;color:#797d74;line-height:1.7;margin:0}.local{font-size:9px;letter-spacing:1.4px;line-height:1.8;color:#85887e}.workbench{display:grid;grid-template-columns:340px 1fr;border:1px solid #d8dcd0;border-radius:9px;overflow:hidden;background:#fff;min-height:590px}aside{padding:26px;border-right:1px solid var(--line)}.panel-title{display:flex;justify-content:space-between;font-size:9px;letter-spacing:1.4px;color:#7f8479}h2{font-family:Manrope,sans-serif;letter-spacing:-1.2px;font-weight:500;line-height:1.25}aside h2{font-size:27px;margin:24px 0 8px}.muted{color:#898e82;font-size:11px}aside p.muted{font-size:12px;margin-bottom:26px}label{display:block;font-size:11px;margin:19px 0 10px;font-weight:500}select{width:100%;padding:12px;border:1px solid var(--line);border-radius:4px;background:#fff;color:#404739;font-size:12px}.segmented{display:flex;gap:6px}.segmented button{flex:1;padding:11px 4px;font-size:11px;border:1px solid var(--line);border-radius:4px;background:white;color:#7d8279}.segmented .active{background:#f1f3e9;border-color:#a6ad94;color:#4d5841}.dimensions label{display:flex;justify-content:space-between;margin:19px 0 4px}output{font-size:10px;color:#81877a}input[type=range]{width:100%;accent-color:#606e50;height:15px;cursor:pointer}label #finishName{float:right;font-size:10px}.swatches{display:flex;gap:12px;margin:12px 0 25px}.swatch{background:var(--swatch);width:25px;height:25px;border:3px solid white;border-radius:50%;outline:1px solid transparent}.swatch.selected{outline-color:#747e65}.primary{background:var(--orange);border:0;border-radius:4px;color:white;font-size:12px;padding:15px 18px;display:flex;justify-content:space-between;gap:24px;align-items:center}.primary:hover{background:#c75631}aside .primary{width:100%}.footnote{font-size:9px;color:#9b9e96;text-align:center;margin:12px 0 0}.preview{position:relative;display:flex;flex-direction:column;padding:25px 30px 40px;background-color:#eef0e7;background-image:radial-gradient(#c3c8b7 .7px,transparent .7px);background-size:18px 18px;overflow:hidden}.preview-top{display:flex;justify-content:space-between;font-size:8px;letter-spacing:1.3px;color:#7e8574}.preview-top i{display:inline-block;width:5px;height:5px;background:#8a9877;border-radius:50%;margin-right:6px}.preview-top>span:last-child{padding:6px 8px;border:1px solid #ccd1c0;border-radius:3px;background:#eef0e7;margin-top:-6px}#object{flex:1;display:flex;align-items:center;justify-content:center;min-height:350px}#object svg{width:95%;max-height:370px;transition:transform .45s}#object.rotated svg{transform:scaleX(-1)}.preview-bottom{display:flex;justify-content:space-between;align-items:center}.tiny{font-size:8px;letter-spacing:1.5px;color:#8a907e}.preview-bottom h3{font-size:19px;font-weight:500;margin:8px 0}.preview-bottom p{font-size:11px;color:#8a907e;margin:0}.preview-bottom button{border:1px solid #ccd1c0;background:transparent;border-radius:50%;width:38px;height:38px;font-size:22px;color:#6b765e}.preview-note{position:absolute;bottom:13px;right:30px;font-size:7px;letter-spacing:1px;color:#9da391}.collection{padding:80px 0 60px}.section-heading{display:flex;justify-content:space-between;align-items:end}.section-heading .eyebrow{font-size:8px;color:#898e81}.section-heading h2{font-size:37px;margin:16px 0 0}.section-heading p{font-size:12px;line-height:1.8;color:#858b7f;margin-bottom:0}.filterbar{display:flex;justify-content:space-between;align-items:center;margin:28px 0 22px;border-bottom:1px solid var(--line)}.filters{display:flex;gap:22px}.filters button{background:none;border:0;border-bottom:2px solid transparent;padding:14px 0;font-size:11px;color:#8a8f82}.filters .active{color:#3c4536;border-color:#647253}.filters span{font-size:8px;background:#e8ebdf;border-radius:4px;padding:3px 5px;margin-left:5px}#count{font-size:9px;color:#919587}.products{display:grid;grid-template-columns:repeat(3,1fr);gap:28px 22px}.card{border:0;padding:0;background:none;text-align:left;color:inherit}.card-image{position:relative;aspect-ratio:1.3;background:#efede6;border-radius:5px;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:background .2s}.card:hover .card-image{background:#e6e8db}.card-image svg{width:90%;height:95%;transition:transform .3s}.card:hover svg{transform:translateY(-7px)}.tag{position:absolute;left:14px;top:14px;background:#fff9;border:1px solid #fff;padding:5px 7px;font-size:7px;letter-spacing:1px;border-radius:3px}.card-info{display:flex;justify-content:space-between;margin-top:15px}.card h3{font-size:13px;font-weight:500;margin:0 0 6px}.card p{font-size:10px;color:#93978c;margin:0}.card-info>span{font-size:20px;color:#7b8470}.process{border-top:1px solid var(--line);padding:58px 0;display:grid;grid-template-columns:1fr 1fr;gap:70px}.process .eyebrow{font-size:8px;color:#8a907f}.process h2{font-size:30px}.process p{color:#858c7b;font-size:12px;line-height:1.8;max-width:365px}.steps article{display:flex;gap:25px;padding:17px 0;border-bottom:1px solid var(--line)}.steps article>span{font-size:10px;color:#9ba38e;margin-top:4px}.steps h3{margin:0;font-size:15px;font-weight:500}.steps p{margin:6px 0 0;font-size:11px}.cta{background:#e9eddf;border-radius:6px;text-align:center;padding:50px 20px;margin:10px 0 65px}.cta .eyebrow{justify-content:center;font-size:8px;color:#7a8769}.cta h2{font-size:36px;margin:20px 0 12px}.cta p{font-size:12px;color:#858d79}.cta button{margin:25px auto 0}footer{display:flex;align-items:center;justify-content:space-between;padding:25px 44px 35px;border-top:1px solid var(--line)}footer .brand{font-size:30px}footer p{font-size:11px;color:#868e7c}footer>span{font-size:8px;letter-spacing:1px;color:#8e9584}dialog{border:1px solid var(--line);border-radius:10px;padding:35px;max-width:480px;width:calc(100% - 30px);color:inherit}dialog::backdrop{background:#232a2266;backdrop-filter:blur(4px)}dialog h2{font-size:30px}dialog p{font-size:13px;line-height:1.7;color:#7f8874}.close{float:right;background:none;border:0;font-size:25px;color:#7a8470}textarea{width:100%;border:1px solid var(--line);border-radius:4px;padding:12px;font-size:13px;resize:vertical;margin-bottom:20px}button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--orange);outline-offset:4px}@media(min-width:1500px){header,main,footer{max-width:1300px}}@media(max-width:800px){header{height:85px;padding:0 23px}main{padding:0 23px}nav{display:none}.intro{padding-top:40px}.local{display:none}h1{letter-spacing:-2px}.workbench{grid-template-columns:280px 1fr}aside{padding:20px}.preview{padding:22px 18px 40px}.preview-top{font-size:7px;letter-spacing:.5px}.preview-top>span:last-child{display:none}#object{min-height:300px}.section-heading p{display:none}.products{gap:22px 16px}.process{gap:30px}.process h2{font-size:25px}footer{padding:25px 23px}footer>span{display:none}}@media(max-width:580px){.brand{font-size:32px}.contact{font-size:10px;padding:11px}.contact span{margin-left:7px}.intro-bottom p{font-size:12px}h1{font-size:47px}.eyebrow{font-size:8px}.workbench{display:flex;flex-direction:column}.preview{order:-1;min-height:360px}#object{min-height:230px}#object svg{max-height:250px;width:100%}.preview-bottom h3{font-size:17px}.preview-note{font-size:6px}aside{padding:22px;border-right:0}.panel-title,h2 br{display:none}aside h2{font-size:25px;margin-top:0}.dimensions{display:grid;grid-template-columns:1fr 1fr;column-gap:20px}.dimensions label:nth-of-type(2){grid-column:2;grid-row:1}.dimensions input{grid-row:2}.collection{padding:48px 0}.section-heading h2{font-size:30px}.filters{gap:15px}.filters button{font-size:10px}#count{display:none}.products{grid-template-columns:repeat(2,1fr);gap:25px 12px}.tag{font-size:6px;left:8px;top:8px;padding:4px}.card h3{font-size:12px}.card p{font-size:9px}.process{grid-template-columns:1fr;padding:35px 0;gap:10px}.cta{padding:35px 18px;margin-bottom:40px}.cta h2{font-size:29px}footer p{font-size:10px}}
-
-.contact-details{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:22px;font-size:12px;color:#59694b}.contact-details a:hover,.email-project:hover{text-decoration:underline}.email-project{display:block;text-align:center;margin:18px 0;font-size:13px;color:#637353}.secondary{display:block;margin:0 auto;background:transparent;border:1px solid #ccd1c0;border-radius:4px;padding:10px 16px;color:#637353;font-size:12px}.brand{letter-spacing:-2px}header .brand{font-size:34px}@media(max-width:580px){header .brand{font-size:28px}.brand small{letter-spacing:1.5px;font-size:7px}.contact-details{flex-direction:column;gap:12px}}
-</style></head>
-<body><header><a class="brand" href="#">Papeled<small>MAKER · LASER &amp; 3D</small></a><nav aria-label="Principal"><a href="#colecao">Explorar produtos</a><a href="#processo">Como fazemos</a></nav><a class="contact" href="#contato">Vamos criar juntos <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></a></header>
-<main><section class="intro"><div class="eyebrow"><span></span> DO DIGITAL AO TANGÍVEL</div><h1>Boas ideias merecem<br>ganhar <em>forma.</em></h1><div class="intro-bottom"><p>Objetos autorais, feitos com tecnologia e intenção.<br>Explore possibilidades do corte a laser e da impressão 3D.</p><span class="local">DESENHADO COM CUIDADO.<br>PRODUZIDO NO NOSSO ESPAÇO.</span></div></section>
-<section class="workbench" aria-label="Personalizador de produto"><aside><div class="panel-title"><span>01 / EXPERIMENTE</span><span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></div><h2>Sua próxima ideia<br>começa aqui.</h2><p class="muted">Explore uma peça e deixe do seu jeito.</p><label for="model">Escolha o objeto</label><select id="model"><option value="box">Caixa organizadora</option><option value="stand">Suporte de mesa</option><option value="vase">Vaso paramétrico</option></select><label>Processo de fabricação</label><div class="segmented"><button data-process="laser" class="active">✳ Corte a laser</button><button data-process="3d">▧ Impressão 3D</button></div><div class="dimensions"><label for="width">Largura <output id="widthValue">160 mm</output></label><input id="width" type="range" min="100" max="240" value="160"><label for="height">Altura <output id="heightValue">100 mm</output></label><input id="height" type="range" min="60" max="160" value="100"></div><label>Acabamento <span id="finishName" class="muted">Madeira natural</span></label><div class="swatches"><button class="swatch selected" data-color="wood" aria-label="Madeira natural" style="--swatch:#bf9467"></button><button class="swatch" data-color="dark" aria-label="Grafite" style="--swatch:#424643"></button><button class="swatch" data-color="sage" aria-label="Verde sálvia" style="--swatch:#929d82"></button><button class="swatch" data-color="orange" aria-label="Terracota" style="--swatch:#c67550"></button></div><button id="project" class="primary">Conversar sobre esta peça <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></button><p class="footnote">Uma exploração visual. Cada projeto é único.</p></aside><div class="preview"><div class="preview-top"><span><i></i> PRÉVIA DO SEU OBJETO</span><span id="processBadge">CORTE A LASER</span></div><div id="object" role="img" aria-label="Prévia ilustrada da caixa organizadora"></div><div class="preview-bottom"><div><span class="tiny">ESTUDO Nº 001</span><h3 id="objectTitle">Caixa organizadora</h3><p id="material">MDF natural · montagem por encaixe</p></div><button id="rotate" aria-label="Girar visualização">⟳</button></div><span class="preview-note">VISUALIZAÇÃO CONCEITUAL · NÃO É UM MODELO TÉCNICO</span></div></section>
-<section id="colecao" class="collection"><div class="section-heading"><div><div class="eyebrow">PEQUENAS SÉRIES. MUITAS POSSIBILIDADES.</div><h2>Feito para imaginar.</h2></div><p>Do primeiro protótipo ao objeto do dia a dia.<br>Conheça algumas ideias do nosso universo.</p></div><div class="filterbar"><div class="filters"><button class="active" data-filter="all">Todos os objetos <span>06</span></button><button data-filter="laser">Corte a laser</button><button data-filter="3d">Impressão 3D</button></div><span id="count">6 objetos para explorar</span></div><div id="products" class="products"></div></section>
-<section id="processo" class="process"><div><div class="eyebrow">DA IDEIA À MATÉRIA</div><h2>Tecnologia é a ferramenta.<br>A criatividade é o começo.</h2><p>Um espaço para experimentar materiais, testar formas e transformar possibilidades em objetos.</p></div><div class="steps"><article><span>01</span><div><h3>Imagine</h3><p>Uma necessidade, uma referência ou uma ideia ainda no papel.</p></div></article><article><span>02</span><div><h3>Experimente</h3><p>Desenho digital, escolha de materiais e protótipos para encontrar a forma.</p></div></article><article><span>03</span><div><h3>Materialize</h3><p>Precisão do laser ou liberdade da impressão 3D, com acabamento cuidadoso.</p></div></article></div></section><section id="contato" class="cta"><div class="eyebrow">VAMOS TIRAR DO PAPEL?</div><h2>Qual é a sua próxima ideia?</h2><p>Monte um resumo do seu projeto para compartilhar com o estúdio.</p><button id="contactButton" class="primary">Começar uma conversa <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></button><div class="contact-details"><a href="https://wa.me/5561992430051" target="_blank" rel="noopener noreferrer">WhatsApp · (61) 99243-0051</a><a href="mailto:papeledmaker@gmail.com">papeledmaker@gmail.com</a></div></section></main><footer><a class="brand" href="#">Papeled<small>MAKER</small></a><p>Ideias digitais. Objetos reais.</p><span>FEITO EM UM ESPAÇO MAKER · 2026</span></footer><dialog id="dialog"><form method="dialog"><button class="close" aria-label="Fechar">×</button></form><div class="eyebrow">SEU PRÓXIMO PROJETO</div><h2>Vamos dar forma?</h2><p>Conte um pouco sobre a ideia. Envie seu resumo para a Papeled Maker pelo WhatsApp ou por e-mail.</p><label for="idea">Sobre o projeto</label><textarea id="idea" rows="5"></textarea><a id="whatsapp" class="primary" href="https://wa.me/5561992430051" target="_blank" rel="noopener noreferrer">Enviar pelo WhatsApp <span>↗</span></a><a id="emailProject" class="email-project" href="mailto:papeledmaker@gmail.com">Enviar por e-mail</a><button id="copy" class="secondary">Copiar resumo <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></button><p id="copyStatus" role="status" class="muted"></p></dialog><script>const $ = (s) => document.querySelector(s);
-const palette = {wood:['#bd9265','#e1b98a','#9c704a'],dark:['#50544e','#72776c','#353b33'],sage:['#95a080','#b8c1a3','#727e5e'],orange:['#c47652','#df9d79','#9d563a']};
-const names={wood:'Madeira natural',dark:'Grafite',sage:'Verde sálvia',orange:'Terracota'};
-const models={box:'Caixa organizadora',stand:'Suporte de mesa',vase:'Vaso paramétrico'};
-let state={model:'box',process:'laser',color:'wood',width:160,height:100};
-function drawing(model='box',color='wood',w=160,h=100){
- const [front,top,side]=palette[color];
- const defs=`<defs><filter id="shadow"><feGaussianBlur stdDeviation="9"/></filter><pattern id="grain" width="14" height="10" patternUnits="userSpaceOnUse"><path d="M0 3 Q7 1 14 3M0 8 Q7 6 14 8" stroke="#694320" stroke-opacity=".13" fill="none" stroke-width=".5"/></pattern></defs><ellipse cx="260" cy="319" rx="137" ry="19" fill="#677052" opacity=".17" filter="url(#shadow)"/>`;
- let shape='';
- if(model==='box'){
- const bottom=290,up=bottom-h*.95, left=110-(w-160)*.25,right=330+(w-160)*.5;
- shape=`<path d="M${left} ${up} L${left+105} ${up-65} L${right+90} ${up-12} L${right} ${up+57}Z" fill="${top}" stroke="${side}"/><path d="M${left+12} ${up+3} L${left+105} ${up-53} L${right+74} ${up-10} L${right-2} ${up+42}Z" fill="${side}"/><path d="M${left+12} ${up+3} L${left+105} ${up-53} L${left+105} ${bottom-64} L${left+13} ${bottom-7}Z" fill="${front}"/><path d="M${left+105} ${up-53} L${right+74} ${up-10} L${right+74} ${bottom-20} L${left+105} ${bottom-64}Z" fill="${side}"/><path d="M${left} ${up} L${right} ${up+57} L${right} ${bottom+38} L${left} ${bottom-17}Z" fill="${front}" stroke="${side}" stroke-width="1.2"/><path d="M${right} ${up+57} L${right+90} ${up-12} L${right+90} ${bottom-31} L${right} ${bottom+38}Z" fill="${top}" stroke="${side}" stroke-width="1.2"/><path d="M${left} ${up} L${right} ${up+57} L${right} ${bottom+38} L${left} ${bottom-17}Z" fill="url(#grain)"/><path d="M${right+29} ${up+64} l32 -24 q5 -4 5 2 v8 q0 4 -5 8 l-32 24 q-4 3 -4 -2 v-8 q0 -4 4 -8Z" fill="${side}"/>`;
- for(let i=0;i<6;i++){const y=up+60+i*(h*.85/6);shape+=`<path d="M${right-7} ${y} l7 2 6 -5 v8 l-6 5 -7 -2Z" fill="${side}" opacity=".75"/>`;}
- }else if(model==='vase'){
- shape=`<path d="M219 117 Q187 155 173 224 Q163 283 202 302 Q251 325 302 299 Q337 279 321 223 Q305 157 278 117Z" fill="${front}"/><ellipse cx="249" cy="117" rx="30" ry="12" fill="${top}"/><ellipse cx="249" cy="117" rx="22" ry="7" fill="${side}"/>`;
- for(let i=0;i<22;i++){const x=194+i*5;shape+=`<path d="M${231+i*1.65} 128 Q${x-20} 218 ${x} 302" fill="none" stroke="${i%2?top:side}" opacity=".55" stroke-width="2.5"/>`;}
- }else if(model==='stand'){
- shape=`<path d="M130 259 L239 200 L383 235 L274 302Z" fill="${top}" stroke="${side}"/><path d="M130 259 v11 l144 43 v-11Z" fill="${front}"/><path d="M274 302 l109 -67 v11 l-109 67Z" fill="${side}"/><path d="M209 240 L235 126 L316 149 L289 263Z" fill="${front}" stroke="${side}"/><path d="M235 126 l13 -9 81 23 -13 9Z" fill="${top}"/><path d="M316 149 l13 -9 -26 113 -14 10Z" fill="${side}"/><path d="M197 244 l17 -12 83 24 -17 12Z" fill="${top}"/><path d="M197 244 v12 l83 24 v-12Z" fill="${front}"/>`;
- }else if(model==='lamp'){
- shape=`<ellipse cx="260" cy="291" rx="64" ry="17" fill="${side}"/><path d="M211 139 L189 279 Q257 318 328 279 L307 139Z" fill="${top}"/>`;
- for(let i=0;i<15;i++){let x=214+i*6.5;shape+=`<path d="M${x} 139 L${189+i*9.8} 280" stroke="${side}" stroke-width="4"/>`;}
- shape+=`<ellipse cx="259" cy="139" rx="48" ry="14" fill="${front}"/>`;
- }else if(model==='tray'){
- shape=`<path d="M126 235 L247 166 L392 205 L270 282Z" fill="${top}" stroke="${side}" stroke-width="8"/><path d="M126 235 v20 l144 43 v-16Z" fill="${front}"/><path d="M270 282 l122 -77 v20 l-122 73Z" fill="${side}"/><path d="M216 184 l1 69 M302 183 l-120 69" stroke="${side}" stroke-width="5"/>`;
- }else{
- shape=`<path d="M181 176 L262 132 L331 154 L331 270 L250 317 L181 294Z" fill="${front}"/><path d="M181 176 L262 132 L331 154 L250 199Z" fill="${top}"/><path d="M250 199 L331 154 v116 l-81 47Z" fill="${side}"/>`;
- for(let i=0;i<6;i++)for(let j=0;j<4;j++)shape+=`<ellipse cx="${195+i*8}" cy="${194+j*25+i*2.7}" rx="2" ry="5" fill="${side}" opacity=".6"/>`;
- }
- if(model!=='box') shape=`<g transform="translate(260 300) scale(${.8+w/800} ${.7+h/333.33}) translate(-260 -300)">${shape}</g>`;
- return `<svg viewBox="0 0 520 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${defs}${shape}</svg>`;
-}
-function update(){
- $('#object').innerHTML=drawing(state.model,state.color,state.width,state.height);
- $('#object').setAttribute('aria-label',`Prévia ilustrada: ${models[state.model]}, ${names[state.color]}, ${state.width} por ${state.height} mm`);
- $('#objectTitle').textContent=models[state.model];$('#finishName').textContent=names[state.color];
- $('#widthValue').textContent=state.width+' mm';$('#heightValue').textContent=state.height+' mm';
- $('#processBadge').textContent=state.process==='laser'?'CORTE A LASER':'IMPRESSÃO 3D';
- $('#material').textContent=state.process==='laser'?`${names[state.color]} · montagem por encaixe`:`PLA · fabricação em camadas`;
- document.querySelectorAll('[data-process]').forEach(b=>{b.classList.toggle('active',b.dataset.process===state.process);b.setAttribute('aria-pressed',b.dataset.process===state.process)});
- document.querySelectorAll('.swatch').forEach(b=>{b.classList.toggle('selected',b.dataset.color===state.color);b.setAttribute('aria-pressed',b.dataset.color===state.color)});
-}
-$('#model').onchange=e=>{state.model=e.target.value;state.process=state.model==='vase'?'3d':'laser';update()};
-for(const key of ['width','height']) $('#'+key).oninput=e=>{state[key]=Number(e.target.value);update()};
-document.querySelectorAll('[data-process]').forEach(b=>b.onclick=()=>{state.process=b.dataset.process;if(state.process==='3d'&&state.color==='wood')state.color='sage';update()});
-document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{state.color=b.dataset.color;update()});
-$('#rotate').onclick=()=>$('#object').classList.toggle('rotated');
-const products=[['Caixa organizadora','Encaixes precisos, infinitas utilidades.','box','wood','laser'],['Vaso paramétrico','Texturas que nascem do digital.','vase','sage','3d'],['Suporte de mesa','Um lugar para suas ideias.','stand','wood','laser'],['Luminária de lâminas','Luz, sombra e um pouco de geometria.','lamp','wood','laser'],['Porta-lápis modular','Mais espaço para criar.','pencil','orange','3d'],['Bandeja organizadora','Cada coisa no seu lugar.','tray','wood','laser']];
-function render(filter='all'){
- const list=products.filter(p=>filter==='all'||p[4]===filter);$('#count').textContent=`${list.length} objetos para explorar`;
- $('#products').innerHTML=list.map(p=>`<button class="card" data-product="${products.indexOf(p)}"><div class="card-image" style="background-color:${p[3]==='sage'?'#e9eddf':p[3]==='orange'?'#f0e8df':'#eeece5'}"><span class="tag">${p[4]==='laser'?'✳ CORTE A LASER':'▧ IMPRESSÃO 3D'}</span>${drawing(p[2],p[3])}</div><div class="card-info"><div><h3>${p[0]}</h3><p>${p[1]}</p></div><span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></div></button>`).join('');
- document.querySelectorAll('[data-product]').forEach(b=>b.onclick=()=>{const p=products[Number(b.dataset.product)];openDialog(`Tenho interesse em: ${p[0]}.\nProcesso: ${p[4]==='laser'?'Corte a laser':'Impressão 3D'}.\n\nMinha ideia: `)});
-}
-document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-filter]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});render(b.dataset.filter)});
-function updateContactLinks(){const text=$('#idea').value;$('#whatsapp').href='https://wa.me/5561992430051?text='+encodeURIComponent(text);$('#emailProject').href='mailto:papeledmaker@gmail.com?subject='+encodeURIComponent('Projeto para a Papeled Maker')+'&body='+encodeURIComponent(text)}
-$('#idea').addEventListener('input',updateContactLinks);
-function openDialog(text){$('#idea').value=text;updateContactLinks();$('#copyStatus').textContent='';$('#dialog').showModal()}
-$('#project').onclick=()=>openDialog(`Tenho interesse em: ${models[state.model]}.\nDimensões conceituais: ${state.width} × ${state.height} mm.\nProcesso: ${state.process==='laser'?'Corte a laser':'Impressão 3D'}.\nAcabamento: ${names[state.color]}.\n\nMinha ideia: `);
-$('#contactButton').onclick=()=>openDialog('Quero criar um projeto personalizado.\n\nMinha ideia: ');
-$('#copy').onclick=async()=>{try{await navigator.clipboard.writeText($('#idea').value);$('#copyStatus').textContent='Resumo copiado! Você pode enviar para a Papeled Maker.'}catch{$('#idea').focus();$('#idea').select();$('#copyStatus').textContent='Selecione e copie o texto com Ctrl+C ou pelo menu do dispositivo.'}};
-$('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close()}});
-update();render();
-</script></body></html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <meta
+      name="description"
+      content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
+    />
+    <title>Papeled Maker — seu espaço maker online</title>
+    <script type="module" crossorigin src="./assets/index-Bwv1d2NL.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-GKg62cBc.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#modelos" aria-label="Papeled Maker início"
+        ><span class="brand-mark" aria-hidden="true">P<span>m</span></span
+        ><span
+          >Papeled <strong>Maker</strong><small>ESPAÇO DE CRIAÇÃO</small></span
+        ></a
+      >
+      <nav aria-label="Navegação principal">
+        <a href="#modelos" data-nav="modelos">Explorar modelos</a
+        ><a href="#projetos" data-nav="projetos"
+          >Meus projetos <span id="saved-count">0</span></a
+        ><button id="how-button">Como funciona</button>
+      </nav>
+      <a
+        class="studio-link"
+        href="https://wa.me/5561992430051"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Fale com o estúdio <span data-icon="arrow-up-right"></span
+      ></a>
+    </header>
+    <main id="main" tabindex="-1">
+      <section id="catalog-view">
+        <div class="hero">
+          <div class="hero-copy">
+            <div class="eyebrow">
+              <span></span> UM ESPAÇO PARA TIRAR IDEIAS DO PAPEL
+            </div>
+            <h1>Imagine. Ajuste.<br /><em>Faça acontecer.</em></h1>
+            <p>
+              Caixas, organizadores e soluções que se adaptam à sua ideia.<br />Escolha
+              um modelo. As próximas medidas são suas.
+            </p>
+            <div class="hero-actions">
+              <button class="button primary" id="start-project">
+                Criar meu primeiro projeto
+                <span data-icon="arrow-right"></span></button
+              ><span class="hero-note"
+                ><span data-icon="check-circle"></span> Sem cadastro. Direto à
+                criação.</span
+              >
+            </div>
+          </div>
+          <div class="hero-art">
+            <span class="art-label"><i></i> FEITO DO SEU JEITO</span>
+            <div id="hero-object"></div>
+            <span class="dimension-pill">240 × 180 × 65 mm</span
+            ><span class="art-caption"
+              ><span data-icon="sliders"></span> Uma ideia. Infinitas
+              combinações.</span
+            >
+          </div>
+        </div>
+        <div class="benefits">
+          <span
+            ><span data-icon="ruler"></span> Medidas que fazem sentido para
+            você</span
+          ><span
+            ><span data-icon="layers"></span> Corte a laser e impressão 3D</span
+          ><span
+            ><span data-icon="download"></span> Seu projeto, pronto para o
+            próximo passo</span
+          >
+        </div>
+        <section class="model-section" aria-labelledby="model-heading">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">O QUE VAMOS CRIAR HOJE?</div>
+              <h2 id="model-heading">Um ponto de partida para cada ideia.</h2>
+            </div>
+            <label class="search"
+              ><span data-icon="search"></span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Buscar um modelo…"
+                aria-label="Buscar modelos"
+              /><kbd>/</kbd></label
+            >
+          </div>
+          <div class="catalog-toolbar">
+            <div class="filter-group" role="group" aria-label="Filtrar modelos">
+              <button data-filter="all" class="active" aria-pressed="true">
+                Todos os modelos <span>8</span></button
+              ><button data-filter="laser" aria-pressed="false">
+                <span data-icon="sparkles"></span> Corte a laser</button
+              ><button data-filter="print" aria-pressed="false">
+                <span data-icon="box"></span> Impressão 3D
+              </button>
+            </div>
+            <span id="model-count">8 modelos para explorar</span>
+          </div>
+          <div id="resume-banner" hidden></div>
+          <div class="model-grid" id="model-grid"></div>
+          <div class="import-banner">
+            <div class="import-icon" data-icon="upload"></div>
+            <div>
+              <h3>Uma boa ideia merece continuar.</h3>
+              <p>
+                Já criou por aqui? Abra seu arquivo .papeled.json e retome de
+                onde parou.
+              </p>
+            </div>
+            <button class="button secondary" id="import-button">
+              Abrir projeto <span data-icon="arrow-up-right"></span>
+            </button>
+          </div>
+        </section>
+        <section class="how-strip">
+          <div>
+            <div class="eyebrow">DO PRIMEIRO CLIQUE À PRIMEIRA PEÇA</div>
+            <h2>Criar pode ser simples.</h2>
+          </div>
+          <article>
+            <span>01</span>
+            <h3>Escolha uma base</h3>
+            <p>Encontre o modelo que resolve sua necessidade.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Deixe com a sua cara</h3>
+            <p>Altere medidas, divisórias, gavetas e material.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Leve para o mundo real</h3>
+            <p>Exporte os arquivos ou peça ajuda ao estúdio.</p>
+          </article>
+        </section>
+      </section>
+      <section id="editor-view" hidden>
+        <div class="editor-heading">
+          <div>
+            <button class="text-button" id="back-models">
+              <span data-icon="arrow-left"></span> Todos os modelos
+            </button>
+            <div class="editor-title">
+              <h1 id="editor-model-title"></h1>
+              <span class="status-dot">EDIÇÃO AO VIVO</span>
+            </div>
+          </div>
+          <div class="editor-actions">
+            <button id="save-project" class="button secondary">
+              <span data-icon="bookmark"></span> Salvar projeto</button
+            ><button id="export-project" class="button primary">
+              <span data-icon="download"></span> Exportar
+            </button>
+          </div>
+        </div>
+        <div class="workspace">
+          <aside class="controls">
+            <div class="control-heading">
+              <h2>Do seu jeito</h2>
+              <button
+                class="icon-button"
+                id="reset-project"
+                title="Restaurar medidas do modelo"
+                aria-label="Restaurar medidas do modelo"
+              >
+                <span data-icon="rotate"></span>
+              </button>
+            </div>
+            <label class="field-label" for="project-name">Nome do projeto</label
+            ><input
+              class="text-input"
+              id="project-name"
+              maxlength="80"
+              placeholder="Dê um nome à sua ideia"
+            />
+            <div class="control-section">
+              <h3>
+                <span>01</span> Medidas externas <span class="unit">mm</span>
+              </h3>
+              <div class="dimension-fields">
+                <label
+                  >Largura<input
+                    type="number"
+                    id="width"
+                    min="40"
+                    max="1000"
+                    step="1"
+                    inputmode="decimal" /></label
+                ><label
+                  >Profundidade<input
+                    type="number"
+                    id="depth"
+                    min="40"
+                    max="1000"
+                    step="1"
+                    inputmode="decimal" /></label
+                ><label
+                  >Altura<input
+                    type="number"
+                    id="height"
+                    min="15"
+                    max="700"
+                    step="1"
+                    inputmode="decimal"
+                /></label>
+              </div>
+              <p class="field-hint">
+                Todas as medidas consideram o exterior da peça.
+              </p>
+            </div>
+            <div class="control-section">
+              <h3><span>02</span> Organização interna</h3>
+              <div id="division-fields">
+                <div class="split-fields">
+                  <label id="cols-label"
+                    >Colunas<input
+                      type="number"
+                      id="cols"
+                      min="1"
+                      max="5"
+                      step="1" /></label
+                  ><label id="rows-label"
+                    ><span id="rows-title">Linhas</span
+                    ><input type="number" id="rows" min="1" max="5" step="1"
+                  /></label>
+                </div>
+                <label id="ratio-label" class="range-label" hidden
+                  >Primeiro compartimento <output id="ratio-value">60%</output
+                  ><input id="ratio" type="range" min="20" max="80" step="1"
+                /></label>
+                <p class="field-hint" id="compartment-info"></p>
+              </div>
+              <div id="no-divisions">
+                <p class="field-hint">
+                  Precisa separar objetos? Adicione compartimentos à sua caixa.
+                </p>
+                <button class="button subtle" id="add-dividers">
+                  <span data-icon="grid"></span> Adicionar divisórias
+                </button>
+              </div>
+              <label id="drawer-open-label" class="range-label" hidden
+                >Abertura na prévia <output id="drawer-open-value">35%</output
+                ><input
+                  id="drawer-open"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="35"
+              /></label>
+            </div>
+            <div class="control-section">
+              <h3><span>03</span> Material e acabamento</h3>
+              <div class="split-fields">
+                <label
+                  >Espessura (mm)<input
+                    id="thickness"
+                    type="number"
+                    min="1"
+                    max="12"
+                    step="0.1" /></label
+                ><label id="clearance-label"
+                  >Folga (mm)<input
+                    id="clearance"
+                    type="number"
+                    min="0.2"
+                    max="2"
+                    step="0.1"
+                /></label>
+              </div>
+              <div class="finish-label">
+                Cor da prévia <span id="finish-name"></span>
+              </div>
+              <div id="finishes" class="finish-options"></div>
+              <p class="field-hint" id="material-hint"></p>
+            </div>
+            <div id="validation" class="validation" role="alert" hidden></div>
+            <div class="local-note">
+              <span data-icon="shield"></span> Seu rascunho fica neste
+              navegador.
+            </div>
+          </aside>
+          <div class="visual-column">
+            <div class="canvas-toolbar">
+              <div class="view-tabs" role="group" aria-label="Visualização">
+                <button data-view="3d" class="active" aria-pressed="true">
+                  <span data-icon="box"></span> Montagem</button
+                ><button data-view="2d" aria-pressed="false">
+                  <span data-icon="layout"></span> Peças 2D
+                </button>
+              </div>
+              <span class="canvas-process" id="canvas-process"></span>
+            </div>
+            <div class="canvas" id="canvas">
+              <div class="canvas-top">
+                <span><i></i> PRÉVIA PARAMÉTRICA</span
+                ><button class="text-button" id="explode">
+                  <span data-icon="layers"></span> Separar peças
+                </button>
+              </div>
+              <div id="preview" role="img" aria-label="Prévia do projeto"></div>
+              <div class="canvas-bottom">
+                <span id="canvas-hint"
+                  ><span data-icon="move"></span> Arraste para girar</span
+                >
+                <div class="camera-controls">
+                  <button
+                    class="icon-button"
+                    id="rotate-left"
+                    title="Girar para a esquerda"
+                    aria-label="Girar para a esquerda"
+                  >
+                    <span data-icon="rotate-left"></span></button
+                  ><button
+                    class="icon-button"
+                    id="camera-reset"
+                    title="Restaurar câmera"
+                    aria-label="Restaurar câmera"
+                  >
+                    <span data-icon="focus"></span></button
+                  ><button
+                    class="icon-button"
+                    id="rotate-right"
+                    title="Girar para a direita"
+                    aria-label="Girar para a direita"
+                  >
+                    <span data-icon="rotate"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="project-stats" id="project-stats"></div>
+            <div class="assembly-note">
+              <span data-icon="info"></span>
+              <div>
+                <strong id="assembly-title"></strong>
+                <p id="assembly-text"></p>
+              </div>
+            </div>
+          </div>
+          <aside class="project-summary">
+            <div class="summary-heading">
+              <h2>Seu projeto em detalhes</h2>
+              <span data-icon="clipboard"></span>
+            </div>
+            <div id="summary-metrics"></div>
+            <div class="parts-title">
+              <h3 id="parts-title">Lista de peças</h3>
+              <span id="part-count"></span>
+            </div>
+            <ol id="parts-list" class="parts-list"></ol>
+            <div class="summary-bottom">
+              <p>Quer ajuda para produzir?</p>
+              <button class="button secondary" id="quote-project">
+                Pedir orçamento <span data-icon="arrow-up-right"></span></button
+              ><span>Direto com a Papeled Maker.</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+      <section id="saved-view" hidden>
+        <div class="section-heading saved-heading">
+          <div>
+            <div class="eyebrow">IDEIAS QUE MERECEM CONTINUAR</div>
+            <h1>Meus projetos.</h1>
+            <p>
+              Salvos apenas neste navegador. Exporte uma cópia para levar com
+              você.
+            </p>
+          </div>
+          <button class="button primary" id="new-project">
+            <span data-icon="plus"></span> Criar projeto
+          </button>
+        </div>
+        <div id="saved-grid" class="model-grid"></div>
+      </section>
+    </main>
+    <footer>
+      <a class="brand footer-brand" href="#modelos"
+        >Papeled <strong>Maker</strong></a
+      ><span>Ideias digitais. Objetos reais.</span
+      ><a href="mailto:papeledmaker@gmail.com"
+        >papeledmaker@gmail.com <span data-icon="arrow-up-right"></span
+      ></a>
+    </footer>
+    <input
+      id="project-file"
+      type="file"
+      accept=".json,application/json"
+      hidden
+    />
+    <dialog id="export-dialog" aria-labelledby="export-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">DO DIGITAL AO TANGÍVEL</div>
+      <h2 id="export-title">O próximo passo é seu.</h2>
+      <p class="dialog-description">
+        Escolha o formato para continuar o seu projeto.
+      </p>
+      <div id="export-options"></div>
+      <div class="export-note" id="export-note"></div>
+      <p class="dialog-footnote">
+        Você também pode enviar o projeto ao estúdio para conferir materiais e
+        fabricação.
+      </p>
+    </dialog>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">BEM-VINDO À SUA BANCADA DIGITAL</div>
+      <h2 id="help-title">Da ideia à peça.</h2>
+      <ol class="help-steps">
+        <li>
+          <strong>Escolha o modelo.</strong>
+          <p>
+            Use os filtros para encontrar uma caixa, organizador ou gaveteiro.
+          </p>
+        </li>
+        <li>
+          <strong>Ajuste e visualize.</strong>
+          <p>
+            Defina dimensões externas, espessura e divisões. Gire a prévia ou
+            confira as peças em 2D.
+          </p>
+        </li>
+        <li>
+          <strong>Salve e fabrique.</strong>
+          <p>
+            Projetos ficam neste navegador. JSON permite reabrir em outro
+            dispositivo. SVG/DXF usam milímetros e STL pode ser aberto no seu
+            fatiador.
+          </p>
+        </li>
+      </ol>
+      <div class="export-note">
+        Corte a laser: montagem por colagem e divisórias com meio encaixe. Os
+        arquivos não compensam a largura do corte (kerf). Faça um teste de
+        material antes da produção final. A cor é apenas ilustrativa.
+      </div>
+      <button class="button primary full" data-close>
+        Vamos criar <span data-icon="arrow-right"></span>
+      </button>
+    </dialog>
+    <dialog id="quote-dialog" aria-labelledby="quote-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">FEITO COM A PAPELED MAKER</div>
+      <h2 id="quote-title">Vamos produzir sua ideia?</h2>
+      <p class="dialog-description">
+        Seu projeto já vai na mensagem. Conte para nós a quantidade e como
+        pretende usar.
+      </p>
+      <label class="field-label" for="quote-message">Resumo do projeto</label
+      ><textarea id="quote-message" rows="9"></textarea
+      ><a
+        id="quote-whatsapp"
+        class="button primary full"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Conversar no WhatsApp <span data-icon="arrow-up-right"></span></a
+      ><a id="quote-email" class="email-link">Prefiro enviar por e-mail</a>
+    </dialog>
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button class="button secondary" id="confirm-cancel">Cancelar</button
+        ><button class="button primary" id="confirm-ok">Confirmar</button>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

@@ -1,61 +1,646 @@
-const $ = (s) => document.querySelector(s);
-const palette = {wood:['#bd9265','#e1b98a','#9c704a'],dark:['#50544e','#72776c','#353b33'],sage:['#95a080','#b8c1a3','#727e5e'],orange:['#c47652','#df9d79','#9d563a']};
-const names={wood:'Madeira natural',dark:'Grafite',sage:'Verde sálvia',orange:'Terracota'};
-const models={box:'Caixa organizadora',stand:'Suporte de mesa',vase:'Vaso paramétrico'};
-let state={model:'box',process:'laser',color:'wood',width:160,height:100};
-function drawing(model='box',color='wood',w=160,h=100){
- const [front,top,side]=palette[color];
- const defs=`<defs><filter id="shadow"><feGaussianBlur stdDeviation="9"/></filter><pattern id="grain" width="14" height="10" patternUnits="userSpaceOnUse"><path d="M0 3 Q7 1 14 3M0 8 Q7 6 14 8" stroke="#694320" stroke-opacity=".13" fill="none" stroke-width=".5"/></pattern></defs><ellipse cx="260" cy="319" rx="137" ry="19" fill="#677052" opacity=".17" filter="url(#shadow)"/>`;
- let shape='';
- if(model==='box'){
- const bottom=290,up=bottom-h*.95, left=110-(w-160)*.25,right=330+(w-160)*.5;
- shape=`<path d="M${left} ${up} L${left+105} ${up-65} L${right+90} ${up-12} L${right} ${up+57}Z" fill="${top}" stroke="${side}"/><path d="M${left+12} ${up+3} L${left+105} ${up-53} L${right+74} ${up-10} L${right-2} ${up+42}Z" fill="${side}"/><path d="M${left+12} ${up+3} L${left+105} ${up-53} L${left+105} ${bottom-64} L${left+13} ${bottom-7}Z" fill="${front}"/><path d="M${left+105} ${up-53} L${right+74} ${up-10} L${right+74} ${bottom-20} L${left+105} ${bottom-64}Z" fill="${side}"/><path d="M${left} ${up} L${right} ${up+57} L${right} ${bottom+38} L${left} ${bottom-17}Z" fill="${front}" stroke="${side}" stroke-width="1.2"/><path d="M${right} ${up+57} L${right+90} ${up-12} L${right+90} ${bottom-31} L${right} ${bottom+38}Z" fill="${top}" stroke="${side}" stroke-width="1.2"/><path d="M${left} ${up} L${right} ${up+57} L${right} ${bottom+38} L${left} ${bottom-17}Z" fill="url(#grain)"/><path d="M${right+29} ${up+64} l32 -24 q5 -4 5 2 v8 q0 4 -5 8 l-32 24 q-4 3 -4 -2 v-8 q0 -4 4 -8Z" fill="${side}"/>`;
- for(let i=0;i<6;i++){const y=up+60+i*(h*.85/6);shape+=`<path d="M${right-7} ${y} l7 2 6 -5 v8 l-6 5 -7 -2Z" fill="${side}" opacity=".75"/>`;}
- }else if(model==='vase'){
- shape=`<path d="M219 117 Q187 155 173 224 Q163 283 202 302 Q251 325 302 299 Q337 279 321 223 Q305 157 278 117Z" fill="${front}"/><ellipse cx="249" cy="117" rx="30" ry="12" fill="${top}"/><ellipse cx="249" cy="117" rx="22" ry="7" fill="${side}"/>`;
- for(let i=0;i<22;i++){const x=194+i*5;shape+=`<path d="M${231+i*1.65} 128 Q${x-20} 218 ${x} 302" fill="none" stroke="${i%2?top:side}" opacity=".55" stroke-width="2.5"/>`;}
- }else if(model==='stand'){
- shape=`<path d="M130 259 L239 200 L383 235 L274 302Z" fill="${top}" stroke="${side}"/><path d="M130 259 v11 l144 43 v-11Z" fill="${front}"/><path d="M274 302 l109 -67 v11 l-109 67Z" fill="${side}"/><path d="M209 240 L235 126 L316 149 L289 263Z" fill="${front}" stroke="${side}"/><path d="M235 126 l13 -9 81 23 -13 9Z" fill="${top}"/><path d="M316 149 l13 -9 -26 113 -14 10Z" fill="${side}"/><path d="M197 244 l17 -12 83 24 -17 12Z" fill="${top}"/><path d="M197 244 v12 l83 24 v-12Z" fill="${front}"/>`;
- }else if(model==='lamp'){
- shape=`<ellipse cx="260" cy="291" rx="64" ry="17" fill="${side}"/><path d="M211 139 L189 279 Q257 318 328 279 L307 139Z" fill="${top}"/>`;
- for(let i=0;i<15;i++){let x=214+i*6.5;shape+=`<path d="M${x} 139 L${189+i*9.8} 280" stroke="${side}" stroke-width="4"/>`;}
- shape+=`<ellipse cx="259" cy="139" rx="48" ry="14" fill="${front}"/>`;
- }else if(model==='tray'){
- shape=`<path d="M126 235 L247 166 L392 205 L270 282Z" fill="${top}" stroke="${side}" stroke-width="8"/><path d="M126 235 v20 l144 43 v-16Z" fill="${front}"/><path d="M270 282 l122 -77 v20 l-122 73Z" fill="${side}"/><path d="M216 184 l1 69 M302 183 l-120 69" stroke="${side}" stroke-width="5"/>`;
- }else{
- shape=`<path d="M181 176 L262 132 L331 154 L331 270 L250 317 L181 294Z" fill="${front}"/><path d="M181 176 L262 132 L331 154 L250 199Z" fill="${top}"/><path d="M250 199 L331 154 v116 l-81 47Z" fill="${side}"/>`;
- for(let i=0;i<6;i++)for(let j=0;j<4;j++)shape+=`<ellipse cx="${195+i*8}" cy="${194+j*25+i*2.7}" rx="2" ry="5" fill="${side}" opacity=".6"/>`;
- }
- if(model!=='box') shape=`<g transform="translate(260 300) scale(${.8+w/800} ${.7+h/333.33}) translate(-260 -300)">${shape}</g>`;
- return `<svg viewBox="0 0 520 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${defs}${shape}</svg>`;
+import {
+  MODELS,
+  defaults,
+  modelById,
+  supportsGrid,
+  compartmentCount,
+  cuts,
+  validate,
+  panels,
+  drawerDimensions,
+  exportSVG,
+  exportDXF,
+  exportSTL,
+  readProject,
+} from "./src/geometry.js";
+import {
+  previewSVG,
+  cutPreviewSVG,
+  FINISHES,
+  escapeHTML as esc,
+} from "./src/preview.js";
+import { icon, mountIcons } from "./src/icons.js";
+const $ = (s) => document.querySelector(s),
+  $$ = (s) => [...document.querySelectorAll(s)];
+const storageKey = "papeled-projects-v1",
+  draftKey = "papeled-draft-v1";
+let state = defaults(),
+  savedId = null,
+  filter = "all",
+  angle = 35,
+  exploded = false,
+  view = "3d",
+  opened = 0.35,
+  toastTimer,
+  saveTimer,
+  storageWarning = false;
+const fmt = (n) => Number(n.toFixed(1)).toLocaleString("pt-BR");
+const uuid = () =>
+  globalThis.crypto?.randomUUID?.() ||
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+function toast(text) {
+  $("#toast").textContent = text;
+  $("#toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => ($("#toast").hidden = true), 4500);
 }
-function update(){
- $('#object').innerHTML=drawing(state.model,state.color,state.width,state.height);
- $('#object').setAttribute('aria-label',`Prévia ilustrada: ${models[state.model]}, ${names[state.color]}, ${state.width} por ${state.height} mm`);
- $('#objectTitle').textContent=models[state.model];$('#finishName').textContent=names[state.color];
- $('#widthValue').textContent=state.width+' mm';$('#heightValue').textContent=state.height+' mm';
- $('#processBadge').textContent=state.process==='laser'?'CORTE A LASER':'IMPRESSÃO 3D';
- $('#material').textContent=state.process==='laser'?`${names[state.color]} · montagem por encaixe`:`PLA · fabricação em camadas`;
- document.querySelectorAll('[data-process]').forEach(b=>{b.classList.toggle('active',b.dataset.process===state.process);b.setAttribute('aria-pressed',b.dataset.process===state.process)});
- document.querySelectorAll('.swatch').forEach(b=>{b.classList.toggle('selected',b.dataset.color===state.color);b.setAttribute('aria-pressed',b.dataset.color===state.color)});
+function store(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    if (!storageWarning) {
+      toast(
+        "O navegador não permitiu salvar. Exporte o projeto em JSON para guardar uma cópia.",
+      );
+      storageWarning = true;
+    }
+    return false;
+  }
 }
-$('#model').onchange=e=>{state.model=e.target.value;state.process=state.model==='vase'?'3d':'laser';update()};
-for(const key of ['width','height']) $('#'+key).oninput=e=>{state[key]=Number(e.target.value);update()};
-document.querySelectorAll('[data-process]').forEach(b=>b.onclick=()=>{state.process=b.dataset.process;if(state.process==='3d'&&state.color==='wood')state.color='sage';update()});
-document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>{state.color=b.dataset.color;update()});
-$('#rotate').onclick=()=>$('#object').classList.toggle('rotated');
-const products=[['Caixa organizadora','Encaixes precisos, infinitas utilidades.','box','wood','laser'],['Vaso paramétrico','Texturas que nascem do digital.','vase','sage','3d'],['Suporte de mesa','Um lugar para suas ideias.','stand','wood','laser'],['Luminária de lâminas','Luz, sombra e um pouco de geometria.','lamp','wood','laser'],['Porta-lápis modular','Mais espaço para criar.','pencil','orange','3d'],['Bandeja organizadora','Cada coisa no seu lugar.','tray','wood','laser']];
-function render(filter='all'){
- const list=products.filter(p=>filter==='all'||p[4]===filter);$('#count').textContent=`${list.length} objetos para explorar`;
- $('#products').innerHTML=list.map(p=>`<button class="card" data-product="${products.indexOf(p)}"><div class="card-image" style="background-color:${p[3]==='sage'?'#e9eddf':p[3]==='orange'?'#f0e8df':'#eeece5'}"><span class="tag">${p[4]==='laser'?'✳ CORTE A LASER':'▧ IMPRESSÃO 3D'}</span>${drawing(p[2],p[3])}</div><div class="card-info"><div><h3>${p[0]}</h3><p>${p[1]}</p></div><span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></div></button>`).join('');
- document.querySelectorAll('[data-product]').forEach(b=>b.onclick=()=>{const p=products[Number(b.dataset.product)];openDialog(`Tenho interesse em: ${p[0]}.\nProcesso: ${p[4]==='laser'?'Corte a laser':'Impressão 3D'}.\n\nMinha ideia: `)});
+function load(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) ?? fallback;
+  } catch {
+    return fallback;
+  }
 }
-document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-filter]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});render(b.dataset.filter)});
-function updateContactLinks(){const text=$('#idea').value;$('#whatsapp').href='https://wa.me/5561992430051?text='+encodeURIComponent(text);$('#emailProject').href='mailto:papeledmaker@gmail.com?subject='+encodeURIComponent('Projeto para a Papeled Maker')+'&body='+encodeURIComponent(text)}
-$('#idea').addEventListener('input',updateContactLinks);
-function openDialog(text){$('#idea').value=text;updateContactLinks();$('#copyStatus').textContent='';$('#dialog').showModal()}
-$('#project').onclick=()=>openDialog(`Tenho interesse em: ${models[state.model]}.\nDimensões conceituais: ${state.width} × ${state.height} mm.\nProcesso: ${state.process==='laser'?'Corte a laser':'Impressão 3D'}.\nAcabamento: ${names[state.color]}.\n\nMinha ideia: `);
-$('#contactButton').onclick=()=>openDialog('Quero criar um projeto personalizado.\n\nMinha ideia: ');
-$('#copy').onclick=async()=>{try{await navigator.clipboard.writeText($('#idea').value);$('#copyStatus').textContent='Resumo copiado! Você pode enviar para a Papeled Maker.'}catch{$('#idea').focus();$('#idea').select();$('#copyStatus').textContent='Selecione e copie o texto com Ctrl+C ou pelo menu do dispositivo.'}};
-$('#dialog').addEventListener('click',e=>{if(e.target===$('#dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close()}});
-update();render();
+function getSaved() {
+  const values = load(storageKey, []);
+  return Array.isArray(values)
+    ? values.filter((p) => {
+        try {
+          readProject(p.project);
+          return (
+            typeof p.id === "string" &&
+            /^[a-zA-Z0-9-]+$/.test(p.id) &&
+            typeof p.updated === "string" &&
+            !Number.isNaN(Date.parse(p.updated))
+          );
+        } catch {
+          return false;
+        }
+      })
+    : [];
+}
+function updateSavedCount() {
+  $("#saved-count").textContent = getSaved().length;
+}
+function card(m) {
+  const d = defaults(m.id);
+  return `<button class="model-card" data-model="${m.id}"><div class="model-image ${m.category === "print" ? "print-image" : ""}"><span class="model-badge">${m.tag}</span>${previewSVG(d, { opened: 0.25 })}<span class="card-open">${icon("arrow-up-right")}</span></div><div class="model-card-info"><h3>${m.name}</h3><p>${m.description}</p><span class="process-chip">${icon(m.category === "print" ? "box" : "sparkles")}${m.category === "print" ? "Impressão 3D" : "Corte a laser"}<span>·</span>${m.category === "print" ? "STL" : "SVG / DXF"}</span></div></button>`;
+}
+function renderCatalog() {
+  const term = $("#search")
+    .value.trim()
+    .toLocaleLowerCase("pt-BR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const found = MODELS.filter(
+    (m) =>
+      (filter === "all" || m.category === filter) &&
+      (m.name + " " + m.description)
+        .toLocaleLowerCase("pt-BR")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .includes(term),
+  );
+  $("#model-count").textContent =
+    `${found.length} ${found.length === 1 ? "modelo disponível" : "modelos disponíveis"}`;
+  $("#model-grid").innerHTML = found.length
+    ? found.map(card).join("")
+    : `<div class="empty-state">${icon("search")}<h3>Nenhum modelo por aqui.</h3><p>Tente outro nome ou limpe os filtros.</p><button class="button secondary" id="clear-search">Limpar busca</button></div>`;
+  $$("[data-model]").forEach(
+    (b) => (b.onclick = () => openModel(b.dataset.model)),
+  );
+  $("#clear-search")?.addEventListener("click", () => {
+    $("#search").value = "";
+    setFilter("all");
+  });
+  const draft = load(draftKey, null);
+  let valid = false;
+  try {
+    if (draft) {
+      readProject(draft);
+      valid = true;
+    }
+  } catch {}
+  $("#resume-banner").hidden = !valid;
+  if (valid) {
+    $("#resume-banner").innerHTML =
+      `<span>${icon("clock")} Continuar criando <strong>${esc(draft.name)}</strong></span><button class="text-button" id="resume-draft">Retomar rascunho ${icon("arrow-right")}</button>`;
+    $("#resume-draft").onclick = () =>
+      openProject(readProject(draft), draft.savedId || null);
+  }
+}
+function setFilter(value) {
+  filter = value;
+  $$("[data-filter]").forEach((b) => {
+    const active = b.dataset.filter === value;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-pressed", active);
+  });
+  renderCatalog();
+}
+function openModel(id) {
+  openProject(defaults(id));
+}
+function openProject(project, id = null) {
+  clearTimeout(saveTimer);
+  state = { ...project };
+  savedId = id;
+  angle = 35;
+  view = "3d";
+  exploded = false;
+  opened = 0.35;
+  $("#drawer-open").value = 35;
+  syncFields();
+  location.hash = "editor";
+  showView("editor");
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+function showView(route) {
+  $("#catalog-view").hidden = route !== "modelos";
+  $("#editor-view").hidden = route !== "editor";
+  $("#saved-view").hidden = route !== "projetos";
+  $$("[data-nav]").forEach((a) =>
+    a.classList.toggle("active", a.dataset.nav === route),
+  );
+  if (route === "modelos") renderCatalog();
+  if (route === "projetos") renderSaved();
+  if (route === "editor") renderEditor();
+  updateSavedCount();
+}
+function route() {
+  let name = location.hash.slice(1);
+  if (!["modelos", "editor", "projetos"].includes(name)) name = "modelos";
+  showView(name);
+}
+function syncFields() {
+  for (const k of [
+    "width",
+    "depth",
+    "height",
+    "thickness",
+    "cols",
+    "rows",
+    "ratio",
+    "clearance",
+  ])
+    $("#" + k).value = state[k];
+  $("#project-name").value = state.name;
+  $("#finish-name").textContent = FINISHES[state.finish].label;
+  $("#finishes").innerHTML = Object.entries(FINISHES)
+    .map(
+      ([key, v]) =>
+        `<button class="finish ${state.finish === key ? "selected" : ""}" style="--finish:${v.color}" data-finish="${key}" aria-label="${v.label}" aria-pressed="${state.finish === key}">${state.finish === key ? icon("check") : ""}</button>`,
+    )
+    .join("");
+  $$("[data-finish]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        state.finish = b.dataset.finish;
+        syncFields();
+        renderEditor();
+        persistDraft();
+      }),
+  );
+}
+function persistDraft() {
+  clearTimeout(saveTimer);
+  if (validate(state).length || !state.name.trim()) return;
+  const snapshot = { ...state, savedId };
+  saveTimer = setTimeout(() => store(draftKey, snapshot), 350);
+}
+function renderEditor() {
+  const model = modelById(state.model),
+    isPrint = model.category === "print",
+    errors = validate(state),
+    valid = !errors.length,
+    parts = valid ? panels(state) : [];
+  $("#editor-model-title").textContent = model.name;
+  $("#canvas-process").textContent = isPrint ? "IMPRESSÃO 3D" : "CORTE A LASER";
+  $("#division-fields").hidden = !supportsGrid(state);
+  $("#no-divisions").hidden =
+    supportsGrid(state) || ["lid", "bin"].includes(state.model);
+  $("#cols-label").hidden = state.model === "custom";
+  $("#ratio-label").hidden = state.model !== "custom";
+  $("#rows-title").textContent =
+    state.model === "custom" ? "Linhas à direita" : "Linhas";
+  $("#ratio-value").textContent = state.ratio + "%";
+  $("#drawer-open-label").hidden = state.model !== "drawers";
+  $("#clearance-label").hidden = !["drawers", "lid"].includes(state.model);
+  $("#material-hint").textContent = isPrint
+    ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
+    : "Use a espessura real da chapa. Cor apenas ilustrativa.";
+  $("#finish-name").textContent = FINISHES[state.finish].label;
+  if (supportsGrid(state) && valid) {
+    if (state.model === "drawers") {
+      const g = drawerDimensions(state);
+      $("#compartment-info").textContent =
+        `${state.rows * state.cols} gavetas · interior útil de cada uma: ${fmt(g.dw - 2 * state.thickness)} × ${fmt(g.dd - 2 * state.thickness)} × ${fmt(g.dh - state.thickness)} mm.`;
+    } else {
+      const c = cuts(state);
+      $("#compartment-info").textContent =
+        state.model === "custom"
+          ? `${1 + state.rows} compartimentos · vão esquerdo de ${fmt(c.widths[0])} × ${fmt(state.depth - 2 * state.thickness)} mm e ${state.rows} vãos à direita de ${fmt(c.widths[1])} × ${fmt(c.depths[0])} mm.`
+          : `${state.cols * state.rows} compartimentos · vãos de ${c.widths.map(fmt).join(" / ")} × ${fmt(c.depths[0])} mm.`;
+    }
+  }
+  $("#validation").hidden = valid;
+  $("#validation").textContent = errors.join(" ");
+  $("#export-project").disabled = !valid || !state.name.trim();
+  $("#save-project").disabled = !valid || !state.name.trim();
+  $("#quote-project").disabled = !valid;
+  $("#explode").hidden = isPrint || view === "2d";
+  $("#explode").classList.toggle("selected", exploded);
+  $$("[data-view]").forEach((b) => {
+    b.disabled = isPrint && b.dataset.view === "2d";
+    b.classList.toggle("active", b.dataset.view === view);
+    b.setAttribute("aria-pressed", b.dataset.view === view);
+  });
+  if (isPrint) view = "3d";
+  $("#preview").classList.toggle("flat-view", view === "2d");
+  $("#canvas-hint").innerHTML =
+    view === "2d"
+      ? `${icon("layout")} Numeração corresponde à lista de peças`
+      : `${icon("move")} Arraste para girar`;
+  $(".camera-controls").hidden = view === "2d";
+  $("#preview").innerHTML = valid
+    ? view === "2d"
+      ? cutPreviewSVG(state)
+      : previewSVG(state, { angle, exploded, opened, dimensions: true })
+    : `<div class="invalid-preview">${icon("ruler")}<h3>Vamos ajustar essas medidas?</h3><p>Confira os campos ao lado para continuar.</p></div>`;
+  $("#preview").setAttribute(
+    "aria-label",
+    `Prévia ${view === "2d" ? "das peças" : "da montagem"}: ${state.name}, ${state.width} por ${state.depth} por ${state.height} milímetros`,
+  );
+  const cells = compartmentCount(state);
+  $("#project-stats").innerHTML =
+    `<div>${icon("ruler")}<span><strong>${state.width} × ${state.depth} × ${state.height}</strong><small>dimensões externas · mm</small></span></div><div>${icon("layers")}<span><strong>${isPrint ? "Peça única" : parts.length + " peças"}</strong><small>${isPrint ? "impressão em um sólido" : "para corte e montagem"}</small></span></div><div>${icon("grid")}<span><strong>${cells} ${state.model === "drawers" ? "gavetas" : cells === 1 ? "espaço" : "compartimentos"}</strong><small>organização do seu jeito</small></span></div>`;
+  $("#assembly-title").textContent = isPrint
+    ? "Peça única, pronta para o fatiador."
+    : state.model === "custom"
+      ? "Divisórias assimétricas com montagem por colagem."
+      : state.model === "grid"
+        ? "Montagem por colagem. Divisórias com meio encaixe."
+        : "Painéis com montagem por colagem.";
+  $("#assembly-text").textContent = isPrint
+    ? "STL em milímetros, com fundo fechado. Confira a área útil da sua impressora e as configurações de impressão antes de produzir."
+    : "SVG e DXF em milímetros, sem compensação de kerf. Confira a espessura real e teste os encaixes antes de cortar. Tampa e gavetas usam a folga informada.";
+  if (!valid) {
+    $("#summary-metrics").innerHTML =
+      '<p class="field-hint">Ajuste as medidas para calcular o projeto.</p>';
+    $("#parts-list").innerHTML = "";
+    $("#part-count").textContent = "";
+    return;
+  }
+  const iw = state.width - 2 * state.thickness,
+    id = state.depth - 2 * state.thickness,
+    ih = state.height - state.thickness;
+  const area = parts.reduce((sum, p) => sum + p.width * p.height, 0) / 1e6;
+  $("#summary-metrics").innerHTML =
+    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${state.model === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
+  $("#parts-title").textContent = isPrint
+    ? "Sobre o arquivo"
+    : "Lista de peças";
+  $("#part-count").textContent = isPrint ? "STL" : parts.length;
+  $("#parts-list").innerHTML = isPrint
+    ? `<li class="print-summary">${icon("box")}<strong>Um único sólido fechado</strong><p>Fundo, paredes${state.model === "printgrid" ? " e divisórias integradas" : ""}. Abra o STL no seu fatiador para estimar tempo e material.</p><small>Medidas do arquivo: ${state.width} × ${state.depth} × ${state.height} mm.</small></li>`
+    : parts
+        .map(
+          (p, i) =>
+            `<li><span class="part-index">${i + 1}</span><div><strong>${esc(p.name)}</strong><small>${fmt(p.width)} × ${fmt(p.height)} mm</small></div><span>1×</span></li>`,
+        )
+        .join("");
+}
+function download(content, filename, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+function filename() {
+  return (
+    state.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 60) || "papeled-projeto"
+  );
+}
+function exportDialog() {
+  if (validate(state).length) return;
+  const isPrint = modelById(state.model).category === "print";
+  const options = isPrint
+    ? [["stl", "STL", "Leve o sólido 3D para seu fatiador.", "box"]]
+    : [
+        ["svg", "SVG", "Contornos vetoriais na escala real, em mm.", "layout"],
+        [
+          "dxf",
+          "DXF",
+          "Polilinhas e círculos para software de corte.",
+          "ruler",
+        ],
+      ];
+  options.push([
+    "json",
+    "Projeto Papeled",
+    "Guarde as medidas e continue criando depois.",
+    "file",
+  ]);
+  $("#export-options").innerHTML = options
+    .map(
+      ([format, label, desc, img]) =>
+        `<button class="export-option" data-export="${format}">${icon(img)}<span><strong>${label}</strong><small>${desc}</small></span><span class="extension">.${format}</span>${icon("download")}</button>`,
+    )
+    .join("");
+  $("#export-note").textContent = isPrint
+    ? "STL usa milímetros por convenção. Selecione mm ao importar e confirme a escala e a área da sua impressora."
+    : "Montagem por colagem; sem encaixes dentados ou compensação de kerf. As ranhuras das divisórias usam a espessura exata informada. Faça uma amostra antes da produção. A disposição das peças não é um aproveitamento otimizado de chapa.";
+  $$("[data-export]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        try {
+          const kind = b.dataset.export,
+            name = filename();
+          if (kind === "svg")
+            download(exportSVG(state), name + ".svg", "image/svg+xml");
+          if (kind === "dxf")
+            download(exportDXF(state), name + ".dxf", "application/dxf");
+          if (kind === "stl")
+            download(exportSTL(state), name + ".stl", "model/stl");
+          if (kind === "json")
+            download(
+              JSON.stringify(state, null, 2),
+              name + ".papeled.json",
+              "application/json",
+            );
+          toast("Arquivo preparado. Confira os downloads do navegador.");
+        } catch (e) {
+          toast(e.message);
+        }
+      }),
+  );
+  $("#export-dialog").showModal();
+}
+function saveProject() {
+  if (validate(state).length || !state.name.trim()) return;
+  const all = getSaved(),
+    id = savedId || uuid(),
+    entry = {
+      id,
+      project: { ...state, name: state.name.trim() },
+      updated: new Date().toISOString(),
+    };
+  const idx = all.findIndex((p) => p.id === id);
+  if (idx >= 0) all[idx] = entry;
+  else all.unshift(entry);
+  if (store(storageKey, all)) {
+    savedId = id;
+    persistDraft();
+    updateSavedCount();
+    toast("Projeto salvo neste navegador. Sua ideia tem um lugar por aqui.");
+  }
+}
+function renderSaved() {
+  const all = getSaved();
+  $("#saved-grid").innerHTML = all.length
+    ? all
+        .map(
+          (p) =>
+            `<article class="model-card saved-card"><button class="saved-open" data-saved="${p.id}"><div class="model-image">${previewSVG(p.project)}<span class="card-open">${icon("arrow-up-right")}</span></div><div class="model-card-info"><h3>${esc(p.project.name)}</h3><p>${modelById(p.project.model).name} · ${p.project.width} × ${p.project.depth} × ${p.project.height} mm</p><span class="saved-date">Salvo em ${new Date(p.updated).toLocaleDateString("pt-BR")}</span></div></button><button class="icon-button delete-project" data-delete="${p.id}" aria-label="Excluir ${esc(p.project.name)}">${icon("trash")}</button></article>`,
+        )
+        .join("")
+    : `<div class="empty-state">${icon("folder")}<h2>Suas próximas ideias moram aqui.</h2><p>Crie um projeto e clique em “Salvar projeto”.<br>Ele ficará disponível neste navegador.</p><button class="button primary" id="empty-new">Explorar modelos ${icon("arrow-right")}</button></div>`;
+  $$("[data-saved]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const p = getSaved().find((p) => p.id === b.dataset.saved);
+        if (p) openProject(p.project, p.id);
+      }),
+  );
+  $$("[data-delete]").forEach(
+    (b) =>
+      (b.onclick = () =>
+        confirmAction(
+          "Excluir este projeto?",
+          "O arquivo salvo neste navegador será removido. As cópias exportadas continuam com você.",
+          () => {
+            store(
+              storageKey,
+              getSaved().filter((p) => p.id !== b.dataset.delete),
+            );
+            if (savedId === b.dataset.delete) savedId = null;
+            renderSaved();
+            updateSavedCount();
+            toast("Projeto removido.");
+          },
+        )),
+  );
+  $("#empty-new")?.addEventListener("click", () => (location.hash = "modelos"));
+}
+function confirmAction(title, message, action) {
+  $("#confirm-title").textContent = title;
+  $("#confirm-message").textContent = message;
+  $("#confirm-ok").onclick = () => {
+    $("#confirm-dialog").close();
+    action();
+  };
+  $("#confirm-dialog").showModal();
+}
+function updateQuote() {
+  const message = $("#quote-message").value;
+  $("#quote-whatsapp").href =
+    "https://wa.me/5561992430051?text=" + encodeURIComponent(message);
+  $("#quote-email").href =
+    "mailto:papeledmaker@gmail.com?subject=" +
+    encodeURIComponent("Projeto Papeled Maker — " + state.name) +
+    "&body=" +
+    encodeURIComponent(message);
+}
+$("#quote-project").onclick = () => {
+  const m = modelById(state.model);
+  $("#quote-message").value =
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${state.model === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${["drawers", "lid"].includes(state.model) ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser — montagem por colagem"}\nReferência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+  updateQuote();
+  $("#quote-dialog").showModal();
+};
+$("#quote-message").oninput = updateQuote;
+for (const key of [
+  "width",
+  "depth",
+  "height",
+  "thickness",
+  "cols",
+  "rows",
+  "ratio",
+  "clearance",
+])
+  $("#" + key).addEventListener("input", (e) => {
+    state[key] = e.target.value === "" ? NaN : Number(e.target.value);
+    renderEditor();
+    persistDraft();
+  });
+$("#project-name").oninput = (e) => {
+  state.name = e.target.value;
+  $("#save-project").disabled = !!validate(state).length || !state.name.trim();
+  $("#export-project").disabled = $("#save-project").disabled;
+  persistDraft();
+};
+$("#drawer-open").oninput = (e) => {
+  opened = Number(e.target.value) / 100;
+  $("#drawer-open-value").textContent = e.target.value + "%";
+  renderEditor();
+};
+$("#add-dividers").onclick = () => {
+  state.model = state.model === "print" ? "printgrid" : "grid";
+  state.cols = 2;
+  state.rows = 2;
+  if (state.name === modelById(state.model === "grid" ? "open" : "print").name)
+    state.name = modelById(state.model).name;
+  syncFields();
+  renderEditor();
+  persistDraft();
+};
+$("#reset-project").onclick = () =>
+  confirmAction(
+    "Restaurar este modelo?",
+    "As medidas e divisões do rascunho voltarão ao padrão. Os projetos já salvos não serão alterados.",
+    () => {
+      const id = savedId;
+      openProject(defaults(state.model), id);
+      persistDraft();
+      toast("Medidas restauradas.");
+    },
+  );
+$("#save-project").onclick = saveProject;
+$("#export-project").onclick = exportDialog;
+$("#back-models").onclick = () => (location.hash = "modelos");
+$("#new-project").onclick = () => (location.hash = "modelos");
+$("#start-project").onclick = () => openModel("grid");
+$("#how-button").onclick = () => $("#help-dialog").showModal();
+$("#confirm-cancel").onclick = () => $("#confirm-dialog").close();
+$$("[data-filter]").forEach(
+  (b) => (b.onclick = () => setFilter(b.dataset.filter)),
+);
+$("#search").oninput = renderCatalog;
+$$("[data-view]").forEach(
+  (b) =>
+    (b.onclick = () => {
+      view = b.dataset.view;
+      renderEditor();
+    }),
+);
+$("#explode").onclick = () => {
+  exploded = !exploded;
+  renderEditor();
+};
+$("#rotate-left").onclick = () => {
+  angle -= 25;
+  renderEditor();
+};
+$("#rotate-right").onclick = () => {
+  angle += 25;
+  renderEditor();
+};
+$("#camera-reset").onclick = () => {
+  angle = 35;
+  exploded = false;
+  renderEditor();
+};
+let drag = null;
+$("#preview").onpointerdown = (e) => {
+  if (view !== "3d" || e.button !== 0) return;
+  drag = { x: e.clientX, start: angle };
+  $("#preview").setPointerCapture(e.pointerId);
+  $("#preview").classList.add("dragging");
+};
+$("#preview").onpointermove = (e) => {
+  if (!drag) return;
+  angle = drag.start + (e.clientX - drag.x) * 0.5;
+  if (!validate(state).length)
+    $("#preview").innerHTML = previewSVG(state, {
+      angle,
+      exploded,
+      opened,
+      dimensions: true,
+    });
+};
+$("#preview").onpointerup = $("#preview").onpointercancel = () => {
+  drag = null;
+  $("#preview").classList.remove("dragging");
+};
+$("#import-button").onclick = () => $("#project-file").click();
+$("#project-file").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    if (file.size > 100000)
+      throw Error(
+        "Esse arquivo é grande demais. Abra um projeto .papeled.json de até 100 KB.",
+      );
+    const project = readProject(await file.text());
+    openProject(project);
+    persistDraft();
+    toast("Projeto aberto. Pode continuar criando!");
+  } catch (e) {
+    toast(
+      e instanceof SyntaxError
+        ? "Não foi possível ler o arquivo. Use um projeto .papeled.json válido."
+        : e.message,
+    );
+  } finally {
+    e.target.value = "";
+  }
+};
+$$("[data-close]").forEach(
+  (b) => (b.onclick = () => b.closest("dialog").close()),
+);
+$$("dialog").forEach(
+  (d) =>
+    (d.onclick = (e) => {
+      if (e.target === d) {
+        const r = d.getBoundingClientRect();
+        if (
+          e.clientX < r.left ||
+          e.clientX > r.right ||
+          e.clientY < r.top ||
+          e.clientY > r.bottom
+        )
+          d.close();
+      }
+    }),
+);
+document.addEventListener("keydown", (e) => {
+  if (
+    e.key === "/" &&
+    !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) &&
+    !$("dialog[open]") &&
+    !$("#catalog-view").hidden
+  ) {
+    e.preventDefault();
+    $("#search").focus();
+  }
+});
+$("#hero-object").innerHTML = previewSVG(
+  { ...defaults("grid"), finish: "natural" },
+  { angle: 35 },
+);
+mountIcons();
+try {
+  const draft = load(draftKey, null);
+  if (draft) {
+    state = readProject(draft);
+    savedId = draft.savedId || null;
+  }
+} catch {}
+syncFields();
+window.addEventListener("hashchange", route);
+route();

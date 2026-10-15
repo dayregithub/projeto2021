@@ -1,7 +1,484 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f5f4ef"><title>Papeled Maker — corte a laser e impressão 3D</title><link rel="stylesheet" href="/style.css"></head>
-<body><header><a class="brand" href="#">Papeled<small>MAKER · LASER &amp; 3D</small></a><nav aria-label="Principal"><a href="#colecao">Explorar produtos</a><a href="#processo">Como fazemos</a></nav><a class="contact" href="#contato">Vamos criar juntos <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></a></header>
-<main><section class="intro"><div class="eyebrow"><span></span> DO DIGITAL AO TANGÍVEL</div><h1>Boas ideias merecem<br>ganhar <em>forma.</em></h1><div class="intro-bottom"><p>Objetos autorais, feitos com tecnologia e intenção.<br>Explore possibilidades do corte a laser e da impressão 3D.</p><span class="local">DESENHADO COM CUIDADO.<br>PRODUZIDO NO NOSSO ESPAÇO.</span></div></section>
-<section class="workbench" aria-label="Personalizador de produto"><aside><div class="panel-title"><span>01 / EXPERIMENTE</span><span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></div><h2>Sua próxima ideia<br>começa aqui.</h2><p class="muted">Explore uma peça e deixe do seu jeito.</p><label for="model">Escolha o objeto</label><select id="model"><option value="box">Caixa organizadora</option><option value="stand">Suporte de mesa</option><option value="vase">Vaso paramétrico</option></select><label>Processo de fabricação</label><div class="segmented"><button data-process="laser" class="active">✳ Corte a laser</button><button data-process="3d">▧ Impressão 3D</button></div><div class="dimensions"><label for="width">Largura <output id="widthValue">160 mm</output></label><input id="width" type="range" min="100" max="240" value="160"><label for="height">Altura <output id="heightValue">100 mm</output></label><input id="height" type="range" min="60" max="160" value="100"></div><label>Acabamento <span id="finishName" class="muted">Madeira natural</span></label><div class="swatches"><button class="swatch selected" data-color="wood" aria-label="Madeira natural" style="--swatch:#bf9467"></button><button class="swatch" data-color="dark" aria-label="Grafite" style="--swatch:#424643"></button><button class="swatch" data-color="sage" aria-label="Verde sálvia" style="--swatch:#929d82"></button><button class="swatch" data-color="orange" aria-label="Terracota" style="--swatch:#c67550"></button></div><button id="project" class="primary">Conversar sobre esta peça <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></button><p class="footnote">Uma exploração visual. Cada projeto é único.</p></aside><div class="preview"><div class="preview-top"><span><i></i> PRÉVIA DO SEU OBJETO</span><span id="processBadge">CORTE A LASER</span></div><div id="object" role="img" aria-label="Prévia ilustrada da caixa organizadora"></div><div class="preview-bottom"><div><span class="tiny">ESTUDO Nº 001</span><h3 id="objectTitle">Caixa organizadora</h3><p id="material">MDF natural · montagem por encaixe</p></div><button id="rotate" aria-label="Girar visualização">⟳</button></div><span class="preview-note">VISUALIZAÇÃO CONCEITUAL · NÃO É UM MODELO TÉCNICO</span></div></section>
-<section id="colecao" class="collection"><div class="section-heading"><div><div class="eyebrow">PEQUENAS SÉRIES. MUITAS POSSIBILIDADES.</div><h2>Feito para imaginar.</h2></div><p>Do primeiro protótipo ao objeto do dia a dia.<br>Conheça algumas ideias do nosso universo.</p></div><div class="filterbar"><div class="filters"><button class="active" data-filter="all">Todos os objetos <span>06</span></button><button data-filter="laser">Corte a laser</button><button data-filter="3d">Impressão 3D</button></div><span id="count">6 objetos para explorar</span></div><div id="products" class="products"></div></section>
-<section id="processo" class="process"><div><div class="eyebrow">DA IDEIA À MATÉRIA</div><h2>Tecnologia é a ferramenta.<br>A criatividade é o começo.</h2><p>Um espaço para experimentar materiais, testar formas e transformar possibilidades em objetos.</p></div><div class="steps"><article><span>01</span><div><h3>Imagine</h3><p>Uma necessidade, uma referência ou uma ideia ainda no papel.</p></div></article><article><span>02</span><div><h3>Experimente</h3><p>Desenho digital, escolha de materiais e protótipos para encontrar a forma.</p></div></article><article><span>03</span><div><h3>Materialize</h3><p>Precisão do laser ou liberdade da impressão 3D, com acabamento cuidadoso.</p></div></article></div></section><section id="contato" class="cta"><div class="eyebrow">VAMOS TIRAR DO PAPEL?</div><h2>Qual é a sua próxima ideia?</h2><p>Monte um resumo do seu projeto para compartilhar com o estúdio.</p><button id="contactButton" class="primary">Começar uma conversa <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></button><div class="contact-details"><a href="https://wa.me/5561992430051" target="_blank" rel="noopener noreferrer">WhatsApp · (61) 99243-0051</a><a href="mailto:papeledmaker@gmail.com">papeledmaker@gmail.com</a></div></section></main><footer><a class="brand" href="#">Papeled<small>MAKER</small></a><p>Ideias digitais. Objetos reais.</p><span>FEITO EM UM ESPAÇO MAKER · 2026</span></footer><dialog id="dialog"><form method="dialog"><button class="close" aria-label="Fechar">×</button></form><div class="eyebrow">SEU PRÓXIMO PROJETO</div><h2>Vamos dar forma?</h2><p>Conte um pouco sobre a ideia. Envie seu resumo para a Papeled Maker pelo WhatsApp ou por e-mail.</p><label for="idea">Sobre o projeto</label><textarea id="idea" rows="5"></textarea><a id="whatsapp" class="primary" href="https://wa.me/5561992430051" target="_blank" rel="noopener noreferrer">Enviar pelo WhatsApp <span>↗</span></a><a id="emailProject" class="email-project" href="mailto:papeledmaker@gmail.com">Enviar por e-mail</a><button id="copy" class="secondary">Copiar resumo <span><svg class="arrow" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M5 15 15 5M5 5h10v10"/></svg></span></button><p id="copyStatus" role="status" class="muted"></p></dialog><script type="module" src="/main.js"></script></body></html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f8fa" />
+    <meta
+      name="description"
+      content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
+    />
+    <title>Papeled Maker — seu espaço maker online</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#modelos" aria-label="Papeled Maker início"
+        ><span class="brand-mark" aria-hidden="true">P<span>m</span></span
+        ><span
+          >Papeled <strong>Maker</strong><small>ESPAÇO DE CRIAÇÃO</small></span
+        ></a
+      >
+      <nav aria-label="Navegação principal">
+        <a href="#modelos" data-nav="modelos">Explorar modelos</a
+        ><a href="#projetos" data-nav="projetos"
+          >Meus projetos <span id="saved-count">0</span></a
+        ><button id="how-button">Como funciona</button>
+      </nav>
+      <a
+        class="studio-link"
+        href="https://wa.me/5561992430051"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Fale com o estúdio <span data-icon="arrow-up-right"></span
+      ></a>
+    </header>
+    <main id="main" tabindex="-1">
+      <section id="catalog-view">
+        <div class="hero">
+          <div class="hero-copy">
+            <div class="eyebrow">
+              <span></span> UM ESPAÇO PARA TIRAR IDEIAS DO PAPEL
+            </div>
+            <h1>Imagine. Ajuste.<br /><em>Faça acontecer.</em></h1>
+            <p>
+              Caixas, organizadores e soluções que se adaptam à sua ideia.<br />Escolha
+              um modelo. As próximas medidas são suas.
+            </p>
+            <div class="hero-actions">
+              <button class="button primary" id="start-project">
+                Criar meu primeiro projeto
+                <span data-icon="arrow-right"></span></button
+              ><span class="hero-note"
+                ><span data-icon="check-circle"></span> Sem cadastro. Direto à
+                criação.</span
+              >
+            </div>
+          </div>
+          <div class="hero-art">
+            <span class="art-label"><i></i> FEITO DO SEU JEITO</span>
+            <div id="hero-object"></div>
+            <span class="dimension-pill">240 × 180 × 65 mm</span
+            ><span class="art-caption"
+              ><span data-icon="sliders"></span> Uma ideia. Infinitas
+              combinações.</span
+            >
+          </div>
+        </div>
+        <div class="benefits">
+          <span
+            ><span data-icon="ruler"></span> Medidas que fazem sentido para
+            você</span
+          ><span
+            ><span data-icon="layers"></span> Corte a laser e impressão 3D</span
+          ><span
+            ><span data-icon="download"></span> Seu projeto, pronto para o
+            próximo passo</span
+          >
+        </div>
+        <section class="model-section" aria-labelledby="model-heading">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">O QUE VAMOS CRIAR HOJE?</div>
+              <h2 id="model-heading">Um ponto de partida para cada ideia.</h2>
+            </div>
+            <label class="search"
+              ><span data-icon="search"></span
+              ><input
+                id="search"
+                type="search"
+                placeholder="Buscar um modelo…"
+                aria-label="Buscar modelos"
+              /><kbd>/</kbd></label
+            >
+          </div>
+          <div class="catalog-toolbar">
+            <div class="filter-group" role="group" aria-label="Filtrar modelos">
+              <button data-filter="all" class="active" aria-pressed="true">
+                Todos os modelos <span>8</span></button
+              ><button data-filter="laser" aria-pressed="false">
+                <span data-icon="sparkles"></span> Corte a laser</button
+              ><button data-filter="print" aria-pressed="false">
+                <span data-icon="box"></span> Impressão 3D
+              </button>
+            </div>
+            <span id="model-count">8 modelos para explorar</span>
+          </div>
+          <div id="resume-banner" hidden></div>
+          <div class="model-grid" id="model-grid"></div>
+          <div class="import-banner">
+            <div class="import-icon" data-icon="upload"></div>
+            <div>
+              <h3>Uma boa ideia merece continuar.</h3>
+              <p>
+                Já criou por aqui? Abra seu arquivo .papeled.json e retome de
+                onde parou.
+              </p>
+            </div>
+            <button class="button secondary" id="import-button">
+              Abrir projeto <span data-icon="arrow-up-right"></span>
+            </button>
+          </div>
+        </section>
+        <section class="how-strip">
+          <div>
+            <div class="eyebrow">DO PRIMEIRO CLIQUE À PRIMEIRA PEÇA</div>
+            <h2>Criar pode ser simples.</h2>
+          </div>
+          <article>
+            <span>01</span>
+            <h3>Escolha uma base</h3>
+            <p>Encontre o modelo que resolve sua necessidade.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Deixe com a sua cara</h3>
+            <p>Altere medidas, divisórias, gavetas e material.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Leve para o mundo real</h3>
+            <p>Exporte os arquivos ou peça ajuda ao estúdio.</p>
+          </article>
+        </section>
+      </section>
+      <section id="editor-view" hidden>
+        <div class="editor-heading">
+          <div>
+            <button class="text-button" id="back-models">
+              <span data-icon="arrow-left"></span> Todos os modelos
+            </button>
+            <div class="editor-title">
+              <h1 id="editor-model-title"></h1>
+              <span class="status-dot">EDIÇÃO AO VIVO</span>
+            </div>
+          </div>
+          <div class="editor-actions">
+            <button id="save-project" class="button secondary">
+              <span data-icon="bookmark"></span> Salvar projeto</button
+            ><button id="export-project" class="button primary">
+              <span data-icon="download"></span> Exportar
+            </button>
+          </div>
+        </div>
+        <div class="workspace">
+          <aside class="controls">
+            <div class="control-heading">
+              <h2>Do seu jeito</h2>
+              <button
+                class="icon-button"
+                id="reset-project"
+                title="Restaurar medidas do modelo"
+                aria-label="Restaurar medidas do modelo"
+              >
+                <span data-icon="rotate"></span>
+              </button>
+            </div>
+            <label class="field-label" for="project-name">Nome do projeto</label
+            ><input
+              class="text-input"
+              id="project-name"
+              maxlength="80"
+              placeholder="Dê um nome à sua ideia"
+            />
+            <div class="control-section">
+              <h3>
+                <span>01</span> Medidas externas <span class="unit">mm</span>
+              </h3>
+              <div class="dimension-fields">
+                <label
+                  >Largura<input
+                    type="number"
+                    id="width"
+                    min="40"
+                    max="1000"
+                    step="1"
+                    inputmode="decimal" /></label
+                ><label
+                  >Profundidade<input
+                    type="number"
+                    id="depth"
+                    min="40"
+                    max="1000"
+                    step="1"
+                    inputmode="decimal" /></label
+                ><label
+                  >Altura<input
+                    type="number"
+                    id="height"
+                    min="15"
+                    max="700"
+                    step="1"
+                    inputmode="decimal"
+                /></label>
+              </div>
+              <p class="field-hint">
+                Todas as medidas consideram o exterior da peça.
+              </p>
+            </div>
+            <div class="control-section">
+              <h3><span>02</span> Organização interna</h3>
+              <div id="division-fields">
+                <div class="split-fields">
+                  <label id="cols-label"
+                    >Colunas<input
+                      type="number"
+                      id="cols"
+                      min="1"
+                      max="5"
+                      step="1" /></label
+                  ><label id="rows-label"
+                    ><span id="rows-title">Linhas</span
+                    ><input type="number" id="rows" min="1" max="5" step="1"
+                  /></label>
+                </div>
+                <label id="ratio-label" class="range-label" hidden
+                  >Primeiro compartimento <output id="ratio-value">60%</output
+                  ><input id="ratio" type="range" min="20" max="80" step="1"
+                /></label>
+                <p class="field-hint" id="compartment-info"></p>
+              </div>
+              <div id="no-divisions">
+                <p class="field-hint">
+                  Precisa separar objetos? Adicione compartimentos à sua caixa.
+                </p>
+                <button class="button subtle" id="add-dividers">
+                  <span data-icon="grid"></span> Adicionar divisórias
+                </button>
+              </div>
+              <label id="drawer-open-label" class="range-label" hidden
+                >Abertura na prévia <output id="drawer-open-value">35%</output
+                ><input
+                  id="drawer-open"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="35"
+              /></label>
+            </div>
+            <div class="control-section">
+              <h3><span>03</span> Material e acabamento</h3>
+              <div class="split-fields">
+                <label
+                  >Espessura (mm)<input
+                    id="thickness"
+                    type="number"
+                    min="1"
+                    max="12"
+                    step="0.1" /></label
+                ><label id="clearance-label"
+                  >Folga (mm)<input
+                    id="clearance"
+                    type="number"
+                    min="0.2"
+                    max="2"
+                    step="0.1"
+                /></label>
+              </div>
+              <div class="finish-label">
+                Cor da prévia <span id="finish-name"></span>
+              </div>
+              <div id="finishes" class="finish-options"></div>
+              <p class="field-hint" id="material-hint"></p>
+            </div>
+            <div id="validation" class="validation" role="alert" hidden></div>
+            <div class="local-note">
+              <span data-icon="shield"></span> Seu rascunho fica neste
+              navegador.
+            </div>
+          </aside>
+          <div class="visual-column">
+            <div class="canvas-toolbar">
+              <div class="view-tabs" role="group" aria-label="Visualização">
+                <button data-view="3d" class="active" aria-pressed="true">
+                  <span data-icon="box"></span> Montagem</button
+                ><button data-view="2d" aria-pressed="false">
+                  <span data-icon="layout"></span> Peças 2D
+                </button>
+              </div>
+              <span class="canvas-process" id="canvas-process"></span>
+            </div>
+            <div class="canvas" id="canvas">
+              <div class="canvas-top">
+                <span><i></i> PRÉVIA PARAMÉTRICA</span
+                ><button class="text-button" id="explode">
+                  <span data-icon="layers"></span> Separar peças
+                </button>
+              </div>
+              <div id="preview" role="img" aria-label="Prévia do projeto"></div>
+              <div class="canvas-bottom">
+                <span id="canvas-hint"
+                  ><span data-icon="move"></span> Arraste para girar</span
+                >
+                <div class="camera-controls">
+                  <button
+                    class="icon-button"
+                    id="rotate-left"
+                    title="Girar para a esquerda"
+                    aria-label="Girar para a esquerda"
+                  >
+                    <span data-icon="rotate-left"></span></button
+                  ><button
+                    class="icon-button"
+                    id="camera-reset"
+                    title="Restaurar câmera"
+                    aria-label="Restaurar câmera"
+                  >
+                    <span data-icon="focus"></span></button
+                  ><button
+                    class="icon-button"
+                    id="rotate-right"
+                    title="Girar para a direita"
+                    aria-label="Girar para a direita"
+                  >
+                    <span data-icon="rotate"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="project-stats" id="project-stats"></div>
+            <div class="assembly-note">
+              <span data-icon="info"></span>
+              <div>
+                <strong id="assembly-title"></strong>
+                <p id="assembly-text"></p>
+              </div>
+            </div>
+          </div>
+          <aside class="project-summary">
+            <div class="summary-heading">
+              <h2>Seu projeto em detalhes</h2>
+              <span data-icon="clipboard"></span>
+            </div>
+            <div id="summary-metrics"></div>
+            <div class="parts-title">
+              <h3 id="parts-title">Lista de peças</h3>
+              <span id="part-count"></span>
+            </div>
+            <ol id="parts-list" class="parts-list"></ol>
+            <div class="summary-bottom">
+              <p>Quer ajuda para produzir?</p>
+              <button class="button secondary" id="quote-project">
+                Pedir orçamento <span data-icon="arrow-up-right"></span></button
+              ><span>Direto com a Papeled Maker.</span>
+            </div>
+          </aside>
+        </div>
+      </section>
+      <section id="saved-view" hidden>
+        <div class="section-heading saved-heading">
+          <div>
+            <div class="eyebrow">IDEIAS QUE MERECEM CONTINUAR</div>
+            <h1>Meus projetos.</h1>
+            <p>
+              Salvos apenas neste navegador. Exporte uma cópia para levar com
+              você.
+            </p>
+          </div>
+          <button class="button primary" id="new-project">
+            <span data-icon="plus"></span> Criar projeto
+          </button>
+        </div>
+        <div id="saved-grid" class="model-grid"></div>
+      </section>
+    </main>
+    <footer>
+      <a class="brand footer-brand" href="#modelos"
+        >Papeled <strong>Maker</strong></a
+      ><span>Ideias digitais. Objetos reais.</span
+      ><a href="mailto:papeledmaker@gmail.com"
+        >papeledmaker@gmail.com <span data-icon="arrow-up-right"></span
+      ></a>
+    </footer>
+    <input
+      id="project-file"
+      type="file"
+      accept=".json,application/json"
+      hidden
+    />
+    <dialog id="export-dialog" aria-labelledby="export-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">DO DIGITAL AO TANGÍVEL</div>
+      <h2 id="export-title">O próximo passo é seu.</h2>
+      <p class="dialog-description">
+        Escolha o formato para continuar o seu projeto.
+      </p>
+      <div id="export-options"></div>
+      <div class="export-note" id="export-note"></div>
+      <p class="dialog-footnote">
+        Você também pode enviar o projeto ao estúdio para conferir materiais e
+        fabricação.
+      </p>
+    </dialog>
+    <dialog id="help-dialog" aria-labelledby="help-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">BEM-VINDO À SUA BANCADA DIGITAL</div>
+      <h2 id="help-title">Da ideia à peça.</h2>
+      <ol class="help-steps">
+        <li>
+          <strong>Escolha o modelo.</strong>
+          <p>
+            Use os filtros para encontrar uma caixa, organizador ou gaveteiro.
+          </p>
+        </li>
+        <li>
+          <strong>Ajuste e visualize.</strong>
+          <p>
+            Defina dimensões externas, espessura e divisões. Gire a prévia ou
+            confira as peças em 2D.
+          </p>
+        </li>
+        <li>
+          <strong>Salve e fabrique.</strong>
+          <p>
+            Projetos ficam neste navegador. JSON permite reabrir em outro
+            dispositivo. SVG/DXF usam milímetros e STL pode ser aberto no seu
+            fatiador.
+          </p>
+        </li>
+      </ol>
+      <div class="export-note">
+        Corte a laser: montagem por colagem e divisórias com meio encaixe. Os
+        arquivos não compensam a largura do corte (kerf). Faça um teste de
+        material antes da produção final. A cor é apenas ilustrativa.
+      </div>
+      <button class="button primary full" data-close>
+        Vamos criar <span data-icon="arrow-right"></span>
+      </button>
+    </dialog>
+    <dialog id="quote-dialog" aria-labelledby="quote-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">FEITO COM A PAPELED MAKER</div>
+      <h2 id="quote-title">Vamos produzir sua ideia?</h2>
+      <p class="dialog-description">
+        Seu projeto já vai na mensagem. Conte para nós a quantidade e como
+        pretende usar.
+      </p>
+      <label class="field-label" for="quote-message">Resumo do projeto</label
+      ><textarea id="quote-message" rows="9"></textarea
+      ><a
+        id="quote-whatsapp"
+        class="button primary full"
+        target="_blank"
+        rel="noopener noreferrer"
+        >Conversar no WhatsApp <span data-icon="arrow-up-right"></span></a
+      ><a id="quote-email" class="email-link">Prefiro enviar por e-mail</a>
+    </dialog>
+    <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button class="button secondary" id="confirm-cancel">Cancelar</button
+        ><button class="button primary" id="confirm-ok">Confirmar</button>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
