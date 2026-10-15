@@ -929,3 +929,88 @@ test("all ten real lettering fonts produce distinct, watertight text with preser
     assert.ok(validate({ ...defaults("lettering"), signText }).length);
   assert.ok(validate({ ...defaults("lettering"), signFont: "unknown" }).length);
 });
+
+test("brush cover clears both lid options; all three textures and drainage remain solid and printable", () => {
+  for (const brushShape of ["round", "square"])
+    for (const brushTexture of ["ribbed", "rings", "dots"])
+      for (const printLid of ["none", "outer"]) {
+        const s = {
+          ...defaults("toothbrush"),
+          brushShape,
+          brushTexture,
+          printLid,
+          brushCover: true,
+        };
+        assert.deepEqual(validate(s), []);
+        const parts = printParts(s),
+          cover = parts.find((p) => p.id === "cobertura");
+        assert.equal(parts.length, printLid === "none" ? 2 : 3);
+        near(cover.bodyInterference, 0);
+        near(cover.lidInterference, 0);
+        for (const part of parts) {
+          assert.equal(part.componentCount, 1);
+          assert.ok(checkManifold(part.triangles) > 0);
+        }
+        assert.deepEqual(readProject(s), s);
+      }
+  const s = defaults("toothbrush"),
+    drained = printParts(s)[0];
+  assert.ok(drained.volume < printParts({ ...s, brushDrain: false })[0].volume);
+  // A vertical ray through the center drain must not hit the bottom at all.
+  const x = s.width / 2,
+    y = s.depth / 2;
+  for (const tri of drained.triangles) {
+    const [a, b, c] = tri,
+      denominator =
+        (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+    if (Math.abs(denominator) < 1e-9) continue;
+    const u =
+      ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / denominator;
+    const v =
+      ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / denominator;
+    assert.ok(!(u >= 0 && v >= 0 && u + v <= 1), "center drainage blocked");
+  }
+  const old = { ...s };
+  delete old.brushDrain;
+  assert.equal(readProject(old).brushDrain, false);
+  for (const patch of [
+    { brushTexture: "invalid" },
+    { brushCoverHeight: 0 },
+    { brushDrainDiameter: NaN },
+  ])
+    assert.ok(validate({ ...s, ...patch }).length);
+});
+
+test("standing letters support accents on their base and joined letters form a single solid even without a base", () => {
+  for (const { id } of LETTER_FONTS) {
+    for (const signOrientation of ["flat", "standing"]) {
+      const s = {
+        ...defaults("lettering"),
+        signText: "João & Ana",
+        signFont: id,
+        signOrientation,
+        signJoin: true,
+        signSpacing: -10,
+        signBase: signOrientation === "standing",
+      };
+      assert.deepEqual(validate(s), []);
+      const p = printParts(s)[0];
+      assert.equal(p.componentCount, 1, id + " " + signOrientation);
+      assert.ok(checkManifold(p.triangles) > 0);
+      near(Math.min(...p.triangles.flat().map((v) => v[2])), 0);
+      assert.deepEqual(readProject(s), s);
+    }
+  }
+  assert.ok(
+    validate({
+      ...defaults("lettering"),
+      signOrientation: "standing",
+      signBase: false,
+    }).length,
+  );
+  assert.ok(validate({ ...defaults("lettering"), signSpacing: -90 }).length);
+  const s = { ...defaults("lettering"), width: 500, signText: "Ana" };
+  assert.ok(
+    letterContours({ ...s, signSpacing: -20 }).width < letterContours(s).width,
+  );
+});

@@ -363,6 +363,10 @@ export function previewSVG(
               p[2] += (s.printOpening / 100) * Math.max(20, s.height * 0.6);
             if (exploded) p[2] += s.height * 0.3;
           }
+          if (part.id === "cobertura")
+            p[2] +=
+              (s.printOpening / 100) * (s.brushCoverHeight + s.height + 20) +
+              (exploded ? 30 : 0);
           if (part.id === "pino" && exploded) p[0] -= s.width * 0.3;
           return p;
         });

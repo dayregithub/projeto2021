@@ -454,6 +454,51 @@
                 <option value="round">Redondo</option>
                 <option value="square">Quadrado</option>
               </select>
+              <label class="field-label" for="brush-cover"
+                >Cobertura alta para proteger as escovas</label
+              ><select class="text-input" id="brush-cover">
+                <option value="no">Sem cobertura</option>
+                <option value="yes">Com cobertura superior removível</option>
+              </select>
+              <label class="field-label" for="brushCoverHeight"
+                >Altura livre acima da borda (mm)</label
+              ><input
+                class="text-input"
+                type="number"
+                id="brushCoverHeight"
+                min="20"
+                max="250"
+                step="5"
+              />
+              <label class="field-label" for="brush-texture"
+                >Textura externa</label
+              ><select class="text-input" id="brush-texture">
+                <option value="none">Lisa</option>
+                <option value="ribbed">Canelada vertical</option>
+                <option value="rings">Anéis horizontais</option>
+                <option value="dots">Pontilhada</option>
+              </select>
+              <label class="field-label" for="brush-drain"
+                >Drenagem do fundo</label
+              ><select class="text-input" id="brush-drain">
+                <option value="yes">Com 5 furos e pés de apoio</option>
+                <option value="no">Sem furos</option>
+              </select>
+              <label class="field-label" for="brushDrainDiameter"
+                >Diâmetro dos furos de drenagem (mm)</label
+              ><input
+                class="text-input"
+                type="number"
+                id="brushDrainDiameter"
+                min="2"
+                max="8"
+                step="0.5"
+              />
+              <p class="field-hint">
+                Os pés de 2 mm deixam os furos livres sobre a bancada. A
+                cobertura é uma peça separada, compatível com a tampa de apoio
+                das escovas. As texturas fazem parte do STL.
+              </p>
               <div id="brush-lid-options" hidden>
                 <label class="field-label" for="brushHoles"
                   >Aberturas na tampa (0 = fechada)</label
@@ -503,6 +548,28 @@
                 <option value="yes">Texto em relevo sobre base</option>
                 <option value="no">Letras sem base</option>
               </select>
+              <label class="field-label" for="sign-orientation"
+                >Posição das letras</label
+              ><select class="text-input" id="sign-orientation">
+                <option value="flat">Deitadas, em relevo</option>
+                <option value="standing">Em pé sobre a base</option>
+              </select>
+              <label class="field-label" for="sign-join">União das letras</label
+              ><select class="text-input" id="sign-join">
+                <option value="no">Espaçamento livre</option>
+                <option value="yes">
+                  Grudadinhas, com ligações entre letras
+                </option>
+              </select>
+              <label class="range-label" for="signSpacing"
+                >Espaçamento <output id="sign-spacing-value"></output
+                ><input
+                  type="range"
+                  id="signSpacing"
+                  min="-40"
+                  max="40"
+                  step="1"
+              /></label>
               <p class="field-hint" id="sign-hint"></p>
             </div>
             <div class="control-section" id="print-options" hidden>

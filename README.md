@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 27 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 29 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -140,3 +140,12 @@ A página inicial oferece “Enviar meu arquivo” para visitantes que já têm 
 Quando o navegador oferece compartilhamento de arquivos, o botão de anexo entrega os arquivos originais e a mensagem à aplicação escolhida pelo visitante. O usuário escolhe WhatsApp ou e-mail, confere o contato e confirma o envio. A conclusão da API representa a entrega ao aplicativo, não confirmação de recebimento pelo estúdio. Cancelar mantém a seleção disponível para tentar novamente.
 
 Os links fixos de WhatsApp e e-mail levam o resumo para +55 61 99243-0051 ou papeledmaker@gmail.com; o visitante deve anexar os arquivos no aplicativo. Os links não fingem incluir anexos. Não há upload para servidor, armazenamento externo ou envio automático. `src/external-files.js` controla esse fluxo, separado da abertura de projetos `.papeled.json` e do orçamento dos produtos paramétricos.
+
+
+## Cobertura, textura e drenagem; letreiros em pé
+
+O porta-escovas pode receber uma cobertura alta removível, com altura livre de 20 a 250 mm acima da borda. É independente da tampa perfurada: funciona com e sem ela. Uma borda interna limita o encaixe; a folga por lado respeita o controle do editor. O ZIP inclui STL individual da cobertura, além da montagem distribuída para impressão. O controle de abertura levanta a cobertura na prévia.
+
+Texturas externas: canelada vertical, anéis horizontais e pontilhada, além da superfície lisa. São relevos reais unidos ao corpo no STL; a faixa superior permanece lisa para o encaixe. Podem acrescentar até 1,2 mm por lado ao tamanho nominal do corpo. A drenagem opcional faz cinco furos, com diâmetro desejado de 2 a 8 mm (limitado pelo espaço interno), e quatro pés de 2 mm. O fundo sobe 2 mm para preservar a altura externa; a altura útil interna diminui na mesma medida. Projetos antigos sem essa opção continuam com fundo fechado.
+
+O letreiro pode ficar deitado ou em pé sobre a base. Em pé, o campo de altura do corpo passa a definir a espessura das letras; a altura máxima das letras continua em seu controle próprio, e a altura montada aparece no resumo. A base é obrigatória nesse modo. Pequenas ligações sustentam acentos e detalhes, e apoios conectam as letras à base. A opção “Grudadinhas” acrescenta ligações reais de 1,2 mm entre todos os componentes do texto, inclusive espaços e acentos, em ambos os modos. O espaçamento varia de −40% a +40%; ao ativar a união começa em −10%. As ligações podem atravessar espaços e alterar o desenho da fonte; a prévia mostra o resultado. Geometria validada por software; teste a resistência de traços finos e os encaixes na impressão real.

@@ -28,7 +28,7 @@ export function letterContours(s) {
     cursor += font.kern[previous + c] || 0;
     if (g.rings.length)
       glyphs.push(g.rings.map((r) => r.map(([x, y]) => [x + cursor, y])));
-    cursor += g.advance;
+    cursor += g.advance * (1 + s.signSpacing / 100);
     previous = c;
   }
   const points = glyphs.flat(2),
@@ -42,12 +42,14 @@ export function letterContours(s) {
     scale = Math.min(
       s.signTextHeight / (maxY - minY),
       (s.width - 2 * margin) / (maxX - minX),
-      (s.depth - 2 * margin) / (maxY - minY),
+      s.signOrientation === "standing"
+        ? Infinity
+        : (s.depth - 2 * margin) / (maxY - minY),
     ),
     width = (maxX - minX) * scale,
     height = (maxY - minY) * scale,
     dx = (s.width - width) / 2,
-    dy = (s.depth - height) / 2;
+    dy = s.signOrientation === "standing" ? margin : (s.depth - height) / 2;
   return {
     width,
     height,
@@ -56,5 +58,16 @@ export function letterContours(s) {
         r.map(([x, y]) => [(x - minX) * scale + dx, (y - minY) * scale + dy]),
       ),
     ),
+  };
+}
+
+export function signMetrics(s) {
+  const letters = letterContours(s);
+  return {
+    ...letters,
+    totalHeight:
+      s.signOrientation === "standing"
+        ? letters.height + s.thickness
+        : s.height,
   };
 }

@@ -850,13 +850,11 @@ test("native sharing hands the original external file bytes to the selected app 
   });
   await page.goto("/");
   await page.locator("[data-send-external]").click();
-  await page
-    .locator("#external-files")
-    .setInputFiles({
-      name: "minha-criacao.dxf",
-      mimeType: "application/dxf",
-      buffer: Buffer.from("0\nSECTION\n2\nENTITIES\n0\nEOF"),
-    });
+  await page.locator("#external-files").setInputFiles({
+    name: "minha-criacao.dxf",
+    mimeType: "application/dxf",
+    buffer: Buffer.from("0\nSECTION\n2\nENTITIES\n0\nEOF"),
+  });
   await page.locator("#external-details").fill("Corte a laser, uma unidade.");
   await page.locator("#external-share").click();
   await expect(page.locator("#external-status")).toContainText(
@@ -877,4 +875,66 @@ test("native sharing hands the original external file bytes to the selected app 
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("brush hood, textures and drainage persist and export a separate cover STL", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "toothbrush");
+  await page.selectOption("#brush-cover", "yes");
+  await page.locator("#brushCoverHeight").fill("120");
+  await page.selectOption("#print-lid", "outer");
+  await page.selectOption("#brush-texture", "ribbed");
+  await page.locator("#brushDrainDiameter").fill("4");
+  await expect(page.locator("#preview svg")).toBeVisible();
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#brush-cover")).toHaveValue("yes");
+  await expect(page.locator("#brushCoverHeight")).toHaveValue("120");
+  await expect(page.locator("#brush-texture")).toHaveValue("ribbed");
+  const wait = page.waitForEvent("download");
+  await page.locator("#quote-project").click();
+  const { unzipSync } = await import("fflate");
+  const zip = unzipSync(await readFile(await (await wait).path()));
+  expect(
+    Object.keys(zip).some((k) => k.endsWith("-cobertura.stl")),
+  ).toBeTruthy();
+  await expect(page.locator("#quote-message")).toHaveValue(
+    /Cobertura alta: 120 mm/,
+  );
+  await expect(page.locator("#quote-message")).toHaveValue(
+    /Drenagem: 5 furos de 4 mm/,
+  );
+  expect(errors).toEqual([]);
+});
+
+test("standing joined lettering forces a base and saves its spacing and orientation", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "lettering");
+  await page.selectOption("#sign-base", "no");
+  await page.selectOption("#sign-orientation", "standing");
+  await expect(page.locator("#sign-base")).toHaveValue("yes");
+  await expect(page.locator('#sign-base option[value="no"]')).toBeDisabled();
+  await page.selectOption("#sign-join", "yes");
+  await expect(page.locator("#signSpacing")).toHaveValue("-10");
+  await expect(page.locator("#height-title")).toHaveText(
+    "Espessura das letras",
+  );
+  await expect(page.locator("#preview svg")).toBeVisible();
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#sign-orientation")).toHaveValue("standing");
+  await expect(page.locator("#sign-join")).toHaveValue("yes");
+  const wait = page.waitForEvent("download");
+  await page.locator("#quote-project").click();
+  await wait;
+  await expect(page.locator("#quote-message")).toHaveValue(/Posição: em pé/);
+  expect(errors).toEqual([]);
 });

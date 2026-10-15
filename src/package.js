@@ -1,5 +1,6 @@
+import { BRUSH_TEXTURES, brushDrainage } from "./brush-features.js";
 import { familyFor } from "./models.js";
-import { LETTER_FONTS } from "./lettering.js";
+import { LETTER_FONTS, signMetrics } from "./lettering.js";
 import { brushOpenings, signProfileRings } from "./print3d.js";
 import { zipSync, strToU8 } from "fflate";
 import { jsPDF } from "jspdf";
@@ -34,7 +35,12 @@ export function referenceContours(s) {
       ...(s.signBase
         ? [outlinePoints(s.width, s.depth, Math.min(3, s.depth / 8))]
         : []),
-      ...signProfileRings(s),
+      ...signProfileRings(s).map((r) =>
+        r.map(([x, y]) => [
+          x + (s.signOrientation === "standing" ? s.width + 20 : 0),
+          y,
+        ]),
+      ),
     ];
   if (familyFor(s) === "toothbrush") {
     const r = s.brushShape === "round" ? s.width / 2 - 0.001 : s.cornerRadius;
@@ -86,7 +92,11 @@ const escape = (s) =>
 export function projectSVG(s) {
   if (!printed(s)) return exportSVG(s);
   const width = 2 * s.width + 20,
-    height = Math.max(s.depth, s.height);
+    height = Math.max(
+      s.depth,
+      s.height,
+      familyFor(s) === "lettering" ? signMetrics(s).totalHeight + 5 : 0,
+    );
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}mm" height="${height}mm" viewBox="0 0 ${width} ${height}"><title>${escape(s.name)} — vistas de referência</title><desc>Vista superior e frontal em mm. Referência dimensional; não é arquivo de corte. Use STL para imprimir. Tampa: ${PRINT_LIDS[s.printLid]}.</desc><g id="REFERENCE" fill="none" stroke="#3159a8" stroke-width="0.2">${referenceContours(
     s,
   )
@@ -215,11 +225,14 @@ export function projectPDF(s) {
       familyFor(s) === "lettering"
         ? [
             `Texto: ${s.signText}`,
+            `Posicao: ${s.signOrientation === "standing" ? "em pe" : "relevo"}; unidas: ${s.signJoin ? "sim" : "nao"}; espaco: ${s.signSpacing}%`,
             `Fonte: ${LETTER_FONTS.find((f) => f.id === s.signFont).label}`,
-            `Base: ${s.signBase ? "sim" : "nao"} | altura total ${s.height} mm`,
+            `Base: ${s.signBase ? "sim" : "nao"} | altura total ${signMetrics(s).totalHeight.toFixed(1)} mm`,
           ]
         : familyFor(s) === "toothbrush"
           ? [
+              `Textura: ${BRUSH_TEXTURES[s.brushTexture]}`,
+              `Cobertura alta: ${s.brushCover ? s.brushCoverHeight + " mm" : "nao"}; drenagem: ${s.brushDrain ? (2 * brushDrainage(s).radius).toFixed(1) + " mm, 5 furos, pes 2 mm" : "nao"}`,
               `Porta-escovas ${s.brushShape === "round" ? "redondo" : "quadrado"}`,
               s.printLid === "none"
                 ? "Sem tampa"
@@ -239,8 +252,12 @@ export function projectPDF(s) {
       `Folga por lado: ${s.clearance} mm`,
       familyFor(s) === "lettering"
         ? s.signBase
-          ? "Letras em relevo unidas a base."
-          : "Letras e acentos podem ser pecas independentes."
+          ? s.signOrientation === "standing"
+            ? "Letras em pe unidas a base; detalhes recebem apoios."
+            : "Letras em relevo unidas a base."
+          : s.signJoin
+            ? "Letras e acentos unidos por ligacoes de 1,2 mm."
+            : "Letras e acentos podem ser pecas independentes."
         : "Corpo em peca unica. Tampa e pino, quando presentes, separados.",
       "Vistas ilustrativas: dimensoes declaradas prevalecem.",
       "Use os arquivos STL para imprimir; SVG/DXF sao referencias.",
@@ -248,7 +265,12 @@ export function projectPDF(s) {
     lines.forEach((line, i) => doc.text(line, 15, 44 + i * 7));
     const scale = Math.min(
       175 / (2 * s.width + 20),
-      120 / Math.max(s.depth, s.height),
+      85 /
+        Math.max(
+          s.depth,
+          s.height,
+          familyFor(s) === "lettering" ? signMetrics(s).totalHeight + 5 : 0,
+        ),
     );
     doc.setDrawColor(49, 89, 168);
     for (const r of referenceContours(s))
@@ -280,7 +302,10 @@ export function projectPackage(s, message = "") {
     projectSTL(s),
   );
   files[base + ".papeled.json"] = strToU8(JSON.stringify(s, null, 2));
-  if (printed(s) && s.printLid !== "none") {
+  if (
+    printed(s) &&
+    (s.printLid !== "none" || (familyFor(s) === "toothbrush" && s.brushCover))
+  ) {
     for (const p of printLayout(s)) {
       const minX = Math.min(...p.triangles.flat().map((v) => v[0]));
       const triangles = p.triangles.map((tri) =>

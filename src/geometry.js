@@ -153,6 +153,20 @@ export function validate(s) {
   )
     errors.push("A tampa interna precisa de mais espaço para a guia.");
   if (familyFor(s) === "toothbrush") {
+    if (
+      typeof s.brushCover !== "boolean" ||
+      typeof s.brushDrain !== "boolean" ||
+      !["none", "ribbed", "rings", "dots"].includes(s.brushTexture) ||
+      !Number.isFinite(s.brushCoverHeight) ||
+      s.brushCoverHeight < 20 ||
+      s.brushCoverHeight > 250 ||
+      !Number.isFinite(s.brushDrainDiameter) ||
+      s.brushDrainDiameter < 2 ||
+      s.brushDrainDiameter > 8
+    )
+      errors.push(
+        "Confira cobertura (20–250 mm), textura e drenagem (2–8 mm).",
+      );
     if (!["round", "square"].includes(s.brushShape))
       errors.push("Escolha formato redondo ou quadrado.");
     if (s.width !== s.depth)
@@ -180,6 +194,21 @@ export function validate(s) {
       );
   }
   if (familyFor(s) === "lettering") {
+    if (
+      !["flat", "standing"].includes(s.signOrientation) ||
+      typeof s.signJoin !== "boolean" ||
+      !Number.isFinite(s.signSpacing) ||
+      s.signSpacing < -40 ||
+      s.signSpacing > 40
+    )
+      errors.push("Confira posição, união e espaçamento das letras.");
+    if (
+      s.signOrientation === "standing" &&
+      (!s.signBase || s.height > s.depth - 6)
+    )
+      errors.push(
+        "Letras em pé precisam de base e espessura menor que a profundidade da base menos 6 mm.",
+      );
     if (!validSignText(s))
       errors.push(
         "Letreiro: use de 1 a 36 caracteres com letras, números, acentos e pontuação simples.",
@@ -194,7 +223,11 @@ export function validate(s) {
     )
       errors.push("Altura do texto: de 8 a 150 mm; escolha se deseja base.");
     if (s.printLid !== "none") errors.push("Letreiros não usam tampa.");
-    if (s.signBase && s.height <= s.thickness + 0.5)
+    if (
+      s.signOrientation === "flat" &&
+      s.signBase &&
+      s.height <= s.thickness + 0.5
+    )
       errors.push(
         "A altura total deve deixar pelo menos 0,5 mm de relevo sobre a base.",
       );
@@ -727,6 +760,8 @@ export function readProject(input) {
     );
   const s = defaults(raw.model);
   for (const k of Object.keys(s)) if (k in raw) s[k] = raw[k];
+  if (familyFor(s) === "toothbrush" && raw.brushDrain === undefined)
+    s.brushDrain = false;
   if (raw.hingeType === undefined && raw.lidType === "hinged")
     s.hingeType = "hardware";
   if (raw.dividerJoint === undefined && familyFor(s) === "grid")

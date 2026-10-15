@@ -1,3 +1,4 @@
+import { brushDrainage, brushCoverDimensions } from "./brush-features.js";
 import { letterContours } from "./lettering.js";
 import Module from "manifold-3d";
 import { familyFor } from "./models.js";
@@ -54,6 +55,7 @@ export function printDimensions(s) {
     barrelRadius,
     hingeY: -barrelRadius - c,
     hingeZ: s.height,
+    floorLift: familyFor(s) === "toothbrush" ? brushDrainage(s).lift : 0,
     dividerTop: s.printLid === "inner" ? s.height - lip - c : s.height,
   };
 }
@@ -136,30 +138,95 @@ export function brushOpenings(s) {
     ]),
   };
 }
+const shiftedCircle = (p, r) => translate(p, keep(CrossSection.circle(r, 12)));
+function connectProfile(shape, width = 1.2) {
+  const components = shape.decompose().map(keep);
+  if (components.length < 2) return shape;
+  const points = components.map((c) => c.toPolygons().flat()),
+    edges = [];
+  for (let i = 0; i < points.length; i++)
+    for (let j = i + 1; j < points.length; j++) {
+      let best = Infinity,
+        a,
+        b;
+      for (const p of points[i])
+        for (const q of points[j]) {
+          const d = (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2;
+          if (d < best) {
+            best = d;
+            a = p;
+            b = q;
+          }
+        }
+      edges.push({ i, j, best, a, b });
+    }
+  const parent = components.map((_, i) => i),
+    root = (i) => (parent[i] === i ? i : (parent[i] = root(parent[i]))),
+    bridges = [];
+  for (const e of edges.sort((a, b) => a.best - b.best)) {
+    const a = root(e.i),
+      b = root(e.j);
+    if (a === b) continue;
+    parent[b] = a;
+    bridges.push(
+      keep(
+        CrossSection.hull([
+          shiftedCircle(e.a, width / 2),
+          shiftedCircle(e.b, width / 2),
+        ]),
+      ),
+    );
+  }
+  return union(shape, ...bridges);
+}
+function signProfile(s) {
+  const { glyphs } = letterContours(s);
+  let shapes = glyphs.map((rs) => keep(new CrossSection(rs, "EvenOdd")));
+  if (s.signOrientation === "standing")
+    shapes = shapes.map((shape) => connectProfile(shape));
+  let text = union(...shapes);
+  if (s.signJoin) text = connectProfile(text);
+  return text;
+}
 export function signProfileRings(s) {
-  const glyphs = letterContours(s).glyphs.map(
-    (rs) => new CrossSection(rs, "EvenOdd"),
-  );
-  let profile;
+  const before = allocated;
+  allocated = [];
   try {
-    profile = CrossSection.union(glyphs);
-    return profile.toPolygons();
+    return signProfile(s).toPolygons();
   } finally {
-    profile?.delete();
-    for (const glyph of glyphs) glyph.delete();
+    for (const obj of allocated) obj.delete();
+    allocated = before;
   }
 }
 function signParts(s) {
-  const { glyphs } = letterContours(s),
-    glyphShapes = glyphs.map((rs) => keep(new CrossSection(rs, "EvenOdd"))),
-    text = union(...glyphShapes),
-    baseZ = s.signBase ? s.thickness : 0;
-  let solid = slab(
-    text,
-    baseZ - (s.signBase ? 0.03 : 0),
-    s.height - baseZ + (s.signBase ? 0.03 : 0),
-  );
-  if (s.signBase)
+  let text = signProfile(s),
+    solid;
+  if (s.signOrientation === "standing") {
+    const maxY = Math.max(
+        ...text
+          .toPolygons()
+          .flat()
+          .map((p) => p[1]),
+      ),
+      supports = [];
+    // Each glyph/island reaches the base; this supports descenders and accents.
+    for (const component of text.decompose().map(keep)) {
+      const points = component.toPolygons().flat(),
+        p = points.reduce((a, b) => (a[1] > b[1] ? a : b));
+      supports.push(
+        keep(
+          CrossSection.hull([
+            shiftedCircle(p, 0.6),
+            shiftedCircle([p[0], maxY + 0.3], 0.6),
+          ]),
+        ),
+      );
+    }
+    text = union(text, ...supports);
+    solid = translate(
+      [0, (s.depth - s.height) / 2, s.thickness + maxY],
+      keep(slab(text, 0, s.height).rotate([-90, 0, 0])),
+    );
     solid = union(
       solid,
       slab(
@@ -168,16 +235,172 @@ function signParts(s) {
         s.thickness,
       ),
     );
+  } else {
+    const baseZ = s.signBase ? s.thickness : 0;
+    solid = slab(
+      text,
+      baseZ - (s.signBase ? 0.03 : 0),
+      s.height - baseZ + (s.signBase ? 0.03 : 0),
+    );
+    if (s.signBase)
+      solid = union(
+        solid,
+        slab(
+          roundedOutline(s.width, s.depth, Math.min(3, s.depth / 8)),
+          0,
+          s.thickness,
+        ),
+      );
+  }
   const pieces = solid.decompose(),
     part = {
       id: "letreiro",
-      name: s.signBase ? "Letreiro com base" : "Letras sem base",
+      name:
+        s.signOrientation === "standing"
+          ? "Letreiro em pé"
+          : s.signBase
+            ? "Letreiro com base"
+            : "Letras sem base",
       triangles: meshTriangles(solid),
       volume: solid.volume(),
       componentCount: pieces.length,
     };
   for (const p of pieces) p.delete();
   return [part];
+}
+function brushTexture(s, body, profile, r) {
+  if (s.brushTexture === "none") return body;
+  const t = s.thickness,
+    w = s.width,
+    d = s.depth,
+    lift = brushDrainage(s).lift,
+    lip = Math.min(2 * t + 2, s.height / 3),
+    z0 = lift + t + 2,
+    z1 = s.height - lip - 3,
+    A = Math.min(1.2, t * 0.5 + 0.3);
+  if (z1 <= z0) return body;
+  const points = [];
+  if (s.brushShape === "round") {
+    for (let i = 0; i < 24; i++) {
+      const a = (i * 2 * Math.PI) / 24;
+      points.push([
+        w / 2 + (w / 2 - A * 0.5) * Math.cos(a),
+        d / 2 + (w / 2 - A * 0.5) * Math.sin(a),
+      ]);
+    }
+  } else {
+    const m = Math.min(w / 2, Math.max(r + 2, 4));
+    for (let i = 0; i < 6; i++) {
+      const p = m + ((w - 2 * m) * i) / 5;
+      points.push(
+        [p, A * 0.5],
+        [p, d - A * 0.5],
+        [A * 0.5, p],
+        [w - A * 0.5, p],
+      );
+    }
+  }
+  const detail = [];
+  if (s.brushTexture === "ribbed")
+    for (const [x, y] of points)
+      detail.push(
+        translate([x, y, z0], keep(Manifold.cylinder(z1 - z0, A, A, 12))),
+      );
+  if (s.brushTexture === "rings") {
+    const ring = subtract(
+      profile(w + 2 * A, d + 2 * A, r + A, -A, -A),
+      profile(w - 0.4, d - 0.4, Math.max(0, r - 0.2), 0.2, 0.2),
+    );
+    for (let z = z0; z < z1; z += Math.max(8, (z1 - z0) / 16))
+      detail.push(slab(ring, z, Math.min(1.5, z1 - z)));
+  }
+  if (s.brushTexture === "dots")
+    for (let row = 0; row < 4; row++)
+      for (const [x, y] of points)
+        detail.push(
+          translate(
+            [x, y, z0 + ((z1 - z0) * (row + 0.5)) / 4],
+            keep(Manifold.sphere(A, 12)),
+          ),
+        );
+  return detail.length ? union(body, ...detail) : body;
+}
+function drainBrush(s, body, outer) {
+  if (!s.brushDrain) return body;
+  const drainage = brushDrainage(s),
+    R = Math.min(3, s.thickness + 1),
+    orbit = s.width / 2 - R - 0.5,
+    feet = [];
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    feet.push(
+      shiftedCircle(
+        [s.width / 2 + orbit * Math.cos(a), s.depth / 2 + orbit * Math.sin(a)],
+        R,
+      ),
+    );
+  }
+  body = subtract(
+    body,
+    slab(subtract(outer, union(...feet)), -0.1, drainage.lift + 0.1),
+  );
+  for (const [x, y] of drainage.centers)
+    body = subtract(
+      body,
+      translate(
+        [x, y, drainage.lift - 0.1],
+        keep(
+          Manifold.cylinder(
+            s.thickness + 0.2,
+            drainage.radius,
+            drainage.radius,
+            24,
+          ),
+        ),
+      ),
+    );
+  return body;
+}
+function makeBrushCover(s, profile, r) {
+  const {
+      innerOffset: inside,
+      outerOffset: outside,
+      bottom,
+      stopZ,
+      top,
+    } = brushCoverDimensions(s),
+    t = s.thickness,
+    w = s.width,
+    d = s.depth;
+  const shell = profile(
+      w + 2 * outside,
+      d + 2 * outside,
+      r + outside,
+      -outside,
+      -outside,
+    ),
+    hollow = profile(
+      w + 2 * inside,
+      d + 2 * inside,
+      r + inside,
+      -inside,
+      -inside,
+    );
+
+  const shoulderInset = inside - s.clearance - Math.min(t / 2, 1.2),
+    opening = profile(
+      w + 2 * shoulderInset,
+      d + 2 * shoulderInset,
+      Math.max(0, r + shoulderInset),
+      -shoulderInset,
+      -shoulderInset,
+    );
+  return subtract(
+    slab(shell, bottom, top - bottom),
+    slab(hollow, bottom - 0.1, stopZ - bottom + 0.1),
+    slab(hollow, stopZ + t, top - 2 * t - stopZ),
+    slab(opening, bottom - 0.1, top - t - bottom + 0.1),
+  );
 }
 const cache = new Map();
 export function printParts(s) {
@@ -199,6 +422,14 @@ export function printParts(s) {
     s.signFont,
     s.signTextHeight,
     s.signBase,
+    s.signOrientation,
+    s.signSpacing,
+    s.signJoin,
+    s.brushCover,
+    s.brushCoverHeight,
+    s.brushTexture,
+    s.brushDrain,
+    s.brushDrainDiameter,
   ]);
   if (cache.has(key)) return cache.get(key);
   allocated = [];
@@ -256,7 +487,19 @@ export function printParts(s) {
       body = subtract(body, ...voids);
       if (dividerTop < h)
         body = subtract(body, slab(inner, dividerTop, h - dividerTop + 0.1));
-    } else body = subtract(body, slab(inner, t, h));
+    } else
+      body = subtract(
+        body,
+        slab(
+          inner,
+          t + (familyFor(s) === "toothbrush" ? brushDrainage(s).lift : 0),
+          h,
+        ),
+      );
+    if (familyFor(s) === "toothbrush") {
+      body = drainBrush(s, body, outer);
+      body = brushTexture(s, body, profile, r);
+    }
     if (kind === "inner") {
       const guideOuter = profile(
         w - 2 * t - 2 * c,
@@ -366,6 +609,19 @@ export function printParts(s) {
         name: "Pino imprimível da dobradiça",
         triangles: meshTriangles(pin),
       });
+    if (familyFor(s) === "toothbrush" && s.brushCover) {
+      const cover = makeBrushCover(s, profile, r),
+        components = cover.decompose();
+      parts.push({
+        id: "cobertura",
+        name: "Cobertura alta para escovas",
+        triangles: meshTriangles(cover),
+        componentCount: components.length,
+        bodyInterference: intersect(body, cover).volume(),
+        lidInterference: lid ? intersect(lid, cover).volume() : 0,
+      });
+      for (const p of components) p.delete();
+    }
     cache.set(key, parts);
     if (cache.size > 8) cache.delete(cache.keys().next().value);
     return parts;
