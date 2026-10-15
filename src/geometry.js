@@ -1,3 +1,4 @@
+import { PRINT_LIDS, printLayout } from "./print3d.js";
 import { decoratePanels, DECORATIONS, validEngraving } from "./decoration.js";
 import { buildDrawerCabinet, attachDividers } from "./assemblies.js";
 import { resolvedJoint, JOINT_GROUPS } from "./joinery.js";
@@ -121,6 +122,29 @@ export function validate(s) {
     (!supportsConstruction(s) || lidType(s) === "none")
   )
     errors.push("Adicione uma tampa para aplicar recortes e gravação.");
+  if (!Object.hasOwn(PRINT_LIDS, s.printLid))
+    errors.push("Escolha uma tampa 3D válida.");
+  if (
+    !Number.isFinite(s.cornerRadius) ||
+    s.cornerRadius < 0 ||
+    s.cornerRadius > Math.min(s.width, s.depth) / 2 - 0.1
+  )
+    errors.push(
+      "Raio dos cantos: use zero ou um valor menor que a metade da menor medida.",
+    );
+  if (
+    !Number.isFinite(s.printOpening) ||
+    s.printOpening < 0 ||
+    s.printOpening > 110
+  )
+    errors.push("Abertura 3D: use de 0 a 110.");
+  if (
+    modelById(s.model).category === "print" &&
+    s.printLid === "inner" &&
+    (s.width <= 4 * s.thickness + 2 * s.clearance + 4 ||
+      s.depth <= 4 * s.thickness + 2 * s.clearance + 4)
+  )
+    errors.push("A tampa interna precisa de mais espaço para a guia.");
   if (errors.length) return errors;
   if (
     lidType(s) === "hinged" &&
@@ -520,6 +544,8 @@ export function exportDXF(s) {
 export function stlTriangles(s) {
   if (validate(s).length || modelById(s.model).category !== "print")
     throw Error("Projeto 3D inválido.");
+  if (s.cornerRadius > 0 || s.printLid !== "none")
+    return printLayout(s).flatMap((p) => p.triangles);
   const { width: w, depth: d, height: h, thickness: t } = s;
   const { xs, ys } = cuts(s);
   const vertical = familyFor(s) === "printgrid" ? xs : [],

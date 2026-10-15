@@ -1,3 +1,4 @@
+import { PRINT_LIDS, printDimensions } from "./src/print3d.js";
 import { DECORATIONS } from "./src/decoration.js";
 import { JOINT_GROUPS, resolvedJoint } from "./src/joinery.js";
 import { familyFor, USAGES } from "./src/models.js";
@@ -23,9 +24,6 @@ import {
   validate,
   panels,
   drawerDimensions,
-  exportSVG,
-  exportDXF,
-  exportSTL,
   readProject,
 } from "./src/geometry.js";
 import {
@@ -222,9 +220,12 @@ function syncFields() {
     "lidOpening",
     "decorationSize",
     "engraveSize",
+    "cornerRadius",
+    "printOpening",
   ])
     $("#" + k).value = state[k];
   $("#lid-type").value = state.lidType;
+  $("#print-lid").value = state.printLid;
   $("#hinge-type").value = state.hingeType;
   for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
     $("#" + key).value = state[key];
@@ -275,6 +276,18 @@ function renderEditor() {
     lid = lidType(state);
   const canJoin = supportsJoinery(state);
   $("#construction-section").hidden = !canJoin;
+  $("#print-options").hidden = !isPrint;
+  $("#print-opening-label").hidden = !isPrint || state.printLid === "none";
+  $("#print-opening-value").textContent =
+    state.printOpening + (state.printLid === "hinged" ? "°" : "%");
+  $("#printOpening").max = state.printLid === "hinged" ? 110 : 100;
+  $("#print-hint").textContent =
+    state.printLid === "none"
+      ? "Corpo em peça única, com fundo e divisórias integrados."
+      : state.printLid === "hinged"
+        ? "Corpo, tampa e pino são imprimíveis e exportados separadamente. Monte o pino nos alojamentos após imprimir; teste a folga no seu material."
+        : "Tampa separada, com guia interna ou saia externa. A folga é aplicada por lado; teste o encaixe na impressora.";
+
   $("#lid-joint-label").hidden =
     lid === "none" || (lid === "hinged" && hingeType(state) === "tabbed");
   $("#divider-joint-label").hidden = !supportsGrid(state);
@@ -339,7 +352,9 @@ function renderEditor() {
     $("#lid-hint").textContent =
       "Sem eixos comprados: dois discos e dois eixos retangulares são recortados na chapa. Os braços giram ao redor dos discos. Consulte a montagem abaixo.";
   $("#clearance-label").hidden =
-    familyFor(state) !== "drawers" && lid === "none";
+    familyFor(state) !== "drawers" &&
+    lid === "none" &&
+    !(isPrint && state.printLid !== "none");
   $("#material-hint").textContent = isPrint
     ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
     : "Use a espessura real da chapa. Cor apenas ilustrativa.";
@@ -391,12 +406,14 @@ function renderEditor() {
   );
   const cells = compartmentCount(state);
   $("#project-stats").innerHTML =
-    `<div>${icon("ruler")}<span><strong>${state.width} × ${state.depth} × ${state.height}</strong><small>dimensões externas · mm</small></span></div><div>${icon("layers")}<span><strong>${isPrint ? "Peça única" : parts.length + " peças"}</strong><small>${isPrint ? "impressão em um sólido" : "para corte e montagem"}</small></span></div><div>${icon("grid")}<span><strong>${cells} ${familyFor(state) === "drawers" ? "gavetas" : cells === 1 ? "espaço" : "compartimentos"}</strong><small>organização do seu jeito</small></span></div>`;
+    `<div>${icon("ruler")}<span><strong>${state.width} × ${state.depth} × ${state.height}</strong><small>dimensões externas · mm</small></span></div><div>${icon("layers")}<span><strong>${isPrint ? (state.printLid === "none" ? "Peça única" : state.printLid === "hinged" ? "Corpo + tampa + pino" : "Corpo + tampa") : parts.length + " peças"}</strong><small>${isPrint ? (state.printLid === "none" ? "impressão em um sólido" : "peças separadas para impressão") : "para corte e montagem"}</small></span></div><div>${icon("grid")}<span><strong>${cells} ${familyFor(state) === "drawers" ? "gavetas" : cells === 1 ? "espaço" : "compartimentos"}</strong><small>organização do seu jeito</small></span></div>`;
   $("#assembly-title").textContent = isPrint
-    ? "Peça única, pronta para o fatiador."
+    ? state.printLid === "none"
+      ? "Peça única, pronta para o fatiador."
+      : PRINT_LIDS[state.printLid]
     : `${JOINTS[jointType(state)]} · ${LIDS[lidType(state)]}`;
   $("#assembly-text").textContent = isPrint
-    ? "STL em milímetros, com fundo fechado. Confira a área útil da impressora e as configurações do fatiador."
+    ? "STL em milímetros, com fundo fechado. Corpo em peça única; tampas são peças separadas. Confira os encaixes e a área da impressora no fatiador."
     : constructionNotes(state);
   if (!valid) {
     $("#summary-metrics").innerHTML =
@@ -407,7 +424,10 @@ function renderEditor() {
   }
   const iw = shellMetrics(state).innerWidth,
     id = state.depth - 2 * state.thickness,
-    ih = shellMetrics(state).dividerTop - state.thickness;
+    ih =
+      (isPrint
+        ? printDimensions(state).dividerTop
+        : shellMetrics(state).dividerTop) - state.thickness;
   const fasteners = parts.reduce((n, p) => n + (p.m3Fasteners || 0), 0);
   const area = parts.reduce((sum, p) => sum + p.width * p.height, 0) / 1e6;
   $("#summary-metrics").innerHTML =
@@ -417,7 +437,7 @@ function renderEditor() {
     : "Lista de peças";
   $("#part-count").textContent = isPrint ? "STL" : parts.length;
   $("#parts-list").innerHTML = isPrint
-    ? `<li class="print-summary">${icon("box")}<strong>Um único sólido fechado</strong><p>Fundo, paredes${familyFor(state) === "printgrid" ? " e divisórias integradas" : ""}. Abra o STL no seu fatiador para estimar tempo e material.</p><small>Medidas do arquivo: ${state.width} × ${state.depth} × ${state.height} mm.</small></li>`
+    ? `<li class="print-summary">${icon("box")}<strong>${state.printLid === "none" ? "Um único sólido fechado" : "Corpo e tampa imprimíveis"}</strong><p>Fundo, paredes${familyFor(state) === "printgrid" ? " e divisórias integradas" : ""}. Abra o STL no seu fatiador para estimar tempo e material.</p><small>Medidas do corpo: ${state.width} × ${state.depth} × ${state.height} mm.</small></li>`
     : parts
         .map(
           (p, i) =>
@@ -446,6 +466,9 @@ function filename() {
       .slice(0, 60) || "papeled-projeto"
   );
 }
+let packageModulePromise;
+const packageModule = () =>
+  (packageModulePromise ??= import("./src/package.js"));
 function exportDialog() {
   if (validate(state).length) return;
   const isPrint = modelById(state.model).category === "print";
@@ -460,6 +483,44 @@ function exportDialog() {
           "ruler",
         ],
       ];
+  if (isPrint)
+    options.push(
+      [
+        "svg",
+        "SVG — vistas de referência",
+        "Vista superior e frontal; não é arquivo de corte.",
+        "layout",
+      ],
+      [
+        "dxf",
+        "DXF — vistas de referência",
+        "Referência dimensional para conferir o projeto.",
+        "ruler",
+      ],
+    );
+  else
+    options.push([
+      "stl",
+      "STL da montagem",
+      "Referência 3D; não é uma peça única para impressão.",
+      "box",
+    ]);
+  options.push(
+    [
+      "pdf",
+      "PDF",
+      isPrint
+        ? "Ficha do projeto com medidas."
+        : "Peças em escala 1:1, uma por página.",
+      "file",
+    ],
+    [
+      "zip",
+      "Pacote completo ZIP",
+      "SVG, DXF, PDF, STL e projeto editável.",
+      "download",
+    ],
+  );
   options.push([
     "json",
     "Projeto Papeled",
@@ -478,16 +539,38 @@ function exportDialog() {
       " A disposição das peças não é um aproveitamento otimizado de chapa.";
   $$("[data-export]").forEach(
     (b) =>
-      (b.onclick = () => {
+      (b.onclick = async () => {
         try {
           const kind = b.dataset.export,
             name = filename();
           if (kind === "svg")
-            download(exportSVG(state), name + ".svg", "image/svg+xml");
+            download(
+              (await packageModule()).projectSVG(state),
+              name + ".svg",
+              "image/svg+xml",
+            );
           if (kind === "dxf")
-            download(exportDXF(state), name + ".dxf", "application/dxf");
+            download(
+              (await packageModule()).projectDXF(state),
+              name + ".dxf",
+              "application/dxf",
+            );
           if (kind === "stl")
-            download(exportSTL(state), name + ".stl", "model/stl");
+            download(
+              (await packageModule()).projectSTL(state),
+              name + ".stl",
+              "model/stl",
+            );
+          if (kind === "pdf")
+            download(
+              (await packageModule()).projectPDF(state),
+              name + ".pdf",
+              "application/pdf",
+            );
+          if (kind === "zip") {
+            const bundle = (await packageModule()).projectPackage(state);
+            download(bundle.data, bundle.name, "application/zip");
+          }
           if (kind === "json")
             download(
               JSON.stringify(state, null, 2),
@@ -577,12 +660,59 @@ function updateQuote() {
     "&body=" +
     encodeURIComponent(message);
 }
-$("#quote-project").onclick = () => {
+let quoteFile = null,
+  quoteURL = null,
+  quoteJob = 0;
+$("#quote-share").onclick = async () => {
+  if (!quoteFile) return;
+  try {
+    await navigator.share({
+      files: [quoteFile],
+      title: "Projeto Papeled Maker",
+      text: $("#quote-message").value,
+    });
+  } catch (e) {
+    if (e.name !== "AbortError")
+      toast("Não foi possível compartilhar. Baixe o ZIP e anexe na conversa.");
+  }
+};
+$("#quote-project").onclick = async () => {
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
+  $("#quote-package-status").textContent = "Preparando arquivos do projeto…";
+  $("#quote-package").hidden = true;
+  $("#quote-share").hidden = true;
   $("#quote-dialog").showModal();
+  const snapshot = { ...state },
+    job = ++quoteJob,
+    message = $("#quote-message").value;
+  quoteFile = null;
+  try {
+    const module = await packageModule();
+    if (job !== quoteJob) return;
+    const bundle = module.projectPackage(snapshot, message);
+    quoteFile = new File([bundle.data], bundle.name, {
+      type: "application/zip",
+    });
+    if (quoteURL) URL.revokeObjectURL(quoteURL);
+    quoteURL = URL.createObjectURL(quoteFile);
+    const link = $("#quote-package");
+    link.href = quoteURL;
+    link.download = bundle.name;
+    link.hidden = false;
+    link.textContent = "Baixar " + bundle.name;
+    $("#quote-package-status").textContent =
+      "ZIP pronto: SVG, DXF, PDF, STL e projeto editável. O download começa automaticamente; depois, anexe o ZIP na conversa.";
+    $("#quote-share").hidden = !(
+      navigator.canShare && navigator.canShare({ files: [quoteFile] })
+    );
+    if ($("#quote-dialog").open) link.click();
+  } catch (e) {
+    $("#quote-package-status").textContent =
+      "Não foi possível gerar o ZIP: " + e.message;
+  }
 };
 $("#quote-message").oninput = updateQuote;
 for (const key of [
@@ -600,6 +730,8 @@ for (const key of [
   "lidOpening",
   "decorationSize",
   "engraveSize",
+  "cornerRadius",
+  "printOpening",
 ])
   $("#" + key).addEventListener("input", (e) => {
     state[key] = e.target.value === "" ? NaN : Number(e.target.value);
@@ -619,6 +751,13 @@ $$("[data-joint]").forEach(
       persistDraft();
     }),
 );
+$("#print-lid").onchange = (e) => {
+  state.printLid = e.target.value;
+  state.printOpening = state.printLid === "hinged" ? 70 : 55;
+  syncFields();
+  renderEditor();
+  persistDraft();
+};
 $("#lid-type").onchange = (e) => {
   state.lidType = e.target.value;
   if (state.lidType === "hinged") state.lidOpening = 100;

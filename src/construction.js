@@ -507,13 +507,11 @@ export function buildBoxPanels(s) {
       gy = t + c,
       cw = m.innerWidth - 2 * c,
       cd = d - 2 * t - 2 * c,
-      bridge = Math.max(2 * t, 5),
       minY = hd.y - t / 2;
+    // Full panel reaches the integral pivot bar, with no open window.
     const plate = union(
-      rect(gx, gy, cw, cd),
-      rect(m.inset, hd.y - t / 2, w - 2 * m.inset, t),
-      rect(gx, hd.y + t / 2, bridge, gy - hd.y - t / 2),
-      rect(gx + cw - bridge, hd.y + t / 2, bridge, gy - hd.y - t / 2),
+      rect(gx, minY, cw, gy + cd - minY),
+      rect(m.inset, minY, w - 2 * m.inset, t),
     );
     add("Tampa com haste integral", plate, basePose(0, 0, h - t / 2), {
       group: "lid",

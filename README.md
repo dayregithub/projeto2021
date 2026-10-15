@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 17 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 19 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -31,11 +31,11 @@ npm run dev
 
 Todos exportam `.papeled.json` para reabrir o projeto. A importação aceita esse formato próprio; não reconstrói modelos a partir de SVG, DXF ou STL arbitrários.
 
-“Meus projetos” e rascunhos usam `localStorage`. São específicos do navegador/dispositivo, sem sincronização. Uma cópia JSON serve como backup. O WhatsApp e o e-mail recebem um resumo editável; o visitante confirma o envio no aplicativo externo. Nenhuma mensagem é enviada automaticamente. A cor é apenas uma referência visual.
+“Meus projetos” e rascunhos usam `localStorage`. São específicos do navegador/dispositivo, sem sincronização. Uma cópia JSON serve como backup. O botão de orçamento prepara e baixa um ZIP completo, além do resumo editável. O visitante confirma o envio no aplicativo externo. Nenhuma mensagem é enviada automaticamente. A cor é apenas uma referência visual.
 
 ## Regras de fabricação
 
-As medidas informadas são externas **do corpo**, em milímetros. Tampas e suportes podem aumentar as dimensões finais. As peças são calculadas considerando espessura, união, folga e tipo de tampa. A prévia das caixas usa os mesmos polígonos dos arquivos de corte, extrudados pela espessura. Todos os conjuntos de montagem a laser, incluindo gaveteiros, oferecem união reta, dedo e T. Os modelos para impressão 3D continuam em peça única.
+As medidas informadas são externas **do corpo**, em milímetros. Tampas e suportes podem aumentar as dimensões finais. As peças são calculadas considerando espessura, união, folga e tipo de tampa. A prévia das caixas usa os mesmos polígonos dos arquivos de corte, extrudados pela espessura. Todos os conjuntos de montagem a laser, incluindo gaveteiros, oferecem união reta, dedo e T. O corpo dos modelos 3D continua em peça única; tampas e pinos imprimíveis são peças separadas.
 
 - **União reta:** base inteira; frente/traseira repousam sobre ela; laterais ficam entre frente e traseira. Montagem por colagem.
 - **União dedo:** contornos complementares na base e nas quinas verticais, sem sobreposição de material. O passo alvo pode ser alterado e é ajustado para um número ímpar de segmentos em cada borda. A cola continua recomendada depois do teste de ajuste.
@@ -44,12 +44,12 @@ As medidas informadas são externas **do corpo**, em milímetros. Tampas e supor
 - **Tampa removível:** união reta usa guia colada; dedo/T usam uma moldura de quatro peças sob a tampa, com encaixes na placa e entre as peças. As divisórias terminam abaixo da guia.
 - **Tampa deslizante:** quatro trilhos formam canais com vão `espessura + 2 × folga`. A tampa entra pela frente rebaixada e tem puxador frontal unido conforme a configuração da tampa. Trilhos podem ser colados, encaixados ou fixados em T; a largura dos trilhos T aumenta para comportar os canais. As divisórias ficam abaixo deles.
 - **Dobradiça com discos e eixos recortados:** duas orelhas fixas nas laterais, dois braços na tampa, dois discos circulares e dois eixos retangulares cortados na própria chapa. O eixo tem seção `espessura × max(espessura, diâmetro/2)` e comprimento `2 × espessura + folga`. Cada eixo atravessa o rasgo da lateral e o do disco; o braço gira ao redor do disco. Monte a tampa para manter o espaçamento antes de fixar os eixos. Cole somente os encaixes retangulares; não cole os braços aos discos. Não precisa comprar pinos ou parafusos para o pivô.
-- **Dobradiça com haste na própria tampa:** tampa e haste transversal formam uma só peça. A haste tem seção quadrada igual à espessura; o alojamento circular deve comportar sua diagonal (`espessura × √2`) mais a folga. Monte a tampa entre as laterais antes de fechar o corpo. Não há discos ou eixos separados. Não há união entre placas na própria tampa porque ela é monolítica; a configuração de união continua valendo para o corpo. As folgas e os alívios na traseira deixam espaço para a articulação.
+- **Dobradiça com haste na própria tampa:** tampa e haste transversal formam uma só peça. O painel é contínuo até a haste, sem janela entre os braços. A haste tem seção quadrada igual à espessura; o alojamento circular deve comportar sua diagonal (`espessura × √2`) mais a folga. Monte a tampa entre as laterais antes de fechar o corpo. Não há discos ou eixos separados. Não há união entre placas na própria tampa porque ela é monolítica; a configuração de união continua valendo para o corpo. As folgas e os alívios na traseira deixam espaço para a articulação.
 - **Eixo externo:** mecanismo anterior mantido como opção e em projetos antigos. Usa duas arruelas recortadas e requer dois pinos/parafusos com retenção. Este modo é identificado explicitamente no editor.
 - **Gaveteiro:** estrutura, prateleiras, separadores e gavetas de cinco painéis usam os mesmos contornos no corte e na prévia. A união principal configura a estrutura; os controles de divisórias e gavetas configuram os respectivos conjuntos. Monte e esquadre a estrutura, depois as divisões e finalmente as gavetas. O controle de abertura é só de visualização.
 - **Personalização da tampa:** coração, círculo, estrela e flor são recortes reais, com tamanho ajustável. O nome aceita até 30 caracteres, incluindo acentos, números, espaços, ponto, hífen, apóstrofo e `&`. A gravação usa letras maiúsculas em traço simples, geradas como vetores próprios, sem fontes externas. O tamanho se reduz automaticamente para caber na área segura. Ao personalizar, a prévia fecha a tampa para mostrar o desenho.
 - **SVG/DXF:** escala real em mm, sem compensação de kerf. Contornos fechados de corte ficam em vermelho na camada `CUT`; os traços abertos da gravação ficam em azul na camada `ENGRAVE`. A numeração da lista não é gravada. A disposição é simples, sem otimização de chapa; a área é a soma dos retângulos envolventes, sem espaçamento/perdas. Configure corte e gravação separadamente na máquina e teste a espessura real antes de produzir. Não são trajetórias de usinagem CNC.
-- **STL:** sólido fechado único, com paredes/divisórias/fundo integrados, em mm por convenção. O gerador extrai a fronteira de uma grade retangular, sem sólidos sobrepostos. Testes verificam arestas com duas faces, orientação e volume esperado. Tempo de impressão, suportes e quantidade de material devem ser calculados no fatiador. Não há exportação de G-code.
+- **STL:** corpo fechado em peça única, com paredes/divisórias/fundo integrados, em mm por convenção; tampas e pinos, quando escolhidos, são sólidos separados. A versão básica preserva a grade retangular anterior; arredondamentos e tampas usam o gerador de sólidos descrito abaixo. Testes verificam fechamento das malhas, orientação e encaixe. Tempo de impressão, suportes e quantidade de material devem ser calculados no fatiador. Não há exportação de G-code.
 
 Os arquivos foram validados por software; cortes e impressões físicas ainda precisam ser testados com o equipamento e material do estúdio.
 
@@ -91,3 +91,20 @@ O catálogo combina busca, processo de fabricação e filtro de uso (casa, escri
 Os SVGs enviados como referência não são executados ou importados como parâmetros. Os dois modelos compactos usam as medidas declaradas nos nomes dos arquivos: 106 × 150 × 50 mm e 125 × 100 × 40 mm, chapa de 3 mm. Os contornos são regenerados pelo Papeled Maker, sem promessa de reprodução exata do desenho original. O terceiro arquivo foi identificado como uma exportação anterior da própria Papeled Maker.
 
 A caixa com coração e haste integral acrescenta um produto inspirado no quarto SVG enviado. Os anexos foram inspecionados como geometria, sem executar conteúdo: o primeiro usa discos com rasgos retangulares e eixos também recortados; o quarto usa uma haste ligada à tampa, alojada nas laterais, e recorte de coração. Esses princípios foram reconstruídos de forma paramétrica; não se promete uma cópia exata dos contornos originais. As verificações por software incluem conectividade de painéis, amostragem de colisões, alinhamento dos pivôs e separação entre recortes e gravação. Ainda não houve fabricação física.
+
+## Tampas e cantos para impressão 3D
+
+Todos os modelos 3D oferecem raio de canto (zero mantém cantos retos) e quatro estados: sem tampa, guia de encaixe interno, tampa externa com saia que cobre a caixa e tampa com dobradiça e pino imprimível. A folga é aplicada por lado nas tampas e diametralmente no alojamento do pino. A guia interna rebaixa as divisórias para deixar espaço livre. As dobradiças são unidas ao corpo e à tampa; o pino é outra peça a imprimir e montar. Confira orientação, suportes, retenção do pino e tolerâncias no material real.
+
+O gerador usa Manifold em WebAssembly, com o arquivo WASM incluído no build e servido pelo próprio site. As malhas com cantos arredondados, guias e dobradiças são usadas tanto no STL quanto na prévia. A geometria básica sem tampa e sem arredondamento preserva o gerador anterior. Os testes verificam malhas fechadas, orientação das faces, conectividade e ausência de interseção entre corpo e tampa fechada. Não houve fabricação física.
+
+## Pacote do orçamento e PDF
+
+O botão “Pedir orçamento” gera um ZIP com SVG, DXF, PDF, STL, JSON editável, instruções e resumo inicial do pedido. O ZIP também pode ser baixado em “Exportar”. Para impressão 3D com tampa, o pacote acrescenta arquivos STL individuais de corpo, tampa e pino, quando presente. O STL principal distribui as peças lado a lado, em Z=0.
+
+- Laser: SVG/DXF são arquivos de corte; PDF usa uma peça por página em escala 1:1, com corte vermelho e gravação azul. Imprima em tamanho real, sem ajustar à página. O STL é uma referência da montagem fechada, com placas separadas; não é um sólido único para impressão.
+- Impressão 3D: STL contém as peças imprimíveis. SVG/DXF são vistas superior e frontal de referência dimensional, na camada `REFERENCE`, identificadas como inadequadas para corte a laser; o PDF é uma ficha com medidas e ilustração. As medidas declaradas referem-se ao corpo; tampas e suportes podem aumentar o conjunto.
+
+O link `wa.me` e o `mailto:` não aceitam anexos. O site não afirma que o arquivo foi enviado: baixa o ZIP e instrui o visitante a anexá-lo à conversa. Quando `navigator.canShare({files})` é compatível, um botão compartilha o ZIP como arquivo junto do texto editado; o usuário escolhe o aplicativo e o contato. Sem essa API, o download permanece disponível. Nenhum arquivo é enviado a um servidor de terceiros para gerar o pacote.
+
+Novos módulos: `src/print3d.js` (sólidos e malhas 3D) e `src/package.js` (PDF, referências, STL de montagem e ZIP). O build usa JavaScript moderno com inicialização assíncrona do WASM; o pacote de exportação é carregado sob demanda.

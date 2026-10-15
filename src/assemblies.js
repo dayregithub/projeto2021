@@ -188,10 +188,10 @@ export function buildDrawerCabinet(s, g) {
           {
             ...group,
             role: "front",
-            hole: {
+            grip: {
               x: dw / 2,
-              y: Math.min(12, (dh - t) / 2),
-              r: Math.min(5, (dh - t) / 5),
+              y: 0,
+              r: Math.min(9, (dh - t) / 4, dw / 6),
             },
           },
         ),
@@ -217,10 +217,10 @@ export function buildDrawerCabinet(s, g) {
           { ...group, role: "right" },
         );
       // Make the grip a real cut in the same polygon data used by preview and export.
-      if (f.hole)
+      if (f.grip)
         reshape(
           f,
-          clipping.difference(f.shape, disk(f.hole.x, f.hole.y, f.hole.r)),
+          clipping.difference(f.shape, disk(f.grip.x, f.grip.y, f.grip.r)),
         );
       for (const [wall, cx] of [
         [l, x + k + t / 2],

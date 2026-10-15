@@ -405,6 +405,37 @@
                 </p>
               </details>
             </div>
+            <div class="control-section" id="print-options" hidden>
+              <h3><span>04</span> Cantos e tampa 3D</h3>
+              <label class="field-label" for="cornerRadius"
+                >Raio dos cantos (mm; 0 = reto)</label
+              >
+              <input
+                class="text-input"
+                type="number"
+                id="cornerRadius"
+                min="0"
+                step="0.5"
+                value="0"
+              />
+              <label class="field-label" for="print-lid">Tipo de tampa</label>
+              <select class="text-input" id="print-lid">
+                <option value="none">Sem tampa</option>
+                <option value="inner">Encaixe interno</option>
+                <option value="outer">Encaixe externo — cobre a caixa</option>
+                <option value="hinged">Dobradiça com pino imprimível</option>
+              </select>
+              <label class="range-label" id="print-opening-label" hidden
+                >Abertura na prévia <strong id="print-opening-value"></strong
+                ><input
+                  type="range"
+                  id="printOpening"
+                  min="0"
+                  max="110"
+                  value="70"
+              /></label>
+              <p class="field-hint" id="print-hint"></p>
+            </div>
             <div class="control-section" id="decoration-section" hidden>
               <h3><span>05</span> Personalize a tampa</h3>
               <label class="field-label" for="lid-cutout"
@@ -652,6 +683,19 @@
         Seu projeto já vai na mensagem. Conte para nós a quantidade e como
         pretende usar.
       </p>
+      <div class="export-note">
+        <strong>Arquivos do orçamento</strong>
+        <p id="quote-package-status" role="status"></p>
+        <a id="quote-package" class="button secondary full" hidden>Baixar ZIP</a
+        ><button id="quote-share" class="button secondary full" hidden>
+          Compartilhar ZIP como anexo
+        </button>
+        <p class="field-hint">
+          No WhatsApp ou e-mail aberto por link, anexe o ZIP baixado. O
+          compartilhamento com anexo depende do navegador; escolha o contato
+          Papeled Maker.
+        </p>
+      </div>
       <label class="field-label" for="quote-message">Resumo do projeto</label
       ><textarea id="quote-message" rows="9"></textarea
       ><a

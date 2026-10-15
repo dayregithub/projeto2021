@@ -159,7 +159,7 @@ test("3D model exports STL, has no 2D panel export, and can add partitions", asy
   );
   await expect(page.locator('[data-view="2d"]')).toBeDisabled();
   await page.locator("#export-project").click();
-  await expect(page.locator('[data-export="svg"]')).toHaveCount(0);
+  await expect(page.locator('[data-export="svg"]')).toHaveCount(1);
   const event = page.waitForEvent("download");
   await page.locator('[data-export="stl"]').click();
   const stl = await readFile(await (await event).path(), "utf8");
@@ -500,4 +500,79 @@ test("laser subassemblies inherit or override joints while printing stays single
   await open(page, "print");
   await expect(page.locator("#construction-section")).toBeHidden();
   await expect(page.locator("#decoration-section")).toBeHidden();
+});
+
+test("rounded 3D corners and all three printable lids update the preview and persist in JSON", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "printgrid");
+  await page.locator("#cornerRadius").fill("8");
+  const plain = await page.locator("#preview").innerHTML();
+  for (const type of ["inner", "outer", "hinged"]) {
+    await page.selectOption("#print-lid", type);
+    await expect(page.locator("#export-project")).toBeEnabled();
+    expect(await page.locator("#preview").innerHTML()).not.toBe(plain);
+    await page.locator("#printOpening").fill("0");
+    const closed = await page.locator("#preview").innerHTML();
+    await page.locator("#printOpening").fill("70");
+    expect(await page.locator("#preview").innerHTML()).not.toBe(closed);
+  }
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#cornerRadius")).toHaveValue("8");
+  await expect(page.locator("#print-lid")).toHaveValue("hinged");
+  await page.locator("#export-project").click();
+  const wait = page.waitForEvent("download");
+  await page.locator('[data-export="json"]').click();
+  const data = JSON.parse(await readFile(await (await wait).path(), "utf8"));
+  expect(data).toMatchObject({ cornerRadius: 8, printLid: "hinged" });
+  expect(errors).toEqual([]);
+});
+
+test("requesting a quote prepares and downloads a ZIP containing all four formats and supports native file sharing", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", { value: () => true });
+    Object.defineProperty(navigator, "share", {
+      value: async (data) => {
+        window.sharedFile = {
+          name: data.files[0].name,
+          size: data.files[0].size,
+          type: data.files[0].type,
+          text: data.text,
+        };
+      },
+    });
+  });
+  await open(page, "heartbox");
+  await page.locator("#engraveName").fill("Maria");
+  const wait = page.waitForEvent("download");
+  await page.locator("#quote-project").click();
+  const file = await wait;
+  expect(file.suggestedFilename()).toMatch(/\.zip$/);
+  const { unzipSync, strFromU8 } = await import("fflate");
+  const files = unzipSync(new Uint8Array(await readFile(await file.path()))),
+    names = Object.keys(files);
+  for (const ext of [".svg", ".dxf", ".pdf", ".stl", ".json"])
+    expect(names.some((n) => n.endsWith(ext))).toBe(true);
+  expect(
+    strFromU8(files[names.find((n) => n.endsWith(".pdf"))]).slice(0, 5),
+  ).toBe("%PDF-");
+  await expect(page.locator("#quote-package-status")).toContainText(
+    "ZIP pronto",
+  );
+  await expect(page.locator("#quote-package")).toBeVisible();
+  await page.locator("#quote-message").fill("Quero 3 unidades para presente.");
+  await page.locator("#quote-share").click();
+  const shared = await page.evaluate(() => window.sharedFile);
+  expect(shared).toMatchObject({
+    name: file.suggestedFilename(),
+    type: "application/zip",
+    text: "Quero 3 unidades para presente.",
+  });
+  expect(shared.size).toBeGreaterThan(1000);
 });

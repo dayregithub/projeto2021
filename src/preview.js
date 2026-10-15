@@ -1,10 +1,7 @@
+import { printParts, printDimensions } from "./print3d.js";
 import { familyFor } from "./models.js";
 import earcut from "earcut";
-import {
-  supportsConstruction,
-  lidType,
-  hingeDimensions,
-} from "./construction.js";
+import { lidType, hingeDimensions } from "./construction.js";
 import {
   cuts,
   drawerDimensions,
@@ -344,7 +341,53 @@ export function previewSVG(
       });
     }
   }
-  for (const b of modelById(s.model).category === "laser"
+  const advancedPrint =
+    modelById(s.model).category === "print" &&
+    (s.cornerRadius > 0 || s.printLid !== "none");
+  if (advancedPrint) {
+    const { hingeY, hingeZ } = printDimensions(s),
+      angle = (s.printOpening * Math.PI) / 180;
+    for (const part of printParts(s))
+      for (const tri of part.triangles) {
+        const vs = tri.map((v) => {
+          let p = [...v];
+          if (part.id === "tampa") {
+            if (s.printLid === "hinged") {
+              const y = p[1] - hingeY,
+                z = p[2] - hingeZ;
+              p[1] = hingeY + y * Math.cos(angle) - z * Math.sin(angle);
+              p[2] = hingeZ + y * Math.sin(angle) + z * Math.cos(angle);
+            } else
+              p[2] += (s.printOpening / 100) * Math.max(20, s.height * 0.6);
+            if (exploded) p[2] += s.height * 0.3;
+          }
+          if (part.id === "pino" && exploded) p[0] -= s.width * 0.3;
+          return p;
+        });
+        const a = vs[1].map((n, i) => n - vs[0][i]),
+          b = vs[2].map((n, i) => n - vs[0][i]),
+          normal = [
+            a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0],
+          ],
+          len = Math.hypot(...normal);
+        if (normal[0] * sa + normal[1] * ca + normal[2] * 0.48 <= 1e-8)
+          continue;
+        faces.push({
+          world: vs,
+          original: vs,
+          boundaries: [],
+          normal,
+          fill: shade(
+            base,
+            1 + (0.16 * normal[2]) / len - (0.12 * Math.abs(normal[0])) / len,
+          ),
+          stroke: shade(base, 0.66),
+        });
+      }
+  }
+  for (const b of modelById(s.model).category === "laser" || advancedPrint
     ? []
     : sceneBoxes(s, { exploded, opened })) {
     const { x, y, z, w, d, h, kind } = b;

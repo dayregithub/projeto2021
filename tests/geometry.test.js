@@ -102,7 +102,7 @@ test("drawer carcass and drawers respect per-side clearance and interior dimensi
   const drawer = p.find((p) => p.name === "Gaveta 1.1 · base");
   near(drawer.width, g.dw);
   near(drawer.height, g.dd);
-  assert.ok(p.find((p) => p.name === "Gaveta 1.1 · frente").hole);
+  assert.ok(p.find((p) => p.name === "Gaveta 1.1 · frente").grip);
 });
 test("layout never overlaps panels and every contour stays within the export sheet", () => {
   for (const m of MODELS.filter((m) => m.category === "laser")) {
@@ -681,4 +681,116 @@ test("sliding pull stays flush with the body rim for every joint and thickness, 
       }
       assert.ok(lid.pose.origin[1] + lid.height <= s.depth + 1e-6);
     }
+});
+
+test("integral laser lid reaches the shaft without an open window", () => {
+  const s = defaults("heartbox"),
+    lid = panels(s).find((p) => p.role === "lid-panel"),
+    hd = hingeDimensions(s);
+  for (const x of [s.width * 0.25, s.width * 0.5, s.width * 0.75])
+    for (const y of [hd.y + s.thickness, s.thickness / 2])
+      assert.ok(
+        insidePanel(lid, [x, y, s.height], s.thickness),
+        "gap remains behind the decorative panel",
+      );
+});
+
+test("every drawer has an open-top finger pull in real cut geometry", () => {
+  for (const id of ["drawers", "deskdrawers"])
+    for (const joint of ["straight", "finger", "tslot"]) {
+      const s = { ...defaults(id), joint };
+      assert.deepEqual(validate(s), []);
+      const fronts = panels(s).filter(
+        (p) => p.group === "drawer" && p.role === "front",
+      );
+      assert.equal(fronts.length, s.rows * s.cols);
+      for (const p of fronts) {
+        assert.ok(p.grip);
+        assert.equal(p.grip.y, 0);
+        const z = p.pose.origin[2] - 0.5,
+          y = p.pose.origin[1] + s.thickness / 2,
+          x = p.pose.origin[0] + p.grip.x;
+        assert.equal(insidePanel(p, [x, y, z], s.thickness), false);
+        assert.ok(insidePanel(p, [x + p.grip.r + 2, y, z], s.thickness));
+        assert.equal(p.shape.length, 1);
+      }
+    }
+});
+
+import { printParts, printLayout } from "../src/print3d.js";
+test("rounded printed bodies and all three lids are watertight, connected and clear of the body", () => {
+  for (const model of ["print", "printgrid"])
+    for (const cornerRadius of [0, 8, 40])
+      for (const printLid of ["none", "inner", "outer", "hinged"]) {
+        const s = { ...defaults(model), cornerRadius, printLid },
+          parts = printParts(s);
+        assert.deepEqual(validate(s), []);
+        assert.equal(
+          parts.length,
+          printLid === "none" ? 1 : printLid === "hinged" ? 3 : 2,
+        );
+        for (const p of parts) {
+          assert.ok(
+            checkManifold(p.triangles) > 0,
+            `${model}/${cornerRadius}/${printLid}/${p.id}`,
+          );
+          if (p.id !== "pino") assert.equal(p.componentCount, 1);
+        }
+        near(parts[0].lidInterference, 0);
+        for (const p of printLayout(s)) {
+          const points = p.triangles.flat();
+          near(Math.min(...points.map((v) => v[2])), 0);
+        }
+        const restored = readProject(s);
+        assert.equal(restored.cornerRadius, cornerRadius);
+        assert.equal(restored.printLid, printLid);
+      }
+  assert.ok(validate({ ...defaults("print"), cornerRadius: 999 }).length);
+});
+
+import { projectPackage, projectPDF, projectSTL } from "../src/package.js";
+import { unzipSync, strFromU8 } from "fflate";
+test("quote ZIP includes all formats with valid PDF, editable parameters and individual printed parts", () => {
+  for (const id of ["heartbox", "printgrid"]) {
+    const s = {
+        ...defaults(id),
+        cornerRadius: 8,
+        printLid: id === "printgrid" ? "hinged" : "none",
+      },
+      bundle = projectPackage(s, "Quantidade: 3"),
+      files = unzipSync(bundle.data),
+      names = Object.keys(files);
+    for (const extension of [".svg", ".dxf", ".pdf", ".stl", ".papeled.json"])
+      assert.ok(
+        names.some((n) => n.endsWith(extension)),
+        extension,
+      );
+    const pdf = files[names.find((n) => n.endsWith(".pdf"))];
+    assert.ok(strFromU8(pdf.slice(0, 5)).startsWith("%PDF-"));
+    assert.ok(strFromU8(pdf).includes("%%EOF"));
+    assert.equal(
+      JSON.parse(strFromU8(files[names.find((n) => n.endsWith(".json"))]))
+        .model,
+      id,
+    );
+    assert.equal(strFromU8(files["pedido-de-orcamento.txt"]), "Quantidade: 3");
+    assert.match(
+      strFromU8(files[names.find((n) => n.endsWith(".stl"))]),
+      /facet normal/,
+    );
+    if (id === "printgrid") {
+      assert.equal(names.filter((n) => n.startsWith("pecas/")).length, 3);
+      assert.match(
+        strFromU8(files[names.find((n) => n.endsWith(".svg"))]),
+        /REFERENCE/,
+      );
+    } else {
+      const pdfText = strFromU8(pdf);
+      assert.match(pdfText, /\/MediaBox/);
+      assert.match(
+        strFromU8(files[names.find((n) => n.endsWith(".svg"))]),
+        /id="CUT"/,
+      );
+    }
+  }
 });
