@@ -1,9 +1,18 @@
+import earcut from "earcut";
+import {
+  supportsConstruction,
+  lidType,
+  hingeDimensions,
+} from "./construction.js";
 import {
   cuts,
   drawerDimensions,
   modelById,
   layoutPanels,
   panelOutline,
+  panelPolygons,
+  panelContours,
+  panels,
 } from "./geometry.js";
 export const FINISHES = {
   natural: { label: "Madeira natural", color: "#e4bb67" },
@@ -110,14 +119,18 @@ function shade(hex, factor) {
 const dot = (a, b) => a.reduce((sum, v, i) => sum + v * b[i], 0);
 function sortedFaces(faces, camera) {
   if (!faces.length) return [];
-  const root = faces[0],
+  const selected = faces.findIndex(
+    (f) => f.normal.filter((v) => Math.abs(v) > 1e-7).length === 1,
+  );
+  const root = faces[selected < 0 ? 0 : selected],
     n = root.normal,
     d = dot(n, root.world[0]),
     front = [],
     back = [],
     same = [root],
     eps = 1e-7;
-  for (const f of faces.slice(1)) {
+  for (const f of faces) {
+    if (f === root) continue;
     const ds = f.world.map((p) => dot(n, p) - d);
     if (ds.every((v) => Math.abs(v) < eps)) {
       same.push(f);
@@ -170,6 +183,112 @@ function originalEdge(a, b, original) {
     });
   });
 }
+function panelFaces(s, { exploded = false } = {}) {
+  const out = [],
+    sep = exploded ? Math.min(s.width, s.depth) * 0.15 : 0;
+  const rotate = (v, point = false) => {
+    if (lidType(s) !== "hinged") return v;
+    const { y, z } = hingeDimensions(s),
+      a = (s.lidOpening * Math.PI) / 180,
+      dy = v[1] - (point ? y : 0),
+      dz = v[2] - (point ? z : 0);
+    return [
+      v[0],
+      (point ? y : 0) + dy * Math.cos(a) - dz * Math.sin(a),
+      (point ? z : 0) + dy * Math.sin(a) + dz * Math.cos(a),
+    ];
+  };
+  for (const p of panels(s)) {
+    const pose = p.pose;
+    if (!pose) continue;
+    const normal =
+      p.group === "lid" && lidType(s) === "hinged"
+        ? rotate(pose.normal)
+        : pose.normal;
+    const world = ([u, v], level = 0) => {
+      let a = pose.origin.map(
+        (n, i) => n + pose.u[i] * u + pose.v[i] * v + pose.normal[i] * level,
+      );
+      if (p.role === "base") a[2] -= sep;
+      if (p.role === "front") a[1] += sep;
+      if (p.role === "back") a[1] -= sep;
+      if (p.role === "side") a[0] += pose.origin[0] < s.width / 2 ? -sep : sep;
+      if (p.group === "lid") {
+        const type = lidType(s);
+        if (type === "hinged") a = rotate(a, true);
+        if (type === "removable")
+          a[2] += (s.lidOpening / 100) * Math.max(30, s.height * 0.7);
+        if (type === "sliding") a[1] += (s.lidOpening / 100) * s.depth * 0.9;
+        a[2] += sep;
+      }
+      return a;
+    };
+    for (const poly of panelPolygons(p)) {
+      const rings = poly.map((r) => {
+        const a = r.map((v) => [...v]);
+        if (a.length > 1 && a[0][0] === a.at(-1)[0] && a[0][1] === a.at(-1)[1])
+          a.pop();
+        if (a.length > 40) {
+          for (let i = a.length - 1; i >= 0; i -= 2) {
+            const prev = a[(i + a.length - 1) % a.length],
+              next = a[(i + 1) % a.length],
+              v = a[i],
+              dx = next[0] - prev[0],
+              dy = next[1] - prev[1],
+              height =
+                Math.abs(dx * (v[1] - prev[1]) - dy * (v[0] - prev[0])) /
+                Math.hypot(dx, dy);
+            if (height < 0.045) a.splice(i, 1);
+          }
+        }
+        return a;
+      });
+      const flat = rings.flat(),
+        holes = [];
+      let count = rings[0].length;
+      for (const r of rings.slice(1)) {
+        holes.push(count);
+        count += r.length;
+      }
+      const indices = earcut(flat.flat(), holes, 2);
+      for (const level of [0, s.thickness]) {
+        const n = normal.map((v) => (level ? v : -v)),
+          boundaries = rings.map((r) => r.map((v) => world(v, level)));
+        for (let k = 0; k < indices.length; k += 3) {
+          const vs = indices.slice(k, k + 3).map((i) => world(flat[i], level));
+          out.push({
+            world: vs,
+            normal: n,
+            boundaries,
+            kind: p.group || "body",
+          });
+        }
+      }
+      for (const ring of rings)
+        for (let i = 0; i < ring.length; i++) {
+          const a = ring[i],
+            b = ring[(i + 1) % ring.length],
+            dx = b[0] - a[0],
+            dy = b[1] - a[1];
+          let n = pose.u.map((v, k) => v * dy - pose.v[k] * dx);
+          if (p.group === "lid" && lidType(s) === "hinged") n = rotate(n);
+          const vs = [
+            world(a),
+            world(b),
+            world(b, s.thickness),
+            world(a, s.thickness),
+          ];
+          out.push({
+            world: vs,
+            normal: n,
+            original: vs,
+            kind: p.group || "body",
+          });
+        }
+    }
+  }
+  return out;
+}
 export function previewSVG(
   s,
   { angle = 35, exploded = false, opened = 0.35, dimensions = false } = {},
@@ -183,7 +302,19 @@ export function previewSVG(
     (x * sa + y * ca) * 0.48 - z,
   ];
   const faces = [];
-  for (const b of sceneBoxes(s, { exploded, opened })) {
+  if (supportsConstruction(s)) {
+    for (const f of panelFaces(s, { exploded })) {
+      if (f.normal[0] * sa + f.normal[1] * ca + f.normal[2] * 0.48 <= 1e-8)
+        continue;
+      const len = Math.hypot(...f.normal),
+        light =
+          1 + (0.16 * f.normal[2]) / len - (0.12 * Math.abs(f.normal[0])) / len;
+      faces.push({ ...f, fill: shade(base, light), stroke: shade(base, 0.66) });
+    }
+  }
+  for (const b of supportsConstruction(s)
+    ? []
+    : sceneBoxes(s, { exploded, opened })) {
     const { x, y, z, w, d, h, kind } = b;
     const vertices = [
       [x, y, z],
@@ -233,9 +364,14 @@ export function previewSVG(
       let edge = "";
       f.world.forEach((a, i) => {
         const b = f.world[(i + 1) % f.world.length];
-        if (originalEdge(a, b, f.original)) edge += `M${point(a)}L${point(b)}`;
+        if (
+          f.boundaries
+            ? f.boundaries.some((r) => originalEdge(a, b, r))
+            : originalEdge(a, b, f.original)
+        )
+          edge += `M${point(a)}L${point(b)}`;
       });
-      return `<polygon points="${f.world.map(point).join(" ")}" fill="${f.fill}" stroke="${f.fill}" stroke-width=".3"/>${edge ? `<path d="${edge}" stroke="${f.stroke}" stroke-width=".65" fill="none" stroke-linejoin="round"/>` : ""}`;
+      return `<polygon points="${f.world.map(point).join(" ")}" fill="${f.fill}" stroke="${f.fill}" stroke-width=".65"/>${edge ? `<path d="${edge}" stroke="${f.stroke}" stroke-width=".65" fill="none" stroke-linejoin="round"/>` : ""}`;
     })
     .join("");
   return `<svg viewBox="0 0 600 410" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="300" cy="352" rx="177" ry="16" fill="#293f5a" opacity=".08"/>${polygons}${dimensions ? `<path d="M125 377h350m-350-5v10m350-10v10" fill="none" stroke="#8497aa" stroke-width="1"/><rect x="258" y="365" width="84" height="25" rx="12" fill="#f7fafc"/><text x="300" y="382" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#63788e">${s.width} mm</text>` : ""}</svg>`;
@@ -246,11 +382,16 @@ export function cutPreviewSVG(s) {
   return `<svg viewBox="0 0 ${l.width} ${l.height}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${l.items
     .map(
       (p, i) =>
-        `<g><path d="${panelOutline(p)
-          .map((a, j) => `${j ? "L" : "M"}${a[0] + p.x} ${a[1] + p.y}`)
+        `<g><path d="${panelContours(p)
+          .map(
+            (ring) =>
+              ring
+                .map((a, j) => `${j ? "L" : "M"}${a[0] + p.x} ${a[1] + p.y}`)
+                .join(" ") + "Z",
+          )
           .join(
             " ",
-          )}Z" fill="#e7c17c" stroke="#936d36" stroke-width=".7"/>${p.hole ? `<circle cx="${p.x + p.hole.x}" cy="${p.y + p.hole.y}" r="${p.hole.r}" fill="#eff4f8" stroke="#936d36" stroke-width=".7"/>` : ""}<text x="${p.x + 3}" y="${p.y + Math.min(p.height - 2, 10)}" font-family="sans-serif" font-size="6" fill="#5b482f">${i + 1}</text></g>`,
+          )}" fill="#e7c17c" fill-rule="evenodd" stroke="#936d36" stroke-width=".7"/><text x="${p.x + 3}" y="${p.y + Math.min(p.height - 2, 10)}" font-family="sans-serif" font-size="6" fill="#5b482f">${i + 1}</text></g>`,
     )
     .join("")}</svg>`;
 }

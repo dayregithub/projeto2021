@@ -9,8 +9,8 @@
       content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
     />
     <title>Papeled Maker — seu espaço maker online</title>
-    <script type="module" crossorigin src="./assets/index-Bwv1d2NL.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-GKg62cBc.css">
+    <script type="module" crossorigin src="./assets/index-CK-r2h3B.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-D-Tl_4ch.css">
   </head>
   <body>
     <header class="site-header">
@@ -214,7 +214,8 @@
                 /></label>
               </div>
               <p class="field-hint">
-                Todas as medidas consideram o exterior da peça.
+                Medidas externas do corpo. A tampa e os suportes podem ampliar
+                as dimensões finais.
               </p>
             </div>
             <div class="control-section">
@@ -257,8 +258,78 @@
                   value="35"
               /></label>
             </div>
+            <div class="control-section" id="construction-section">
+              <h3><span>03</span> União das peças</h3>
+              <div
+                class="joint-options"
+                role="group"
+                aria-label="Tipo de união"
+              >
+                <button data-joint="straight" aria-pressed="true">
+                  <svg viewBox="0 0 54 30" aria-hidden="true">
+                    <path d="M4 7h23v16H4ZM27 7h23v16H27Z" /></svg
+                  ><span>Reta</span>
+                </button>
+                <button data-joint="finger" aria-pressed="false">
+                  <svg viewBox="0 0 54 30" aria-hidden="true">
+                    <path
+                      d="M4 6h23v6h-6v6h6v6H4ZM27 6h23v18H27v-6h-6v-6h6Z"
+                    /></svg
+                  ><span>Dedo</span>
+                </button>
+                <button data-joint="tslot" aria-pressed="false">
+                  <svg viewBox="0 0 54 30" aria-hidden="true">
+                    <path
+                      d="M4 6h15v18H4ZM22 6h28v18H22v-6h9v3h5V9h-5v3h-9ZM10 15h22"
+                    /></svg
+                  ><span>T</span>
+                </button>
+              </div>
+              <label id="finger-size-label" class="range-label" hidden
+                >Tamanho alvo do dedo
+                <output id="finger-size-value">9 mm</output
+                ><input type="range" id="fingerSize" min="3" max="60" step="1"
+              /></label>
+              <p class="field-hint" id="joint-hint"></p>
+            </div>
+            <div class="control-section" id="lid-section">
+              <h3><span>04</span> Tampa</h3>
+              <label class="field-label" for="lid-type">Tipo de tampa</label>
+              <select class="text-input" id="lid-type">
+                <option value="none">Sem tampa</option>
+                <option value="removable">Removível com guia</option>
+                <option value="sliding">Deslizante em trilhos</option>
+                <option value="hinged">Dobradiça integrada</option>
+              </select>
+              <div id="hinge-fields" class="split-fields" hidden>
+                <label
+                  >Altura da aba (mm)<input
+                    id="lidHeight"
+                    type="number"
+                    min="3"
+                    max="40"
+                    step="0.5"
+                /></label>
+                <label
+                  >Ø do pivô (mm)<input
+                    id="pivotDiameter"
+                    type="number"
+                    min="3"
+                    max="12"
+                    step="0.5"
+                /></label>
+              </div>
+              <label id="lid-opening-label" class="range-label" hidden
+                >Abertura na prévia <output id="lid-opening-value"></output
+                ><input id="lidOpening" type="range" min="0" max="110" step="1"
+              /></label>
+              <button id="toggle-lid" class="button subtle" hidden>
+                Fechar tampa
+              </button>
+              <p class="field-hint" id="lid-hint"></p>
+            </div>
             <div class="control-section">
-              <h3><span>03</span> Material e acabamento</h3>
+              <h3><span>05</span> Material e acabamento</h3>
               <div class="split-fields">
                 <label
                   >Espessura (mm)<input
@@ -443,9 +514,11 @@
         </li>
       </ol>
       <div class="export-note">
-        Corte a laser: montagem por colagem e divisórias com meio encaixe. Os
-        arquivos não compensam a largura do corte (kerf). Faça um teste de
-        material antes da produção final. A cor é apenas ilustrativa.
+        Corte a laser: união reta, dedo ou T; tampas removível, deslizante ou
+        com dobradiça integrada. A união T e o pivô da tampa articulada exigem
+        parafusos/pinos. Os arquivos não compensam a largura do corte (kerf).
+        Faça um teste de material antes da produção final. A cor é apenas
+        ilustrativa.
       </div>
       <button class="button primary full" data-close>
         Vamos criar <span data-icon="arrow-right"></span>

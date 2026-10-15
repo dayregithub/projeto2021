@@ -1,3 +1,15 @@
+import {
+  buildBoxPanels,
+  circle,
+  supportsConstruction,
+  lidType,
+  jointType,
+  wallInset,
+  shellMetrics,
+  JOINTS,
+  LIDS,
+  constructionNotes,
+} from "./construction.js";
 export const MODELS = [
   {
     id: "open",
@@ -60,14 +72,26 @@ export const MODELS = [
     rows: 3,
   },
   {
-    id: "bin",
-    name: "Caixa de acesso fácil",
-    tag: "BANCADA",
+    id: "sliding",
+    name: "Caixa com tampa deslizante",
+    tag: "DESLIZE E ORGANIZE",
     category: "laser",
-    description: "Frente rebaixada para encontrar e pegar sem esforço.",
+    description: "Tampa que corre em trilhos, sem precisar retirar.",
     w: 220,
     d: 180,
-    h: 110,
+    h: 85,
+    cols: 1,
+    rows: 1,
+  },
+  {
+    id: "hinged",
+    name: "Caixa com dobradiça integrada",
+    tag: "ABRE NOVAS IDEIAS",
+    category: "laser",
+    description: "Articulação recortada nas peças, com eixo ajustável.",
+    w: 200,
+    d: 160,
+    h: 80,
     cols: 1,
     rows: 1,
   },
@@ -112,6 +136,13 @@ export function defaults(id = "grid") {
     ratio: 60,
     clearance: 0.6,
     finish: m.category === "print" ? "sage" : "natural",
+    joint: id === "hinged" ? "finger" : "straight",
+    fingerSize: 9,
+    lidType:
+      { lid: "removable", sliding: "sliding", hinged: "hinged" }[id] || "none",
+    lidHeight: 9,
+    pivotDiameter: 6,
+    lidOpening: id === "hinged" ? 100 : 55,
   };
 }
 export function compartmentCount(s) {
@@ -126,7 +157,7 @@ export function supportsGrid(s) {
 }
 export function cuts(s) {
   const { width: w, depth: d, thickness: t, cols, rows } = s;
-  const iw = w - 2 * t,
+  const iw = w - 2 * (t + wallInset(s)),
     id = d - 2 * t;
   const widths =
     s.model === "custom"
@@ -136,7 +167,7 @@ export function cuts(s) {
     { length: rows },
     () => (id - (rows - 1) * t) / rows,
   );
-  let x = t,
+  let x = t + wallInset(s),
     y = t;
   const xs = widths.slice(0, -1).map((v) => {
     x += v;
@@ -169,7 +200,64 @@ export function validate(s) {
       errors.push(`${label}: use um valor entre ${min} e ${max}.`);
   if (!Number.isInteger(s.cols) || !Number.isInteger(s.rows))
     errors.push("Linhas e colunas precisam ser números inteiros.");
+  for (const [key, min, max] of [
+    ["fingerSize", 3, 60],
+    ["lidHeight", 3, 40],
+    ["pivotDiameter", 3, 12],
+    ["lidOpening", 0, 110],
+  ])
+    if (!Number.isFinite(s[key]) || s[key] < min || s[key] > max)
+      errors.push(
+        `${{ fingerSize: "Tamanho do dedo", lidHeight: "Altura da aba", pivotDiameter: "Diâmetro do pivô", lidOpening: "Abertura da tampa" }[key]}: use um valor entre ${min} e ${max}.`,
+      );
+  if (!Object.hasOwn(JOINTS, s.joint) || !Object.hasOwn(LIDS, s.lidType))
+    errors.push("Escolha um tipo de união e de tampa válido.");
+  if (
+    !supportsConstruction(s) &&
+    (s.joint !== "straight" || s.lidType !== "none")
+  )
+    errors.push(
+      "Tampas e uniões são opções dos modelos de caixa a laser; gaveteiros e impressão 3D usam sua própria construção.",
+    );
   if (errors.length) return errors;
+  const metrics = shellMetrics(s),
+    span = metrics.frontHeight - s.thickness;
+  if (supportsConstruction(s) && metrics.innerWidth < 15)
+    errors.push(
+      "A união escolhida deixou menos de 15 mm livres na largura. Aumente a caixa.",
+    );
+  if (
+    jointType(s) === "finger" &&
+    (span < 3 * s.thickness ||
+      s.width - 2 * s.thickness < 3 * s.thickness ||
+      s.depth - 2 * s.thickness < 3 * s.thickness)
+  )
+    errors.push(
+      "Encaixes de dedo precisam de mais espaço. Aumente as medidas ou reduza a espessura.",
+    );
+  if (
+    jointType(s) === "tslot" &&
+    (span < 4 * (s.thickness + 4) || s.depth - 2 * s.thickness < 32.8)
+  )
+    errors.push(
+      "A união T precisa de espaço para abas, parafusos e porcas. Aumente altura/profundidade ou reduza a espessura.",
+    );
+  if (lidType(s) !== "hinged" && s.lidOpening > 100)
+    errors.push(
+      "A abertura da tampa removível/deslizante deve ficar entre 0 e 100%.",
+    );
+  if (
+    lidType(s) === "sliding" &&
+    (s.height < 5 * s.thickness + 2 * s.clearance ||
+      metrics.innerWidth < 4 * s.thickness + 2 * s.clearance)
+  )
+    errors.push(
+      "A tampa deslizante precisa de espaço para os dois níveis de trilhos. Aumente a caixa ou reduza a espessura.",
+    );
+  if (lidType(s) === "hinged" && s.lidHeight < s.thickness)
+    errors.push(
+      "A altura da aba da tampa deve ser pelo menos igual à espessura.",
+    );
   if (2 * s.thickness >= Math.min(s.width, s.depth, s.height))
     errors.push("A espessura precisa deixar espaço livre no interior.");
   if (supportsGrid(s)) {
@@ -247,51 +335,80 @@ export function panels(s) {
       }
     return list;
   }
-  add("Base", w, d);
-  add("Frente", w, s.model === "bin" ? Math.max(15, h * 0.4) - t : h - t);
-  add("Traseira", w, h - t);
-  add("Lateral esquerda", d - 2 * t, h - t);
-  add("Lateral direita", d - 2 * t, h - t);
+  const listBody = buildBoxPanels(s);
+  const { inset, innerWidth, dividerTop } = shellMetrics(s);
   if (["grid", "custom"].includes(s.model)) {
     const { xs, ys, widths } = cuts(s);
-    const ih = h - t;
+    const ih = dividerTop - t;
+    const make = (name, width, slots, pose) => ({
+      name,
+      width,
+      height: ih,
+      slots,
+      pose,
+    });
     if (s.model === "custom") {
-      add("Divisória longitudinal", d - 2 * t, ih);
-      ys.forEach((y, i) => add(`Divisória à direita ${i + 1}`, widths[1], ih));
-    } else {
-      xs.forEach((x, i) =>
-        add(`Divisória longitudinal ${i + 1}`, d - 2 * t, ih, {
-          slots: ys.map((y) => ({
-            x: y - t,
-            width: t,
-            from: "top",
-            depth: ih / 2,
-          })),
+      listBody.push(
+        make("Divisória longitudinal", d - 2 * t, [], {
+          origin: [xs[0], t, dividerTop],
+          u: [0, 1, 0],
+          v: [0, 0, -1],
+          normal: [1, 0, 0],
         }),
       );
       ys.forEach((y, i) =>
-        add(`Divisória transversal ${i + 1}`, w - 2 * t, ih, {
-          slots: xs.map((x) => ({
-            x: x - t,
-            width: t,
-            from: "bottom",
-            depth: ih / 2,
-          })),
-        }),
+        listBody.push(
+          make(`Divisória à direita ${i + 1}`, widths[1], [], {
+            origin: [xs[0] + t, y, dividerTop],
+            u: [1, 0, 0],
+            v: [0, 0, -1],
+            normal: [0, 1, 0],
+          }),
+        ),
+      );
+    } else {
+      xs.forEach((x, i) =>
+        listBody.push(
+          make(
+            `Divisória longitudinal ${i + 1}`,
+            d - 2 * t,
+            ys.map((y) => ({ x: y - t, width: t, from: "top", depth: ih / 2 })),
+            {
+              origin: [x, t, dividerTop],
+              u: [0, 1, 0],
+              v: [0, 0, -1],
+              normal: [1, 0, 0],
+            },
+          ),
+        ),
+      );
+      ys.forEach((y, i) =>
+        listBody.push(
+          make(
+            `Divisória transversal ${i + 1}`,
+            innerWidth,
+            xs.map((x) => ({
+              x: x - t - inset,
+              width: t,
+              from: "bottom",
+              depth: ih / 2,
+            })),
+            {
+              origin: [inset + t, y, dividerTop],
+              u: [1, 0, 0],
+              v: [0, 0, -1],
+              normal: [0, 1, 0],
+            },
+          ),
+        ),
       );
     }
   }
-  if (s.model === "lid") {
-    add("Tampa removível", w, d);
-    add(
-      "Guia da tampa",
-      w - 2 * t - 2 * s.clearance,
-      d - 2 * t - 2 * s.clearance,
-    );
-  }
-  return list;
+  return listBody;
 }
+
 export function panelOutline(p) {
+  if (p.shape) return p.shape[0][0];
   const a = [[0, 0]];
   const slots = [...p.slots].sort((a, b) => a.x - b.x);
   for (const s of slots.filter((s) => s.from === "top"))
@@ -311,6 +428,19 @@ export function panelOutline(p) {
     );
   a.push([0, p.height]);
   return a;
+}
+export function panelPolygons(p) {
+  return (
+    p.shape || [
+      [
+        panelOutline(p),
+        ...(p.hole ? circle(p.hole.x, p.hole.y, p.hole.r) : []),
+      ],
+    ]
+  );
+}
+export function panelContours(p) {
+  return panelPolygons(p).flat();
 }
 export function layoutPanels(s) {
   const items = panels(s);
@@ -346,17 +476,15 @@ const esc = (s) =>
 export function exportSVG(s) {
   const l = layoutPanels(s);
   if (!l.items.length) throw Error("Sem peças para exportar.");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${l.width}mm" height="${l.height}mm" viewBox="0 0 ${l.width} ${l.height}"><title>${esc(s.name)} — Papeled Maker</title><desc>Milímetros. Dimensões externas. Montagem por colagem; divisórias com meio encaixe. Sem compensação de kerf. Confirme espessura real e faça teste de corte. A ordem das peças é a mesma da lista no projeto.</desc><g fill="none" stroke="#ff0000" stroke-width="0.1">${l.items
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${l.width}mm" height="${l.height}mm" viewBox="0 0 ${l.width} ${l.height}"><title>${esc(s.name)} — Papeled Maker</title><desc>${esc(constructionNotes(s))} Milímetros. Contornos de corte, sem compensação de kerf.</desc><g fill="none" stroke="#ff0000" stroke-width="0.1">${l.items
     .map(
       (p) =>
-        `<g><title>${esc(p.name)}</title><path d="${panelOutline(p)
+        `<g><title>${esc(p.name)}</title>${panelContours(p)
           .map(
-            (a, i) =>
-              `${i ? "L" : "M"}${+(a[0] + p.x).toFixed(4)} ${+(a[1] + p.y).toFixed(4)}`,
+            (ring) =>
+              `<path d="${ring.map((v, i) => `${i ? "L" : "M"}${+(v[0] + p.x).toFixed(4)} ${+(v[1] + p.y).toFixed(4)}`).join(" ")}Z"/>`,
           )
-          .join(
-            " ",
-          )}Z"/>${p.hole ? `<circle cx="${p.x + p.hole.x}" cy="${p.y + p.hole.y}" r="${p.hole.r}"/>` : ""}</g>`,
+          .join("")}</g>`,
     )
     .join("")}</g></svg>`;
 }
@@ -383,44 +511,25 @@ export function exportDXF(s) {
     "2",
     "ENTITIES",
   ];
-  for (const p of l.items) {
-    const pts = panelOutline(p);
-    out.push(
-      "0",
-      "LWPOLYLINE",
-      "100",
-      "AcDbEntity",
-      "8",
-      "CUT",
-      "100",
-      "AcDbPolyline",
-      "90",
-      String(pts.length),
-      "70",
-      "1",
-    );
-    for (const [x, y] of pts)
-      out.push("10", String(x + p.x), "20", String(l.height - y - p.y));
-    if (p.hole)
+  for (const p of l.items)
+    for (const pts of panelContours(p)) {
       out.push(
         "0",
-        "CIRCLE",
+        "LWPOLYLINE",
         "100",
         "AcDbEntity",
         "8",
         "CUT",
         "100",
-        "AcDbCircle",
-        "10",
-        String(p.x + p.hole.x),
-        "20",
-        String(l.height - p.y - p.hole.y),
-        "30",
-        "0",
-        "40",
-        String(p.hole.r),
+        "AcDbPolyline",
+        "90",
+        String(pts.length),
+        "70",
+        "1",
       );
-  }
+      for (const [x, y] of pts)
+        out.push("10", String(x + p.x), "20", String(l.height - y - p.y));
+    }
   out.push("0", "ENDSEC", "0", "EOF");
   return out.join("\n");
 }
@@ -540,7 +649,8 @@ export function exportSTL(s) {
   );
 }
 export function readProject(input) {
-  const raw = typeof input === "string" ? JSON.parse(input) : input;
+  let raw = typeof input === "string" ? JSON.parse(input) : input;
+  if (raw?.model === "bin") raw = { ...raw, model: "open" };
   if (!raw || raw.version !== 1 || !modelById(raw.model))
     throw Error(
       "Use um arquivo de projeto .papeled.json exportado por este estúdio.",

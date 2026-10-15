@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: oito fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 12 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -36,14 +36,18 @@ Todos exportam `.papeled.json` para reabrir o projeto. A importação aceita ess
 
 ## Regras de fabricação
 
-As medidas informadas são externas, em milímetros. Todas as dimensões das peças são calculadas descontando a espessura real da chapa.
+As medidas informadas são externas **do corpo**, em milímetros. Tampas e suportes podem aumentar as dimensões finais. As peças são calculadas considerando espessura, união, folga e tipo de tampa. A prévia das caixas usa os mesmos polígonos dos arquivos de corte, extrudados pela espessura. Gaveteiros e modelos para impressão 3D mantêm sua própria construção; as novas uniões/tampas são opções dos modelos de caixa a laser.
 
-- **Caixas a laser:** junções retas para colagem. A base tem largura × profundidade externas. Frente/traseira repousam sobre a base; laterais ficam entre frente e traseira. Não há encaixes dentados.
+- **União reta:** base inteira; frente/traseira repousam sobre ela; laterais ficam entre frente e traseira. Montagem por colagem.
+- **União dedo:** contornos complementares na base e nas quinas verticais, sem sobreposição de material. O passo alvo pode ser alterado e é ajustado para um número ímpar de segmentos em cada borda. A cola continua recomendada depois do teste de ajuste.
+- **União T:** abas de alinhamento, furos passantes de 3,2 mm e canais T para porcas M3 (bolso de 5,8 × 2,4 mm). Precisa de **4 parafusos e 4 porcas M3**, não incluídos nos contornos. Os canais têm 14,4 mm a partir da lateral; selecione comprimento que alcance a porca sem ultrapassar o canal, considerando a espessura da frente. A base e as divisórias usam cola. As laterais ficam recuadas em `max(2 × espessura, 6,4 mm)` para haver material ao redor dos parafusos; o interior útil e as divisórias são recalculados.
 - **Grade:** divisórias cruzadas com ranhuras de meia altura e largura igual à espessura. Longitudinais recebem ranhuras a partir do topo; transversais a partir da base.
 - **Assimétrica:** divisória longitudinal inteira e separadores curtos apenas no vão direito; fixação por colagem.
-- **Tampa:** tampa externa com uma placa-guia colada sob ela. Folga por lado define o encaixe dessa guia.
+- **Tampa removível:** placa externa com guia colada sob ela; folga por lado define o encaixe. Divisórias terminam abaixo da guia.
+- **Tampa deslizante:** quatro tiras coladas nas laterais internas formam canais com vão `espessura + 2 × folga`. A tampa entra pela frente rebaixada; as divisórias ficam abaixo do trilho inferior, sem colisão. A prévia permite abrir e fechar.
+- **Dobradiça integrada:** orelhas circulares fazem parte do contorno das laterais do corpo. A tampa tem painel, aba frontal e dois braços laterais com furos coaxiais. São exportadas duas arruelas recortadas; a montagem precisa de **dois pinos/parafusos de eixo com retenção**, do diâmetro escolhido. O furo usa diâmetro do pivô mais a folga (diametral). Comprimento útil mínimo através de corpo, braço, folga e arruela: `3 × espessura + folga`, além da fixação escolhida. O pivô não é uma dobradiça metálica comprada, mas ainda necessita de eixo. Não cole as peças móveis. A abertura vai de 0 a 110° e é preservada no projeto. A altura da aba pode ser ajustada.
 - **Gaveteiro:** base, topo, fundo traseiro, laterais, prateleiras e separadores verticais por nível. Gavetas independentes de cinco painéis, com furo frontal de pega. Primeiro monte e esquadre a estrutura; fixe prateleiras e separadores; depois monte as gavetas e verifique o deslizamento. O controle de abertura é só de visualização.
-- **SVG/DXF:** escala real em mm, sem compensação de kerf. SVG inclui somente contornos de corte em vermelho, sem textos de gravação; DXF usa a camada `CUT`. A numeração exibida no editor corresponde à ordem da lista, mas não é gravada. A disposição é simples, sem otimização de chapa; área informada é a soma dos retângulos envolventes, sem espaçamento/perdas. Configure a máquina e teste o material antes de produzir. Não são arquivos de usinagem CNC com trajetórias de ferramenta.
+- **SVG/DXF:** escala real em mm, sem compensação de kerf. SVG inclui somente contornos de corte em vermelho, sem textos de gravação; DXF usa polilinhas fechadas na camada `CUT`. Contornos curvos são aproximados por 64 segmentos antes da exportação. Furos e rasgos internos são contornos separados. A numeração exibida no editor corresponde à ordem da lista, mas não é gravada. A disposição é simples, sem otimização de chapa; área informada é a soma dos retângulos envolventes, sem espaçamento/perdas. Configure a máquina e teste o material antes de produzir. Não são arquivos de usinagem CNC com trajetórias de ferramenta.
 - **STL:** sólido fechado único, com paredes/divisórias/fundo integrados, em mm por convenção. O gerador extrai a fronteira de uma grade retangular, sem sólidos sobrepostos. Testes verificam arestas com duas faces, orientação e volume esperado. Tempo de impressão, suportes e quantidade de material devem ser calculados no fatiador. Não há exportação de G-code.
 
 Os arquivos foram validados por software; cortes e impressões físicas ainda precisam ser testados com o equipamento e material do estúdio.
@@ -62,9 +66,14 @@ Versione os fontes e a pasta gerada `docs/`. A publicação depende do Pages est
 
 ## Organização
 
-- `src/geometry.js`: validação, painéis, dimensões, SVG/DXF e malha STL.
+- `src/geometry.js`: validação, dimensões, divisórias, SVG/DXF e malha STL.
+- `src/construction.js`: polígonos de união reta/dedo/T, tampas, trilhos e pivôs, e posicionamento das peças.
 - `src/preview.js`: prévia vetorial com ordenação BSP para ocultação correta das faces.
 - `main.js`: catálogo, edição, armazenamento, importação, exportação e contato.
 - `index.html` e `style.css`: interface responsiva, sem dependência de fontes externas.
 
 Contato: WhatsApp +55 61 99243-0051 e papeledmaker@gmail.com.
+
+## Compatibilidade de projetos
+
+Projetos JSON e projetos locais anteriores continuam aceitos: recebem união reta e os parâmetros novos padrão. O antigo modelo `bin` (Caixa de acesso fácil) não aparece mais no catálogo; projetos já existentes desse tipo são abertos como Caixa aberta, preservando as medidas. Não há reconstrução de parâmetros a partir de SVG/DXF arbitrários.

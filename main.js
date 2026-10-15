@@ -1,4 +1,13 @@
 import {
+  JOINTS,
+  LIDS,
+  lidType,
+  jointType,
+  supportsConstruction,
+  shellMetrics,
+  constructionNotes,
+} from "./src/construction.js";
+import {
   MODELS,
   defaults,
   modelById,
@@ -68,19 +77,21 @@ function load(key, fallback) {
 function getSaved() {
   const values = load(storageKey, []);
   return Array.isArray(values)
-    ? values.filter((p) => {
-        try {
-          readProject(p.project);
-          return (
-            typeof p.id === "string" &&
-            /^[a-zA-Z0-9-]+$/.test(p.id) &&
-            typeof p.updated === "string" &&
-            !Number.isNaN(Date.parse(p.updated))
-          );
-        } catch {
-          return false;
-        }
-      })
+    ? values
+        .filter((p) => {
+          try {
+            readProject(p.project);
+            return (
+              typeof p.id === "string" &&
+              /^[a-zA-Z0-9-]+$/.test(p.id) &&
+              typeof p.updated === "string" &&
+              !Number.isNaN(Date.parse(p.updated))
+            );
+          } catch {
+            return false;
+          }
+        })
+        .map((p) => ({ ...p, project: readProject(p.project) }))
     : [];
 }
 function updateSavedCount() {
@@ -186,8 +197,13 @@ function syncFields() {
     "rows",
     "ratio",
     "clearance",
+    "fingerSize",
+    "lidHeight",
+    "pivotDiameter",
+    "lidOpening",
   ])
     $("#" + k).value = state[k];
+  $("#lid-type").value = state.lidType;
   $("#project-name").value = state.name;
   $("#finish-name").textContent = FINISHES[state.finish].label;
   $("#finishes").innerHTML = Object.entries(FINISHES)
@@ -221,15 +237,49 @@ function renderEditor() {
   $("#editor-model-title").textContent = model.name;
   $("#canvas-process").textContent = isPrint ? "IMPRESSÃO 3D" : "CORTE A LASER";
   $("#division-fields").hidden = !supportsGrid(state);
-  $("#no-divisions").hidden =
-    supportsGrid(state) || ["lid", "bin"].includes(state.model);
+  $("#no-divisions").hidden = supportsGrid(state) || state.model === "drawers";
   $("#cols-label").hidden = state.model === "custom";
   $("#ratio-label").hidden = state.model !== "custom";
   $("#rows-title").textContent =
     state.model === "custom" ? "Linhas à direita" : "Linhas";
   $("#ratio-value").textContent = state.ratio + "%";
   $("#drawer-open-label").hidden = state.model !== "drawers";
-  $("#clearance-label").hidden = !["drawers", "lid"].includes(state.model);
+  const construction = supportsConstruction(state),
+    lid = lidType(state);
+  $("#construction-section").hidden = !construction;
+  $("#lid-section").hidden = !construction;
+  $("#finger-size-label").hidden = jointType(state) !== "finger";
+  $("#finger-size-value").textContent = state.fingerSize + " mm";
+  $$("[data-joint]").forEach((b) => {
+    const active = b.dataset.joint === jointType(state);
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-pressed", active);
+  });
+  $("#joint-hint").textContent = {
+    straight: "Bordas retas para montagem por colagem.",
+    finger:
+      "Dentes complementares na base e quinas. O passo se ajusta para fechar cada borda.",
+    tslot:
+      "Abas e rasgos T nas quinas. Requer 4 parafusos e porcas M3; base colada. As laterais ficam recuadas para acomodar os parafusos.",
+  }[jointType(state)];
+  $("#hinge-fields").hidden = lid !== "hinged";
+  $("#lid-opening-label").hidden = lid === "none";
+  $("#toggle-lid").hidden = lid === "none";
+  $("#lid-opening-value").textContent =
+    state.lidOpening + (lid === "hinged" ? "°" : "%");
+  $("#lidOpening").max = lid === "hinged" ? 110 : 100;
+  $("#toggle-lid").textContent =
+    state.lidOpening > 0 ? "Fechar tampa" : "Abrir tampa";
+  $("#lid-hint").textContent = {
+    none: "Adicione uma tampa à sua caixa, inclusive aos modelos com divisórias.",
+    removable:
+      "Tampa solta com guia inferior. As divisórias são rebaixadas para fechar sem colisão.",
+    sliding:
+      "Inclui quatro trilhos colados por dentro e frente rebaixada. A tampa desliza para a frente.",
+    hinged:
+      "Suportes e braços recortados nas próprias peças. Usa dois eixos/pinos com retenção; não requer dobradiça metálica separada. Altura informada é a do corpo, sem tampa e suportes.",
+  }[lid];
+  $("#clearance-label").hidden = state.model !== "drawers" && lid === "none";
   $("#material-hint").textContent = isPrint
     ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
     : "Use a espessura real da chapa. Cor apenas ilustrativa.";
@@ -280,14 +330,10 @@ function renderEditor() {
     `<div>${icon("ruler")}<span><strong>${state.width} × ${state.depth} × ${state.height}</strong><small>dimensões externas · mm</small></span></div><div>${icon("layers")}<span><strong>${isPrint ? "Peça única" : parts.length + " peças"}</strong><small>${isPrint ? "impressão em um sólido" : "para corte e montagem"}</small></span></div><div>${icon("grid")}<span><strong>${cells} ${state.model === "drawers" ? "gavetas" : cells === 1 ? "espaço" : "compartimentos"}</strong><small>organização do seu jeito</small></span></div>`;
   $("#assembly-title").textContent = isPrint
     ? "Peça única, pronta para o fatiador."
-    : state.model === "custom"
-      ? "Divisórias assimétricas com montagem por colagem."
-      : state.model === "grid"
-        ? "Montagem por colagem. Divisórias com meio encaixe."
-        : "Painéis com montagem por colagem.";
+    : `${JOINTS[jointType(state)]} · ${LIDS[lidType(state)]}`;
   $("#assembly-text").textContent = isPrint
-    ? "STL em milímetros, com fundo fechado. Confira a área útil da sua impressora e as configurações de impressão antes de produzir."
-    : "SVG e DXF em milímetros, sem compensação de kerf. Confira a espessura real e teste os encaixes antes de cortar. Tampa e gavetas usam a folga informada.";
+    ? "STL em milímetros, com fundo fechado. Confira a área útil da impressora e as configurações do fatiador."
+    : constructionNotes(state);
   if (!valid) {
     $("#summary-metrics").innerHTML =
       '<p class="field-hint">Ajuste as medidas para calcular o projeto.</p>';
@@ -295,12 +341,12 @@ function renderEditor() {
     $("#part-count").textContent = "";
     return;
   }
-  const iw = state.width - 2 * state.thickness,
+  const iw = shellMetrics(state).innerWidth,
     id = state.depth - 2 * state.thickness,
-    ih = state.height - state.thickness;
+    ih = shellMetrics(state).dividerTop - state.thickness;
   const area = parts.reduce((sum, p) => sum + p.width * p.height, 0) / 1e6;
   $("#summary-metrics").innerHTML =
-    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${state.model === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
+    `<dl><div><dt>Fabricação</dt><dd>${isPrint ? "Impressão 3D" : "Corte a laser"}</dd></div><div><dt>Espessura</dt><dd>${fmt(state.thickness)} mm</dd></div>${state.model === "drawers" ? `<div><dt>Folga por lado</dt><dd>${fmt(state.clearance)} mm</dd></div>` : `<div><dt>Interior útil</dt><dd>${fmt(iw)} × ${fmt(id)} × ${fmt(ih)} mm</dd></div>`}${construction ? `<div><dt>União</dt><dd>${JOINTS[jointType(state)]}</dd></div><div><dt>Tampa</dt><dd>${LIDS[lidType(state)]}</dd></div>` : ""}${isPrint ? "" : `<div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div>`}</dl>`;
   $("#parts-title").textContent = isPrint
     ? "Sobre o arquivo"
     : "Lista de peças";
@@ -363,7 +409,8 @@ function exportDialog() {
     .join("");
   $("#export-note").textContent = isPrint
     ? "STL usa milímetros por convenção. Selecione mm ao importar e confirme a escala e a área da sua impressora."
-    : "Montagem por colagem; sem encaixes dentados ou compensação de kerf. As ranhuras das divisórias usam a espessura exata informada. Faça uma amostra antes da produção. A disposição das peças não é um aproveitamento otimizado de chapa.";
+    : constructionNotes(state) +
+      " A disposição das peças não é um aproveitamento otimizado de chapa.";
   $$("[data-export]").forEach(
     (b) =>
       (b.onclick = () => {
@@ -468,7 +515,7 @@ function updateQuote() {
 $("#quote-project").onclick = () => {
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${state.model === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${["drawers", "lid"].includes(state.model) ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser — montagem por colagem"}\nReferência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${state.model === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${state.model === "drawers" || lidType(state) !== "none" ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Aba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\nReferência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-dialog").showModal();
 };
@@ -482,12 +529,39 @@ for (const key of [
   "rows",
   "ratio",
   "clearance",
+  "fingerSize",
+  "lidHeight",
+  "pivotDiameter",
+  "lidOpening",
 ])
   $("#" + key).addEventListener("input", (e) => {
     state[key] = e.target.value === "" ? NaN : Number(e.target.value);
     renderEditor();
     persistDraft();
   });
+$$("[data-joint]").forEach(
+  (b) =>
+    (b.onclick = () => {
+      state.joint = b.dataset.joint;
+      renderEditor();
+      persistDraft();
+    }),
+);
+$("#lid-type").onchange = (e) => {
+  state.lidType = e.target.value;
+  if (state.lidType === "hinged") state.lidOpening = 100;
+  else state.lidOpening = 55;
+  syncFields();
+  renderEditor();
+  persistDraft();
+};
+$("#toggle-lid").onclick = () => {
+  state.lidOpening =
+    state.lidOpening > 0 ? 0 : lidType(state) === "hinged" ? 100 : 75;
+  $("#lidOpening").value = state.lidOpening;
+  renderEditor();
+  persistDraft();
+};
 $("#project-name").oninput = (e) => {
   state.name = e.target.value;
   $("#save-project").disabled = !!validate(state).length || !state.name.trim();
@@ -634,6 +708,7 @@ $("#hero-object").innerHTML = previewSVG(
   { angle: 35 },
 );
 mountIcons();
+$('[data-filter="all"] span').textContent = MODELS.length;
 try {
   const draft = load(draftKey, null);
   if (draft) {

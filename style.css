@@ -2593,3 +2593,60 @@ textarea {
     font-size: 10px;
   }
 }
+.joint-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.joint-options button {
+  background: #fff;
+  border: 1px solid #dce5f1;
+  border-radius: 5px;
+  padding: 9px 4px;
+  color: #99aac1;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.joint-options button.active {
+  border-color: #7ea2e6;
+  background: #edf3ff;
+  color: #426ab9;
+}
+.joint-options svg {
+  width: 48px;
+  height: 27px;
+  fill: #eed59f;
+  stroke: currentColor;
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+#hinge-fields {
+  margin-top: 15px;
+}
+#toggle-lid {
+  margin-top: 13px;
+}
+.controls select {
+  white-space: normal;
+  font-size: 11px;
+  padding: 11px 7px;
+}
+@media (max-width: 650px) {
+  .joint-options button {
+    font-size: 12px;
+    padding: 12px 4px;
+  }
+  .controls select {
+    font-size: 13px;
+  }
+}
+@media (min-width: 651px) {
+  .visual-column,
+  .project-summary {
+    position: sticky;
+    top: 20px;
+  }
+}

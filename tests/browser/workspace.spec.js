@@ -7,7 +7,7 @@ const open = async (page, model) => {
 };
 test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(8);
+  await expect(page.locator(".model-card")).toHaveCount(9);
   await page.locator('[data-filter="print"]').click();
   await expect(page.locator(".model-card")).toHaveCount(2);
   await page.locator('[data-filter="all"]').click();
@@ -16,7 +16,7 @@ test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.locator("#search").fill("semresultado");
   await expect(page.locator(".empty-state")).toBeVisible();
   await page.locator("#clear-search").click();
-  await expect(page.locator(".model-card")).toHaveCount(8);
+  await expect(page.locator(".model-card")).toHaveCount(9);
 });
 test("grid edits update geometry, panel count, validity and downloadable files", async ({
   page,
@@ -127,26 +127,22 @@ test("JSON export/import preserves settings and rejects invalid files", async ({
   expect(JSON.parse(json).rows).toBe(4);
   await page.keyboard.press("Escape");
   await page.locator("#back-models").click();
-  await page
-    .locator("#project-file")
-    .setInputFiles({
-      name: "teste.papeled.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(json),
-    });
+  await page.locator("#project-file").setInputFiles({
+    name: "teste.papeled.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(json),
+  });
   await expect(page.locator("#width")).toHaveValue("360");
   await expect(page.locator("#rows")).toHaveValue("4");
   await expect(page.locator("#project-name")).toHaveValue(
     "Gavetas & ferramentas",
   );
   await page.locator("#back-models").click();
-  await page
-    .locator("#project-file")
-    .setInputFiles({
-      name: "invalido.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"version":1,"model":"naoexiste"}'),
-    });
+  await page.locator("#project-file").setInputFiles({
+    name: "invalido.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"version":1,"model":"naoexiste"}'),
+  });
   await expect(page.locator("#toast")).toContainText("Use um arquivo");
   await expect(page.locator("#catalog-view")).toBeVisible();
 });
@@ -224,5 +220,136 @@ test("mobile: no horizontal overflow, models usable, export and help fit", async
   await page.locator("#how-button").click();
   await expect(page.locator("#help-dialog")).toBeVisible();
   await page.keyboard.press("Escape");
+  expect(errors).toEqual([]);
+});
+
+test("box joinery changes contours, T hardware notes, and finger pitch", async ({
+  page,
+}) => {
+  await open(page, "open");
+  const straight = await page.locator("#preview").innerHTML();
+  await page.locator('[data-joint="finger"]').click();
+  await expect(page.locator("#finger-size-label")).toBeVisible();
+  await page.locator("#fingerSize").fill("12");
+  await expect(page.locator("#finger-size-value")).toHaveText("12 mm");
+  expect(await page.locator("#preview").innerHTML()).not.toBe(straight);
+  await page.locator("#export-project").click();
+  const event = page.waitForEvent("download");
+  await page.locator('[data-export="svg"]').click();
+  const svg = await readFile(await (await event).path(), "utf8");
+  expect(svg).toContain("Encaixes de dedo");
+  expect((svg.match(/[ML]/g) || []).length).toBeGreaterThan(70);
+  await page.keyboard.press("Escape");
+  await page.locator('[data-joint="tslot"]').click();
+  await expect(page.locator("#joint-hint")).toContainText("M3");
+  await expect(page.locator("#summary-metrics")).toContainText("181,2");
+  await page.locator("#quote-project").click();
+  expect(await page.locator("#quote-message").inputValue()).toContain(
+    "União: T",
+  );
+  await page.keyboard.press("Escape");
+  await page.locator("#height").fill("20");
+  await expect(page.locator("#export-project")).toBeDisabled();
+});
+test("all three lids support open-close, real panels and partitions", async ({
+  page,
+}) => {
+  await open(page, "grid");
+  for (const [lid, count] of [
+    ["removable", "10"],
+    ["sliding", "13"],
+    ["hinged", "14"],
+  ]) {
+    await page.selectOption("#lid-type", lid);
+    await expect(page.locator("#part-count")).toHaveText(count);
+    const before = await page.locator("#preview").innerHTML();
+    await page.locator("#toggle-lid").click();
+    await expect(page.locator("#lid-opening-value")).toHaveText(
+      lid === "hinged" ? "0°" : "0%",
+    );
+    expect(await page.locator("#preview").innerHTML()).not.toBe(before);
+    await page.locator("#toggle-lid").click();
+    await expect(page.locator("#toggle-lid")).toHaveText("Fechar tampa");
+  }
+  await page.locator("#pivotDiameter").fill("8");
+  await page.locator("#lidHeight").fill("12");
+  await page.locator("#quote-project").click();
+  const quote = await page.locator("#quote-message").inputValue();
+  expect(quote).toContain("Dobradiça integrada");
+  expect(quote).toContain("pivô: Ø8");
+  await page.keyboard.press("Escape");
+  await page.locator("#export-project").click();
+  const event = page.waitForEvent("download");
+  await page.locator('[data-export="json"]').click();
+  const data = JSON.parse(await readFile(await (await event).path(), "utf8"));
+  expect(data.lidType).toBe("hinged");
+  expect(data.pivotDiameter).toBe(8);
+  expect(data.lidHeight).toBe(12);
+});
+test("legacy projects remain editable; removed model is absent; print and drawers keep independent construction", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator('[data-model="bin"]')).toHaveCount(0);
+  await expect(page.locator('[data-model="hinged"]')).toHaveCount(1);
+  await expect(page.locator('[data-model="sliding"]')).toHaveCount(1);
+  const legacy = {
+    version: 1,
+    model: "bin",
+    name: "Projeto antigo",
+    width: 220,
+    depth: 180,
+    height: 110,
+    thickness: 3,
+    cols: 1,
+    rows: 1,
+    ratio: 60,
+    clearance: 0.6,
+    finish: "natural",
+  };
+  await page
+    .locator("#project-file")
+    .setInputFiles({
+      name: "antigo.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(legacy)),
+    });
+  await expect(page.locator("#editor-model-title")).toHaveText("Caixa aberta");
+  await expect(page.locator('[data-joint="straight"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.selectOption("#lid-type", "sliding");
+  await expect(page.locator("#export-project")).toBeEnabled();
+  await page.locator("#back-models").click();
+  await page.locator('[data-model="drawers"]').click();
+  await expect(page.locator("#construction-section")).toBeHidden();
+  await expect(page.locator("#lid-section")).toBeHidden();
+});
+test("hinge controls work on small screens without overflow or script errors", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page, "hinged");
+  await page.locator("#lidOpening").fill("60");
+  await expect(page.locator("#lid-opening-value")).toHaveText("60°");
+  await page.locator("#pivotDiameter").fill("10");
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#pivotDiameter")).toHaveValue("10");
+  await expect(page.locator("#lid-type")).toHaveValue("hinged");
+  await expect(page.locator("#lidOpening")).toHaveValue("60");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/papeled-hinge-mobile.png",
+    fullPage: true,
+  });
   expect(errors).toEqual([]);
 });

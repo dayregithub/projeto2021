@@ -16,7 +16,7 @@ import {
 } from "../src/geometry.js";
 import { sceneBoxes } from "../src/preview.js";
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
-test("all eight defaults are valid and generate their supported fabrication output", () => {
+test("all model defaults are valid and generate their supported fabrication output", () => {
   for (const m of MODELS) {
     const s = defaults(m.id);
     assert.deepEqual(validate(s), [], m.id);
@@ -192,4 +192,203 @@ test("invalid dimensions cannot generate cuts and imported project values are va
   const a = readProject({ ...defaults("grid"), ignored: "data" });
   assert.equal(a.ignored, undefined);
   assert.deepEqual(readProject(JSON.stringify(a)), a);
+});
+
+// Fabrication regression checks for the configurable box construction.
+import { panelContours, panelPolygons } from "../src/geometry.js";
+import {
+  JOINTS,
+  LIDS,
+  hingeDimensions,
+  shellMetrics,
+  toothIntervals,
+} from "../src/construction.js";
+import clipping from "polygon-clipping";
+function inRing([x, y], ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i],
+      b = ring[j];
+    if (
+      a[1] > y !== b[1] > y &&
+      x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1]) + a[0]
+    )
+      inside = !inside;
+  }
+  return inside;
+}
+function insidePanel(p, point, t) {
+  const delta = point.map((v, i) => v - p.pose.origin[i]),
+    dot = (a, b) => a.reduce((n, v, i) => n + v * b[i], 0),
+    level = dot(delta, p.pose.normal);
+  if (level < 0 || level > t) return false;
+  const uv = [dot(delta, p.pose.u), dot(delta, p.pose.v)];
+  return panelPolygons(p).some(
+    (poly) => inRing(uv, poly[0]) && !poly.slice(1).some((r) => inRing(uv, r)),
+  );
+}
+test("catalog removes access bin, keeps three lid presets and migrates legacy projects", () => {
+  assert.ok(!MODELS.some((m) => m.id === "bin"));
+  for (const id of ["lid", "sliding", "hinged"])
+    assert.ok(MODELS.some((m) => m.id === id));
+  const old = defaults("grid");
+  for (const key of [
+    "joint",
+    "fingerSize",
+    "lidType",
+    "lidHeight",
+    "pivotDiameter",
+    "lidOpening",
+  ])
+    delete old[key];
+  const result = readProject(old);
+  assert.equal(result.joint, "straight");
+  assert.equal(result.lidType, "none");
+  const bin = readProject({ ...old, model: "bin" });
+  assert.equal(bin.model, "open");
+  assert.equal(bin.width, old.width);
+});
+test("every joint and lid combination exports finite, connected, bounded contours and matching DXF paths", () => {
+  for (const joint of Object.keys(JOINTS))
+    for (const lidType of Object.keys(LIDS)) {
+      const s = { ...defaults("grid"), joint, lidType };
+      assert.deepEqual(validate(s), [], joint + " " + lidType);
+      const p = panels(s);
+      let loops = 0;
+      for (const panel of p) {
+        const poly = panelPolygons(panel);
+        assert.equal(
+          poly.length,
+          1,
+          `${joint}/${lidType}: ${panel.name} split into detached pieces`,
+        );
+        for (const ring of panelContours(panel)) {
+          loops++;
+          assert.ok(ring.length >= 3);
+          for (const [x, y] of ring) {
+            assert.ok(Number.isFinite(x) && Number.isFinite(y));
+            assert.ok(
+              x >= -1e-7 &&
+                x <= panel.width + 1e-7 &&
+                y >= -1e-7 &&
+                y <= panel.height + 1e-7,
+            );
+          }
+        }
+        assert.ok(
+          clipping.union(poly.map((poly) => poly.map((r) => [...r, r[0]])))
+            .length,
+        );
+      }
+      assert.equal((exportSVG(s).match(/<path /g) || []).length, loops);
+      assert.equal((exportDXF(s).match(/\nLWPOLYLINE\n/g) || []).length, loops);
+    }
+});
+test("finger box shell partitions its boundary without overlap or gaps at corners and base", () => {
+  for (const thickness of [2, 3, 5]) {
+    const s = { ...defaults("open"), joint: "finger", thickness },
+      p = panels(s),
+      t = thickness;
+    const samples = (length) => [
+      t * 0.37,
+      t + 1.13,
+      ...toothIntervals(t, length - t, s.fingerSize).map(
+        (i) => (i.start + i.end) / 2,
+      ),
+      length - t - 1.31,
+      length - t * 0.37,
+    ];
+    const xs = samples(s.width),
+      ys = samples(s.depth),
+      zs = [
+        t * 0.37,
+        ...toothIntervals(t, s.height, s.fingerSize).map(
+          (i) => (i.start + i.end) / 2,
+        ),
+      ];
+    for (const x of xs)
+      for (const y of ys)
+        for (const z of zs) {
+          const expected = Number(
+              x < t || x > s.width - t || y < t || y > s.depth - t || z < t,
+            ),
+            actual = p.filter((p) => insidePanel(p, [x, y, z], t)).length;
+          assert.equal(actual, expected, `t=${t} at ${x},${y},${z}`);
+        }
+  }
+});
+test("T tabs align with front slots and leave material around M3 holes", () => {
+  const s = { ...defaults("open"), joint: "tslot" },
+    p = panels(s),
+    t = s.thickness,
+    m = shellMetrics(s),
+    span = s.height - t;
+  assert.ok(m.inset >= 6.4);
+  near(m.innerWidth, s.width - 2 * (m.inset + t));
+  for (const x of [m.inset + t * 0.41, s.width - m.inset - t * 0.59])
+    for (const z of [t + span * 0.25, t + span * 0.75]) {
+      assert.equal(insidePanel(p[1], [x, s.depth - t * 0.37, z], t), false);
+      assert.equal(
+        p
+          .slice(3, 5)
+          .filter((p) => insidePanel(p, [x, s.depth - t * 0.37, z], t)).length,
+        1,
+      );
+    }
+  const small = { ...s, height: 20 };
+  assert.ok(validate(small).length);
+});
+test("sliding rails have clearance above partitions and match the lid width and thickness", () => {
+  const s = { ...defaults("grid"), lidType: "sliding" },
+    p = panels(s),
+    m = shellMetrics(s),
+    t = s.thickness,
+    c = s.clearance;
+  const rails = p.filter((p) => p.role === "rail"),
+    lid = p.find((p) => p.name === "Tampa deslizante");
+  assert.equal(rails.length, 4);
+  near(lid.width, m.innerWidth - 2 * c);
+  const lower = rails[0],
+    upper = rails[1];
+  near(upper.pose.origin[2] - (lower.pose.origin[2] + t), t + 2 * c);
+  assert.ok(m.dividerTop < lower.pose.origin[2]);
+  for (const part of p.filter((p) => p.name.startsWith("Divisória")))
+    near(part.height + t, m.dividerTop);
+});
+test("hinge body and lid use coaxial holes, external cheeks and a variable pin diameter", () => {
+  const s = defaults("hinged"),
+    p = panels(s),
+    hinge = hingeDimensions(s);
+  const parts = p.filter(
+    (p) => p.role === "side" || p.name.startsWith("Braço"),
+  );
+  assert.equal(parts.length, 4);
+  for (const part of parts) {
+    assert.equal(panelPolygons(part)[0].length, 2);
+    const ring = panelPolygons(part)[0][1],
+      ys = ring.map((v) => part.pose.origin[1] + v[0]),
+      zs = ring.map((v) => part.pose.origin[2] - v[1]);
+    near((Math.max(...ys) + Math.min(...ys)) / 2, hinge.y);
+    near((Math.max(...zs) + Math.min(...zs)) / 2, hinge.z);
+    near((Math.max(...ys) - Math.min(...ys)) / 2, hinge.holeRadius);
+  }
+  s.pivotDiameter = 10;
+  assert.ok(hingeDimensions(s).radius > hinge.radius);
+  assert.ok(exportSVG(s).includes("Ø10"));
+  assert.equal(p.filter((p) => p.group === "hinge-hardware").length, 2);
+});
+test("new settings survive JSON roundtrip and malformed construction options are blocked", () => {
+  const s = {
+    ...defaults("custom"),
+    joint: "finger",
+    fingerSize: 12,
+    lidType: "hinged",
+    lidHeight: 12,
+    pivotDiameter: 8,
+    lidOpening: 87,
+  };
+  assert.deepEqual(readProject(JSON.stringify(s)), s);
+  assert.ok(validate({ ...s, pivotDiameter: 0 }).length);
+  assert.ok(validate({ ...s, joint: "invalid" }).length);
+  assert.ok(validate({ ...defaults("print"), lidType: "hinged" }).length);
 });
