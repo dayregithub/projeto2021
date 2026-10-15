@@ -1,7 +1,15 @@
+import { createViewport } from "./src/viewport.js";
 import { PRINT_LIDS, printDimensions } from "./src/print3d.js";
 import { DECORATIONS } from "./src/decoration.js";
 import { JOINT_GROUPS, resolvedJoint } from "./src/joinery.js";
-import { familyFor, USAGES } from "./src/models.js";
+import {
+  familyFor,
+  USAGES,
+  CATALOG_GROUPS,
+  catalogGroupFor,
+  variationsFor,
+  findCatalogGroups,
+} from "./src/models.js";
 import {
   HINGES,
   hingeType,
@@ -15,7 +23,6 @@ import {
   constructionNotes,
 } from "./src/construction.js";
 import {
-  MODELS,
   defaults,
   modelById,
   supportsGrid,
@@ -47,6 +54,19 @@ let state = defaults(),
   toastTimer,
   saveTimer,
   storageWarning = false;
+const viewport = createViewport({
+  element: $("#preview"),
+  getView: () => view,
+  onRotate: (delta) => {
+    angle += delta;
+    renderEditor();
+  },
+  onChange: (zoom) => {
+    $("#zoom-reset").textContent = Math.round(zoom * 100) + "%";
+    $("#zoom-out").disabled = zoom <= 0.5;
+    $("#zoom-in").disabled = zoom >= 4;
+  },
+});
 const fmt = (n) => Number(n.toFixed(1)).toLocaleString("pt-BR");
 const uuid = () =>
   globalThis.crypto?.randomUUID?.() ||
@@ -112,30 +132,24 @@ function thumbnail(m) {
     );
   return thumbnailCache.get(m.id);
 }
-function card(m) {
-  return `<button class="model-card" data-model="${m.id}"><div class="model-image ${m.category === "print" ? "print-image" : ""}"><span class="model-badge">${m.tag}</span><img src="${thumbnail(m)}" alt="" loading="lazy" decoding="async" width="600" height="410"><span class="card-open">${icon("arrow-up-right")}</span></div><div class="model-card-info"><h3>${m.name}</h3><p>${m.description}</p><span class="product-size">${m.w} × ${m.d} × ${m.h} mm · ajustável</span><span class="process-chip">${icon(m.category === "print" ? "box" : "sparkles")}${m.category === "print" ? "Impressão 3D" : "Corte a laser"}<span>·</span>${m.category === "print" ? "STL" : "SVG / DXF"}</span></div></button>`;
-}
 function renderCatalog() {
-  const term = $("#search")
-    .value.trim()
-    .toLocaleLowerCase("pt-BR")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  const found = MODELS.filter(
-    (m) =>
-      (filter === "all" || m.category === filter) &&
-      ($("#use-filter").value === "all" ||
-        m.usage === $("#use-filter").value) &&
-      (m.name + " " + m.description + " " + USAGES[m.usage])
-        .toLocaleLowerCase("pt-BR")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .includes(term),
-  );
+  const found = findCatalogGroups({
+    term: $("#search").value,
+    category: filter,
+    usage: $("#use-filter").value,
+  });
+  const count = found.reduce((n, g) => n + g.matches.length, 0);
   $("#model-count").textContent =
-    `${found.length} ${found.length === 1 ? "modelo disponível" : "modelos disponíveis"}`;
+    `${found.length} ${found.length === 1 ? "grupo" : "grupos"} · ${count} ${count === 1 ? "variação" : "variações"}`;
   $("#model-grid").innerHTML = found.length
-    ? found.map(card).join("")
+    ? found
+        .map((group) => {
+          const preferred =
+            group.matches.find((m) => m.id === group.defaultModel) ||
+            group.matches[0];
+          return `<button class="model-card" data-group="${group.id}" data-model="${preferred.id}"><div class="model-image ${group.category === "print" ? "print-image" : ""}"><span class="model-badge">${group.tag}</span><img src="${thumbnail(preferred)}" alt="" loading="lazy" decoding="async" width="600" height="410"><span class="card-open">${icon("arrow-up-right")}</span></div><div class="model-card-info"><h3>${group.name}</h3><p>${group.description}</p><span class="product-size">${group.matches.length} variações${group.matches.length !== variationsFor(group).length ? " encontradas" : ""} · medidas ajustáveis</span><span class="process-chip">${icon(group.category === "print" ? "box" : "sparkles")}${group.category === "print" ? "Impressão 3D" : "Corte a laser"}<span>·</span>Escolher variação</span></div></button>`;
+        })
+        .join("")
     : `<div class="empty-state">${icon("search")}<h3>Nenhum modelo por aqui.</h3><p>Tente outro nome ou limpe os filtros.</p><button class="button secondary" id="clear-search">Limpar busca</button></div>`;
   $$("[data-model]").forEach(
     (b) => (b.onclick = () => openModel(b.dataset.model)),
@@ -179,6 +193,7 @@ function openProject(project, id = null) {
   savedId = id;
   angle = 35;
   view = "3d";
+  viewport.reset(true);
   exploded = false;
   opened = 0.35;
   $("#drawer-open").value = 35;
@@ -205,6 +220,13 @@ function route() {
   showView(name);
 }
 function syncFields() {
+  const group = catalogGroupFor(state);
+  $("#model-variation").innerHTML = variationsFor(group)
+    .map((m) => `<option value="${m.id}">${esc(m.name)}</option>`)
+    .join("");
+  $("#model-variation").value = state.model;
+  $("#variation-group").textContent = group.name;
+
   for (const k of [
     "width",
     "depth",
@@ -392,14 +414,15 @@ function renderEditor() {
   $("#preview").classList.toggle("flat-view", view === "2d");
   $("#canvas-hint").innerHTML =
     view === "2d"
-      ? `${icon("layout")} Numeração corresponde à lista de peças`
-      : `${icon("move")} Arraste para girar`;
-  $(".camera-controls").hidden = view === "2d";
+      ? `${icon("move")} Arraste para mover · amplie para ver os detalhes`
+      : `${icon("move")} Arraste para girar · Shift para mover`;
+  $("#rotate-left").hidden = $("#rotate-right").hidden = view === "2d";
   $("#preview").innerHTML = valid
     ? view === "2d"
       ? cutPreviewSVG(state)
       : previewSVG(state, { angle, exploded, opened, dimensions: true })
     : `<div class="invalid-preview">${icon("ruler")}<h3>Vamos ajustar essas medidas?</h3><p>Confira os campos ao lado para continuar.</p></div>`;
+  viewport.apply();
   $("#preview").setAttribute(
     "aria-label",
     `Prévia ${view === "2d" ? "das peças" : "da montagem"}: ${state.name}, ${state.width} por ${state.depth} por ${state.height} milímetros`,
@@ -884,6 +907,13 @@ $("#explode").onclick = () => {
   exploded = !exploded;
   renderEditor();
 };
+$("#zoom-in").onclick = () => viewport.zoomBy(1.25);
+$("#zoom-out").onclick = () => viewport.zoomBy(0.8);
+$("#zoom-reset").onclick = () => viewport.reset();
+$("#model-variation").onchange = (e) => {
+  openModel(e.target.value);
+  persistDraft();
+};
 $("#rotate-left").onclick = () => {
   angle -= 25;
   renderEditor();
@@ -895,29 +925,8 @@ $("#rotate-right").onclick = () => {
 $("#camera-reset").onclick = () => {
   angle = 35;
   exploded = false;
+  viewport.reset();
   renderEditor();
-};
-let drag = null;
-$("#preview").onpointerdown = (e) => {
-  if (view !== "3d" || e.button !== 0) return;
-  drag = { x: e.clientX, start: angle };
-  $("#preview").setPointerCapture(e.pointerId);
-  $("#preview").classList.add("dragging");
-};
-$("#preview").onpointermove = (e) => {
-  if (!drag) return;
-  angle = drag.start + (e.clientX - drag.x) * 0.5;
-  if (!validate(state).length)
-    $("#preview").innerHTML = previewSVG(state, {
-      angle,
-      exploded,
-      opened,
-      dimensions: true,
-    });
-};
-$("#preview").onpointerup = $("#preview").onpointercancel = () => {
-  drag = null;
-  $("#preview").classList.remove("dragging");
 };
 $("#import-button").onclick = () => $("#project-file").click();
 $("#project-file").onchange = async (e) => {
@@ -989,7 +998,7 @@ for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
       ? '<option value="cross">Meio encaixe (projeto anterior)</option>'
       : "");
 mountIcons();
-$('[data-filter="all"] span').textContent = MODELS.length;
+$('[data-filter="all"] span').textContent = CATALOG_GROUPS.length;
 try {
   const draft = load(draftKey, null);
   if (draft) {

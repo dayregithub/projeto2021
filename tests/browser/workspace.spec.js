@@ -1,25 +1,28 @@
 import { test, expect } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { MODELS } from "../../src/models.js";
+import { MODELS, catalogGroupFor } from "../../src/models.js";
+const chooseModel = async (page, model) => {
+  await page.locator(`[data-group="${catalogGroupFor(model).id}"]`).click();
+  if ((await page.locator("#model-variation").inputValue()) !== model)
+    await page.selectOption("#model-variation", model);
+  await expect(page.locator("#editor-view")).toBeVisible();
+};
 const open = async (page, model) => {
   await page.goto("/");
-  await page.locator(`[data-model="${model}"]`).click();
-  await expect(page.locator("#editor-view")).toBeVisible();
+  await chooseModel(page, model);
 };
 test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(MODELS.length);
+  await expect(page.locator(".model-card")).toHaveCount(3);
   await page.locator('[data-filter="print"]').click();
-  await expect(page.locator(".model-card")).toHaveCount(
-    MODELS.filter((m) => m.category === "print").length,
-  );
+  await expect(page.locator(".model-card")).toHaveCount(1);
   await page.locator('[data-filter="all"]').click();
   await page.locator("#search").fill("divisorias");
-  await expect(page.locator(".model-card")).toHaveCount(2);
+  await expect(page.locator(".model-card")).toHaveCount(1);
   await page.locator("#search").fill("semresultado");
   await expect(page.locator(".empty-state")).toBeVisible();
   await page.locator("#clear-search").click();
-  await expect(page.locator(".model-card")).toHaveCount(MODELS.length);
+  await expect(page.locator(".model-card")).toHaveCount(3);
 });
 test("grid edits update geometry, panel count, validity and downloadable files", async ({
   page,
@@ -84,7 +87,7 @@ test("asymmetric divisions, camera, exploded view and model switching", async ({
   await page.locator("#explode").click();
   expect(await page.locator("#preview").innerHTML()).not.toBe(rotated);
   await page.locator("#back-models").click();
-  await page.locator('[data-model="open"]').click();
+  await chooseModel(page, "open");
   await page.locator("#add-dividers").click();
   await expect(page.locator("#editor-model-title")).toHaveText(
     "Divisórias em grade",
@@ -206,7 +209,7 @@ test("mobile: no horizontal overflow, models usable, export and help fit", async
     path: "/tmp/papeled-mobile-catalog.png",
     fullPage: true,
   });
-  await page.locator('[data-model="drawers"]').click();
+  await chooseModel(page, "drawers");
   await page.locator("#cols").fill("3");
   expect(
     await page.evaluate(
@@ -294,8 +297,7 @@ test("legacy projects remain editable; removed model is absent; print and drawer
 }) => {
   await page.goto("/");
   await expect(page.locator('[data-model="bin"]')).toHaveCount(0);
-  await expect(page.locator('[data-model="hinged"]')).toHaveCount(1);
-  await expect(page.locator('[data-model="sliding"]')).toHaveCount(1);
+  await expect(page.locator('[data-group="laser-boxes"]')).toHaveCount(1);
   const legacy = {
     version: 1,
     model: "bin",
@@ -323,7 +325,7 @@ test("legacy projects remain editable; removed model is absent; print and drawer
   await page.selectOption("#lid-type", "sliding");
   await expect(page.locator("#export-project")).toBeEnabled();
   await page.locator("#back-models").click();
-  await page.locator('[data-model="drawers"]').click();
+  await chooseModel(page, "drawers");
   await expect(page.locator("#construction-section")).toBeVisible();
   await expect(page.locator("#lid-section")).toBeHidden();
 });
@@ -360,18 +362,14 @@ test("usage and process filters combine and reset after an empty search", async 
 }) => {
   await page.goto("/");
   await page.selectOption("#use-filter", "desk");
-  await expect(page.locator(".model-card")).toHaveCount(
-    MODELS.filter((m) => m.usage === "desk").length,
-  );
+  await expect(page.locator(".model-card")).toHaveCount(3);
   await page.locator('[data-filter="laser"]').click();
-  await expect(page.locator(".model-card")).toHaveCount(
-    MODELS.filter((m) => m.usage === "desk" && m.category === "laser").length,
-  );
+  await expect(page.locator(".model-card")).toHaveCount(2);
   await expect(page.locator('[data-model="deskdrawers"]')).toBeVisible();
   await page.locator("#search").fill("semresultados");
   await page.locator("#clear-search").click();
   await expect(page.locator("#use-filter")).toHaveValue("all");
-  await expect(page.locator(".model-card")).toHaveCount(MODELS.length);
+  await expect(page.locator(".model-card")).toHaveCount(3);
 });
 test("new models expose the right family controls and preserve preset identity", async ({
   page,
@@ -423,7 +421,7 @@ test("compact SVG-inspired presets open with specified dimensions and mobile fil
   await expect(page.locator("#height")).toHaveValue("50");
   await page.locator("#back-models").click();
   await page.selectOption("#use-filter", "gifts");
-  await page.locator('[data-model="compactslider"]').click();
+  await chooseModel(page, "compactslider");
   await expect(page.locator("#width")).toHaveValue("125");
   await expect(page.locator("#lid-type")).toHaveValue("sliding");
   await page.locator("#back-models").click();
@@ -575,4 +573,126 @@ test("requesting a quote prepares and downloads a ZIP containing all four format
     text: "Quero 3 unidades para presente.",
   });
   expect(shared.size).toBeGreaterThan(1000);
+});
+
+test("grouped catalog removes duplicate cards while variations and saved preset identities remain available", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".model-card")).toHaveCount(3);
+  await expect(page.locator("#model-count")).toHaveText(
+    "3 grupos · 20 variações",
+  );
+  await page.locator("#search").fill("chá");
+  await expect(page.locator(".model-card")).toHaveCount(1);
+  await page.locator('[data-group="laser-boxes"]').click();
+  await expect(page.locator("#model-variation")).toHaveValue("tea");
+  await expect(page.locator("#model-variation option")).toHaveCount(15);
+  await page.selectOption("#model-variation", "heartbox");
+  await expect(page.locator("#width")).toHaveValue("84");
+  await expect(page.locator("#hinge-type")).toHaveValue("tabbed");
+  await page.locator("#project-name").fill("Minha caixa personalizada");
+  await page.locator("#save-project").click();
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.locator("#model-variation")).toHaveValue("heartbox");
+  await expect(page.locator("#project-name")).toHaveValue(
+    "Minha caixa personalizada",
+  );
+});
+
+test("zoom buttons, wheel, keyboard and independent 2D pan retain manufacturing dimensions", async ({
+  page,
+}) => {
+  await open(page, "grid");
+  const before = await page.locator("#preview svg").getAttribute("viewBox");
+  await page.locator("#zoom-in").click();
+  await page.locator("#zoom-in").click();
+  await expect(page.locator("#zoom-reset")).toHaveText("156%");
+  expect(await page.locator("#preview svg").getAttribute("viewBox")).not.toBe(
+    before,
+  );
+  await page.locator('[data-view="2d"]').click();
+  await expect(page.locator("#zoom-reset")).toHaveText("100%");
+  await page.locator("#zoom-in").click();
+  await page.locator("#preview").scrollIntoViewIfNeeded();
+  const bounds = await page.locator("#preview").boundingBox();
+  await page.mouse.move(
+    bounds.x + bounds.width / 2,
+    bounds.y + bounds.height / 2,
+  );
+  await page.mouse.wheel(0, -250);
+  await expect
+    .poll(async () =>
+      Number((await page.locator("#zoom-reset").innerText()).replace("%", "")),
+    )
+    .toBeGreaterThan(125);
+  const start = await page.locator("#preview svg").getAttribute("viewBox");
+  await page.mouse.down();
+  await page.mouse.move(
+    bounds.x + bounds.width / 2 + 45,
+    bounds.y + bounds.height / 2 + 30,
+  );
+  await page.mouse.up();
+  expect(await page.locator("#preview svg").getAttribute("viewBox")).not.toBe(
+    start,
+  );
+  await page.locator('[data-view="3d"]').click();
+  await expect(page.locator("#zoom-reset")).toHaveText("156%");
+  await expect(page.locator("#width")).toHaveValue("240");
+  while (await page.locator("#zoom-in").isEnabled())
+    await page.locator("#zoom-in").click();
+  await expect(page.locator("#zoom-reset")).toHaveText("400%");
+  while (await page.locator("#zoom-out").isEnabled())
+    await page.locator("#zoom-out").click();
+  await expect(page.locator("#zoom-reset")).toHaveText("50%");
+  await page.locator("#preview").focus();
+  await page.keyboard.press("0");
+  await expect(page.locator("#zoom-reset")).toHaveText("100%");
+  await page.keyboard.press("+");
+  await expect(page.locator("#zoom-reset")).toHaveText("125%");
+  await page.locator("#camera-reset").click();
+  await expect(page.locator("#zoom-reset")).toHaveText("100%");
+});
+
+test("mobile pinch zoom works without horizontal page overflow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await open(page, "printgrid");
+  await page.locator("#preview").scrollIntoViewIfNeeded();
+  const b = await page.locator("#preview").boundingBox(),
+    x = b.x + b.width / 2,
+    y = b.y + b.height / 2;
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setTouchEmulationEnabled", {
+    enabled: true,
+    maxTouchPoints: 2,
+  });
+  const points = (distance) => [
+    { x: x - distance, y, id: 1 },
+    { x: x + distance, y, id: 2 },
+  ];
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: points(30),
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: points(65),
+  });
+  await session.send("Input.dispatchTouchEvent", {
+    type: "touchEnd",
+    touchPoints: [],
+  });
+  await expect
+    .poll(async () => parseInt(await page.locator("#zoom-reset").innerText()))
+    .toBeGreaterThan(150);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.locator("#zoom-reset").click();
+  await expect(page.locator("#zoom-reset")).toHaveText("100%");
 });

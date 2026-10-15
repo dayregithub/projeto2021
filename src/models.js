@@ -346,3 +346,78 @@ export function defaults(id = "grid") {
     ...(m.preset?.lidType === "hinged" ? { lidOpening: 100 } : {}),
   };
 }
+
+// Cards represent distinct construction choices; the original IDs remain
+// available as editable starting variations and for saved-project compatibility.
+export const CATALOG_GROUPS = [
+  {
+    id: "laser-boxes",
+    name: "Caixas e organizadores a laser",
+    category: "laser",
+    defaultModel: "open",
+    tag: "TAMPAS E DIVISÓRIAS",
+    description:
+      "Uma caixa, muitas possibilidades: aberta, com divisórias ou com três tipos de tampa.",
+  },
+  {
+    id: "laser-drawers",
+    name: "Gaveteiros a laser",
+    category: "laser",
+    defaultModel: "drawers",
+    tag: "GAVETAS MODULARES",
+    description:
+      "Da torre de mesa ao gaveteiro de oficina. Ajuste níveis, colunas e encaixes.",
+  },
+  {
+    id: "printed-boxes",
+    name: "Caixas e organizadores 3D",
+    category: "print",
+    defaultModel: "printgrid",
+    tag: "CANTOS E TAMPAS 3D",
+    description:
+      "Corpo em peça única, com cantos ajustáveis, divisórias e tampas opcionais.",
+  },
+];
+export const catalogGroupFor = (id) => {
+  const m = modelById(typeof id === "string" ? id : id.model);
+  return !m
+    ? undefined
+    : CATALOG_GROUPS.find(
+        (g) =>
+          g.id ===
+          (m.category === "print"
+            ? "printed-boxes"
+            : m.family === "drawers"
+              ? "laser-drawers"
+              : "laser-boxes"),
+      );
+};
+export const variationsFor = (group) =>
+  MODELS.filter(
+    (m) =>
+      catalogGroupFor(m.id)?.id ===
+      (typeof group === "string" ? group : group.id),
+  );
+export function findCatalogGroups({
+  term = "",
+  category = "all",
+  usage = "all",
+} = {}) {
+  const normalize = (s) =>
+    s
+      .toLocaleLowerCase("pt-BR")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  const query = normalize(term.trim());
+  return CATALOG_GROUPS.map((group) => {
+    const matches = variationsFor(group).filter(
+      (m) =>
+        (category === "all" || m.category === category) &&
+        (usage === "all" || m.usage === usage) &&
+        normalize(
+          `${m.name} ${m.description} ${USAGES[m.usage]} ${group.name}`,
+        ).includes(query),
+    );
+    return { ...group, matches };
+  }).filter((g) => g.matches.length);
+}

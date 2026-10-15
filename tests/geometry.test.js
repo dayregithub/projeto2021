@@ -794,3 +794,30 @@ test("quote ZIP includes all formats with valid PDF, editable parameters and ind
     }
   }
 });
+
+import {
+  CATALOG_GROUPS,
+  catalogGroupFor,
+  variationsFor,
+  findCatalogGroups,
+} from "../src/models.js";
+test("catalog groups share construction and preserve all twenty distinct preset IDs", () => {
+  assert.equal(CATALOG_GROUPS.length, 3);
+  assert.equal(variationsFor("laser-boxes").length, 15);
+  assert.equal(variationsFor("laser-drawers").length, 2);
+  assert.equal(variationsFor("printed-boxes").length, 3);
+  const members = CATALOG_GROUPS.flatMap((g) =>
+    variationsFor(g).map((m) => m.id),
+  );
+  assert.equal(new Set(members).size, MODELS.length);
+  for (const m of MODELS) {
+    assert.ok(catalogGroupFor(m.id));
+    assert.equal(readProject(defaults(m.id)).model, m.id);
+  }
+  assert.equal(
+    findCatalogGroups({ term: "coração" })[0].matches[0].id,
+    "heartbox",
+  );
+  assert.equal(findCatalogGroups({ category: "print" }).length, 1);
+  assert.equal(findCatalogGroups({ term: "xyzsemresultado" }).length, 0);
+});

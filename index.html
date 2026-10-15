@@ -95,7 +95,7 @@
           <div class="catalog-toolbar">
             <div class="filter-group" role="group" aria-label="Filtrar modelos">
               <button data-filter="all" class="active" aria-pressed="true">
-                Todos os modelos <span>20</span></button
+                Todos os modelos <span>3</span></button
               ><button data-filter="laser" aria-pressed="false">
                 <span data-icon="sparkles"></span> Corte a laser</button
               ><button data-filter="print" aria-pressed="false">
@@ -109,7 +109,7 @@
               >
                 <option value="all">Todos os usos</option>
               </select></label
-            ><span id="model-count">20 modelos para explorar</span>
+            ><span id="model-count">3 grupos · 20 variações</span>
           </div>
           <div id="resume-banner" hidden></div>
           <div class="model-grid" id="model-grid"></div>
@@ -180,6 +180,16 @@
               >
                 <span data-icon="rotate"></span>
               </button>
+            </div>
+            <div class="variation-picker">
+              <span class="field-label" id="variation-group"></span
+              ><label class="field-label" for="model-variation"
+                >Variação inicial</label
+              ><select class="text-input" id="model-variation"></select>
+              <p class="field-hint">
+                A variação aplica medidas iniciais. Depois, personalize
+                dimensões, organização e tampa nos controles abaixo.
+              </p>
             </div>
             <label class="field-label" for="project-name">Nome do projeto</label
             ><input
@@ -525,11 +535,44 @@
                   <span data-icon="layers"></span> Separar peças
                 </button>
               </div>
-              <div id="preview" role="img" aria-label="Prévia do projeto"></div>
+              <div
+                id="preview"
+                tabindex="0"
+                role="img"
+                aria-label="Prévia do projeto"
+              ></div>
               <div class="canvas-bottom">
                 <span id="canvas-hint"
                   ><span data-icon="move"></span> Arraste para girar</span
                 >
+                <div
+                  class="zoom-controls"
+                  role="group"
+                  aria-label="Zoom da visualização"
+                >
+                  <button
+                    class="icon-button"
+                    id="zoom-out"
+                    title="Diminuir zoom"
+                    aria-label="Diminuir zoom"
+                  >
+                    −</button
+                  ><button
+                    class="zoom-value"
+                    id="zoom-reset"
+                    title="Ajustar visualização"
+                    aria-label="Restaurar zoom"
+                  >
+                    100%</button
+                  ><button
+                    class="icon-button"
+                    id="zoom-in"
+                    title="Aumentar zoom"
+                    aria-label="Aumentar zoom"
+                  >
+                    +
+                  </button>
+                </div>
                 <div class="camera-controls">
                   <button
                     class="icon-button"

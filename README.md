@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 19 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 22 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -84,7 +84,7 @@ Projetos JSON e projetos locais anteriores continuam aceitos. Arquivos sem os ca
 
 ## Catálogo por uso
 
-São 20 opções: os nove modelos-base e onze configurações de produto. Porta-chás, porta-joias, estojo para lápis, caixa para cartas, organizador de componentes, porta-lápis de bancada, mini gaveteiro, bandeja para miniaturas e duas caixas compactas usam famílias de construção já validadas, com combinações próprias de medidas, divisões e tampas. Não são dez mecanismos novos. A identidade do produto permanece no JSON, nos projetos salvos e no orçamento; os controles e arquivos de fabricação respeitam sua família.
+O catálogo mostra três grupos: caixas e organizadores a laser, gaveteiros a laser e caixas e organizadores 3D. Os 20 modelos anteriores permanecem como variações iniciais, selecionadas dentro do editor. Porta-chás, porta-joias, estojo para lápis, caixa para cartas, organizador de componentes, porta-lápis de bancada, mini gaveteiro, bandeja para miniaturas e duas caixas compactas usam famílias de construção já validadas, com combinações próprias de medidas, divisões e tampas. Não são dez mecanismos novos. A identidade do produto permanece no JSON, nos projetos salvos e no orçamento; os controles e arquivos de fabricação respeitam sua família.
 
 O catálogo combina busca, processo de fabricação e filtro de uso (casa, escritório, oficina, presentes, jogos/miniaturas). As medidas iniciais aparecem nos cartões e podem ser editadas. Miniaturas são imagens SVG geradas uma vez por modelo e carregadas sob demanda.
 
@@ -108,3 +108,11 @@ O botão “Pedir orçamento” gera um ZIP com SVG, DXF, PDF, STL, JSON editáv
 O link `wa.me` e o `mailto:` não aceitam anexos. O site não afirma que o arquivo foi enviado: baixa o ZIP e instrui o visitante a anexá-lo à conversa. Quando `navigator.canShare({files})` é compatível, um botão compartilha o ZIP como arquivo junto do texto editado; o usuário escolhe o aplicativo e o contato. Sem essa API, o download permanece disponível. Nenhum arquivo é enviado a um servidor de terceiros para gerar o pacote.
 
 Novos módulos: `src/print3d.js` (sólidos e malhas 3D) e `src/package.js` (PDF, referências, STL de montagem e ZIP). O build usa JavaScript moderno com inicialização assíncrona do WASM; o pacote de exportação é carregado sob demanda.
+
+## Catálogo consolidado e visualização
+
+A avaliação agrupou itens pela construção, reunindo caixas abertas, tampas e organizadores a laser em um cartão (15 variações); gaveteiros de oficina e mesa em outro (2 variações); bandejas e organizadores 3D em um terceiro (3 variações). Os tamanhos compactos e os usos específicos são pontos de partida, não cartões repetidos. A troca em “Variação inicial” aplica as medidas e opções desse ponto de partida; os demais controles continuam ajustáveis. Busca e filtros examinam as variações e abrem uma configuração correspondente. IDs e parâmetros de projetos antigos permanecem compatíveis.
+
+A montagem 3D e a vista de peças 2D têm zoom independente entre 50% e 400%. Use os botões +/−, a roda do mouse, a pinça com dois dedos ou as teclas +/− com a prévia em foco. Clique na porcentagem, ou pressione 0/Home, para ajustar novamente à tela. Arraste para mover peças em 2D; em 3D, arraste para girar e use Shift + arrastar para mover. Restaurar a câmera também restaura o zoom da vista atual. A câmera é temporária e não altera dimensões, projetos exportados ou arquivos de fabricação.
+
+`src/viewport.js` concentra a câmera, zoom e gestos, sem recalcular as peças. Os testes de navegador incluem limites do zoom, roda do mouse, teclado, movimentação 2D e pinça no celular.
