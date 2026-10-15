@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 25 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 27 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -132,3 +132,11 @@ Os letreiros aceitam até 36 caracteres, com acentos portugueses, números e pon
 As dez fontes são arquivos locais, com contornos reais: a malha STL usa os mesmos desenhos da prévia. `npm run build:fonts` regenera `src/font-data.json` a partir dos arquivos WOFF dos pacotes Fontsource. Esses pacotes e OpenType.js são dependências de desenvolvimento, usadas na geração; não há consulta a serviços de fontes no navegador. Licenças dos desenhos tipográficos estão em `public/font-licenses/` e acompanham a publicação. A malha usa uma simplificação com tolerância de 0,0001 mm antes da conversão para STL, evitando faces degeneradas na tampa circular.
 
 STL, projeto JSON, PDF, SVG/DXF de referência e ZIP de orçamento incluem as personalizações. SVG/DXF continuam sendo referências dimensionais para esses produtos de impressão 3D, não arquivos para corte a laser.
+
+## Produção de arquivos externos
+
+A página inicial oferece “Enviar meu arquivo” para visitantes que já têm uma criação própria. O formulário aceita um ou mais arquivos, mostra nome e tamanho, permite remover arquivos e acrescentar nome do projeto e detalhes de quantidade/material. Não importa esses arquivos como parâmetros do configurador nem executa seus conteúdos. Os arquivos permanecem em memória apenas enquanto a janela está aberta; ao fechá-la, a seleção é descartada.
+
+Quando o navegador oferece compartilhamento de arquivos, o botão de anexo entrega os arquivos originais e a mensagem à aplicação escolhida pelo visitante. O usuário escolhe WhatsApp ou e-mail, confere o contato e confirma o envio. A conclusão da API representa a entrega ao aplicativo, não confirmação de recebimento pelo estúdio. Cancelar mantém a seleção disponível para tentar novamente.
+
+Os links fixos de WhatsApp e e-mail levam o resumo para +55 61 99243-0051 ou papeledmaker@gmail.com; o visitante deve anexar os arquivos no aplicativo. Os links não fingem incluir anexos. Não há upload para servidor, armazenamento externo ou envio automático. `src/external-files.js` controla esse fluxo, separado da abertura de projetos `.papeled.json` e do orçamento dos produtos paramétricos.

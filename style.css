@@ -2836,3 +2836,40 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.external-banner {
+  background: #edf4ff;
+  border-style: solid;
+}
+.external-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+}
+.external-file-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.external-file-list span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.external-file-list button {
+  flex-shrink: 0;
+}
+#external-files-dialog .text-input {
+  margin-bottom: 12px;
+}
+#external-files-dialog input[type="file"] {
+  width: 100%;
+  font-size: 12px;
+  padding: 10px;
+}
+#external-files-dialog .button {
+  margin-top: 10px;
+}

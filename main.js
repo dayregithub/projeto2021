@@ -1,3 +1,4 @@
+import { initExternalFiles } from "./src/external-files.js";
 import { LETTER_FONTS, letterContours } from "./src/lettering.js";
 import { brushOpenings } from "./src/print3d.js";
 import { drawerGripDimensions } from "./src/assemblies.js";
@@ -1109,6 +1110,7 @@ for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
     (key === "dividerJoint"
       ? '<option value="cross">Meio encaixe (projeto anterior)</option>'
       : "");
+initExternalFiles();
 mountIcons();
 $('[data-filter="all"] span').textContent = CATALOG_GROUPS.length;
 try {

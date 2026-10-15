@@ -777,3 +777,104 @@ test("lettering uses ten selectable fonts, real geometry, saved text and printab
   await expect(page.locator("#quote-message")).toHaveValue(/Dancing Script/);
   expect(errors).toEqual([]);
 });
+
+test("external creation flow lists real files and prepares WhatsApp and email messages without pretending to attach them", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", { value: () => false });
+  });
+  await page.goto("/");
+  await page.locator("[data-send-external]").click();
+  await expect(page.locator("#external-contact-links")).toBeHidden();
+  await expect(page.locator("#external-share")).toBeHidden();
+  await page.locator("#external-files").setInputFiles([
+    {
+      name: "suporte & peças.stl",
+      mimeType: "model/stl",
+      buffer: Buffer.from("solid custom\nendsolid custom"),
+    },
+    {
+      name: "desenho.svg",
+      mimeType: "image/svg+xml",
+      buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+    },
+  ]);
+  await expect(page.locator("#external-file-list li")).toHaveCount(2);
+  await page.locator("#external-name").fill("Suporte da oficina");
+  await page
+    .locator("#external-details")
+    .fill("Quero 3 unidades, em PLA branco.");
+  const whatsapp = new URL(
+    await page.locator("#external-whatsapp").getAttribute("href"),
+  );
+  expect(whatsapp.pathname).toBe("/5561992430051");
+  expect(whatsapp.searchParams.get("text")).toContain("suporte & peças.stl");
+  expect(whatsapp.searchParams.get("text")).toContain("3 unidades");
+  const email = new URL(
+    await page.locator("#external-email").getAttribute("href"),
+  );
+  expect(email.pathname).toBe("papeledmaker@gmail.com");
+  expect(email.searchParams.get("subject")).toContain("Suporte da oficina");
+  expect(email.searchParams.get("body")).toContain("desenho.svg");
+  await expect(page.locator("#external-status")).toContainText(
+    "Ainda não enviados",
+  );
+  await page
+    .getByRole("button", { name: "Remover desenho.svg", exact: true })
+    .click();
+  await expect(page.locator("#external-file-list li")).toHaveCount(1);
+  await page.locator("#external-files-dialog [data-close]").click();
+  await page.locator("[data-send-external]").click();
+  await expect(page.locator("#external-file-list li")).toHaveCount(0);
+  await expect(page.locator("#external-contact-links")).toBeHidden();
+});
+
+test("native sharing hands the original external file bytes to the selected app and handles cancellation on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", { value: () => true });
+    Object.defineProperty(navigator, "share", {
+      value: async (data) => {
+        if (window.cancelExternal)
+          throw new DOMException("Cancelled", "AbortError");
+        window.externalShare = {
+          name: data.files[0].name,
+          content: await data.files[0].text(),
+          text: data.text,
+        };
+      },
+    });
+  });
+  await page.goto("/");
+  await page.locator("[data-send-external]").click();
+  await page
+    .locator("#external-files")
+    .setInputFiles({
+      name: "minha-criacao.dxf",
+      mimeType: "application/dxf",
+      buffer: Buffer.from("0\nSECTION\n2\nENTITIES\n0\nEOF"),
+    });
+  await page.locator("#external-details").fill("Corte a laser, uma unidade.");
+  await page.locator("#external-share").click();
+  await expect(page.locator("#external-status")).toContainText(
+    "confirme o envio",
+  );
+  const shared = await page.evaluate(() => window.externalShare);
+  expect(shared).toMatchObject({
+    name: "minha-criacao.dxf",
+    content: "0\nSECTION\n2\nENTITIES\n0\nEOF",
+  });
+  expect(shared.text).toContain("uma unidade");
+  await page.evaluate(() => (window.cancelExternal = true));
+  await page.locator("#external-share").click();
+  await expect(page.locator("#external-status")).toContainText("cancelado");
+  await expect(page.locator("#external-file-list li")).toHaveCount(1);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

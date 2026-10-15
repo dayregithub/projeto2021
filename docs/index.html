@@ -9,9 +9,9 @@
       content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
     />
     <title>Papeled Maker — seu espaço maker online</title>
-    <script type="module" crossorigin src="./assets/index-vqpsdgPZ.js"></script>
+    <script type="module" crossorigin src="./assets/index--Kj5VUys.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/geometry-CveDfrI4.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-DGcvjbW6.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-DtV-IlyH.css">
   </head>
   <body>
     <header class="site-header">
@@ -115,6 +115,19 @@
           </div>
           <div id="resume-banner" hidden></div>
           <div class="model-grid" id="model-grid"></div>
+          <div class="import-banner external-banner">
+            <div class="import-icon" data-icon="upload"></div>
+            <div>
+              <h3>Já tem uma criação sua? Vamos produzir.</h3>
+              <p>
+                Envie seu desenho, modelo 3D ou arquivo para orçamento pelo
+                WhatsApp ou e-mail.
+              </p>
+            </div>
+            <button class="button primary" data-send-external>
+              Enviar meu arquivo <span data-icon="arrow-up-right"></span>
+            </button>
+          </div>
           <div class="import-banner">
             <div class="import-icon" data-icon="upload"></div>
             <div>
@@ -828,6 +841,71 @@
         rel="noopener noreferrer"
         >Conversar no WhatsApp <span data-icon="arrow-up-right"></span></a
       ><a id="quote-email" class="email-link">Prefiro enviar por e-mail</a>
+    </dialog>
+    <dialog id="external-files-dialog" aria-labelledby="external-files-title">
+      <button class="dialog-close icon-button" data-close aria-label="Fechar">
+        <span data-icon="x"></span>
+      </button>
+      <div class="eyebrow">SUA IDEIA, NOSSA PRODUÇÃO</div>
+      <h2 id="external-files-title">Envie sua criação.</h2>
+      <p class="dialog-description">
+        Já tem um projeto pronto? Escolha os arquivos e conte o que deseja
+        produzir.
+      </p>
+      <label class="field-label" for="external-files">Arquivos do projeto</label
+      ><input class="text-input" type="file" id="external-files" multiple />
+      <p class="field-hint">
+        SVG, DXF, STL, PDF, STEP, ZIP, imagens ou outros formatos. Para
+        adicionar vários, selecione todos juntos.
+      </p>
+      <ul
+        id="external-file-list"
+        class="external-file-list"
+        aria-label="Arquivos selecionados"
+      ></ul>
+      <label class="field-label" for="external-name"
+        >Nome do projeto (opcional)</label
+      ><input
+        class="text-input"
+        id="external-name"
+        maxlength="100"
+        placeholder="Ex.: suporte personalizado"
+      />
+      <label class="field-label" for="external-details"
+        >O que você quer produzir?</label
+      ><textarea
+        class="text-input"
+        id="external-details"
+        rows="4"
+        maxlength="2000"
+        placeholder="Conte a quantidade, medidas, material e outros detalhes."
+      ></textarea>
+      <p class="field-hint" id="external-status" role="status"></p>
+      <button class="button primary full" id="external-share" hidden>
+        Compartilhar arquivos como anexo
+      </button>
+      <div id="external-contact-links" hidden>
+        <a
+          class="button secondary full"
+          id="external-whatsapp"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Abrir WhatsApp para enviar
+          <span data-icon="arrow-up-right"></span></a
+        ><a class="email-link" id="external-email">Abrir e-mail para enviar</a>
+        <p class="field-hint">
+          Ao abrir por esses links, anexe os arquivos no WhatsApp ou e-mail
+          antes de enviar. Eles levam a mensagem, sem anexos.
+        </p>
+      </div>
+      <p class="field-hint">
+        WhatsApp: (61) 99243-0051 · papeledmaker@gmail.com
+      </p>
+      <p class="dialog-footnote">
+        Os arquivos ficam neste navegador até você compartilhá-los. No menu de
+        compartilhamento, escolha o WhatsApp ou e-mail e o contato Papeled
+        Maker.
+      </p>
     </dialog>
     <dialog id="confirm-dialog" aria-labelledby="confirm-title">
       <h2 id="confirm-title"></h2>
