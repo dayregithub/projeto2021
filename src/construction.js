@@ -50,6 +50,25 @@ export const guideDepth = (s) =>
     : resolvedJoint(s, "lidJoint") === "finger"
       ? 2 * s.thickness
       : s.thickness;
+// Keep the pull flush with the rim. T bolts run horizontally into the lid,
+// leaving material around their holes without a tall vertical pull.
+export function slidingDimensions(s) {
+  const t = s.thickness,
+    c = s.clearance,
+    isT = resolvedJoint(s, "lidJoint") === "tslot";
+  const drop = Math.max(0, (isT ? 3.2 : 0) - 1.5 * t - c);
+  const lidZ = s.height - 2 * t - c - drop,
+    midZ = lidZ + t / 2;
+  const handleBottom = isT ? Math.min(lidZ, midZ - 3.2) : lidZ;
+  return {
+    drop,
+    lidZ,
+    midZ,
+    handleBottom,
+    handleHeight: s.height - handleBottom,
+    frontHeight: Math.min(s.height - 2 * t - 2 * c - drop, handleBottom - c),
+  };
+}
 export function shellMetrics(s) {
   const t = s.thickness,
     c = s.clearance,
@@ -59,10 +78,11 @@ export function shellMetrics(s) {
     inset,
     innerWidth: s.width - 2 * (t + inset),
     innerDepth: s.depth - 2 * t,
-    frontHeight: type === "sliding" ? s.height - 2 * t - 2 * c : s.height,
+    frontHeight:
+      type === "sliding" ? slidingDimensions(s).frontHeight : s.height,
     dividerTop:
       type === "sliding"
-        ? s.height - 3 * t - 3 * c
+        ? s.height - 3 * t - 3 * c - slidingDimensions(s).drop
         : type === "removable"
           ? s.height - guideDepth(s) - c
           : type === "hinged" && hingeType(s) === "tabbed"
@@ -388,8 +408,8 @@ export function buildBoxPanels(s) {
       ["direita", w - m.inset - t - railWidth(s)],
     ])
       for (const [level, z] of [
-        ["inferior", h - 3 * t - 2 * c],
-        ["superior", h - t],
+        ["inferior", h - 3 * t - 2 * c - slidingDimensions(s).drop],
+        ["superior", h - t - slidingDimensions(s).drop],
       ])
         add(
           `Trilho ${side} · ${level}`,
@@ -399,8 +419,8 @@ export function buildBoxPanels(s) {
         );
     add(
       "Tampa deslizante",
-      rect(0, 0, m.innerWidth - 2 * c, d - t - c),
-      basePose(m.inset + t + c, t + c, h - 2 * t - c),
+      rect(0, 0, m.innerWidth - 2 * c, d - 2 * t - c),
+      basePose(m.inset + t + c, t + c, slidingDimensions(s).lidZ),
       {
         group: "lid",
         role: "lid-panel",
@@ -408,7 +428,7 @@ export function buildBoxPanels(s) {
           x: 0,
           y: 0,
           width: m.innerWidth - 2 * c,
-          height: d - t - c,
+          height: d - 2 * t - c,
         },
       },
     );
@@ -581,25 +601,18 @@ function applyLidJoinery(s, parts) {
         resolvedJoint(s, "railJoint"),
       );
     }
-    const hh = joint === "tslot" ? 18 : 12,
+    const { handleHeight: hh, midZ: z } = slidingDimensions(s),
       gx = m.inset + t + c,
-      width = m.innerWidth - 2 * c,
-      z = h - t - c;
+      width = m.innerWidth - 2 * c;
     const handle = makePanel(
       "Puxador frontal da tampa",
       width,
       hh,
-      frontPose(gx, d - t, z + hh),
+      frontPose(gx, d - t, h),
       { group: "lid", role: "lid-handle" },
     );
     parts.push(handle);
-    join(
-      lid,
-      handle,
-      [gx, d - t / 2, z],
-      [gx + width, d - t / 2, z],
-      [0, 0, -1],
-    );
+    join(handle, lid, [gx, d - t, z], [gx + width, d - t, z], [0, 1, 0]);
   }
 }
 export function constructionNotes(s) {

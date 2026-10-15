@@ -637,3 +637,48 @@ test("per-assembly overrides change real plates while printed solids retain thei
     assert.ok(validate({ ...s, joint: "finger" }).length);
   }
 });
+
+test("sliding pull stays flush with the body rim for every joint and thickness, with real lid contacts", () => {
+  for (const thickness of [1, 2, 3, 5, 8, 12])
+    for (const lidJoint of ["straight", "finger", "tslot"]) {
+      const s = {
+        ...defaults("sliding"),
+        width: 220,
+        depth: 200,
+        height: 120,
+        thickness,
+        lidJoint,
+      };
+      assert.deepEqual(validate(s), []);
+      const p = panels(s),
+        handle = p.find((p) => p.role === "lid-handle"),
+        lid = p.find((p) => p.role === "lid-panel"),
+        front = p.find((p) => p.role === "front");
+      const zs = handle.shape
+        .flat(2)
+        .map(
+          ([x, y]) =>
+            handle.pose.origin[2] + handle.pose.u[2] * x + handle.pose.v[2] * y,
+        );
+      near(Math.max(...zs), s.height);
+      assert.ok(
+        Math.min(...zs) >= front.pose.origin[2] + s.clearance - 1e-6,
+        "pull hits front wall",
+      );
+      assert.equal(handle.shape.length, 1);
+      assert.equal(lid.shape.length, 1);
+      if (lidJoint === "finger")
+        assert.ok(
+          handle.shape[0][0].length > 4 && lid.shape[0][0].length > 4,
+          "pull needs edge notches matching lid fingers",
+        );
+      if (lidJoint === "tslot") {
+        assert.equal(handle.m3Fasteners, 1);
+        assert.ok(
+          handle.shape[0].some((r) => r.length > 20),
+          "pull needs a closed M3 hole",
+        );
+      }
+      assert.ok(lid.pose.origin[1] + lid.height <= s.depth + 1e-6);
+    }
+});
