@@ -13,7 +13,7 @@ npm run dev
 ```
 
 - `npm test`: testes de geometria, dimensões, ranhuras, folgas, disposição dos painéis e integridade dos sólidos STL.
-- `npm run test:e2e`: 29 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
+- `npm run test:e2e`: 32 fluxos de navegador, incluindo exportação, importação, persistência, orçamento e celular. Usa Chromium instalado em `/usr/bin/chromium` quando disponível. Em outro ambiente, instale o navegador com `npx playwright install chromium`, ou informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 - `npm run build`: gera `dist/`, com caminhos relativos para hospedagem em subpastas.
 - `npm run build:pages`: compila e atualiza a pasta gerada `docs/`. Não edite `docs/` manualmente.
 
@@ -149,3 +149,10 @@ O porta-escovas pode receber uma cobertura alta removível, com altura livre de 
 Texturas externas: canelada vertical, anéis horizontais e pontilhada, além da superfície lisa. São relevos reais unidos ao corpo no STL; a faixa superior permanece lisa para o encaixe. Podem acrescentar até 1,2 mm por lado ao tamanho nominal do corpo. A drenagem opcional faz cinco furos, com diâmetro desejado de 2 a 8 mm (limitado pelo espaço interno), e quatro pés de 2 mm. O fundo sobe 2 mm para preservar a altura externa; a altura útil interna diminui na mesma medida. Projetos antigos sem essa opção continuam com fundo fechado.
 
 O letreiro pode ficar deitado ou em pé sobre a base. Em pé, o campo de altura do corpo passa a definir a espessura das letras; a altura máxima das letras continua em seu controle próprio, e a altura montada aparece no resumo. A base é obrigatória nesse modo. Pequenas ligações sustentam acentos e detalhes, e apoios conectam as letras à base. A opção “Grudadinhas” acrescenta ligações reais de 1,2 mm entre todos os componentes do texto, inclusive espaços e acentos, em ambos os modos. O espaçamento varia de −40% a +40%; ao ativar a união começa em −10%. As ligações podem atravessar espaços e alterar o desenho da fonte; a prévia mostra o resultado. Geometria validada por software; teste a resistência de traços finos e os encaixes na impressão real.
+
+
+## Identidade e envio com anexos
+
+A identidade usa marrom e branco e a logo original em `public/papeled-logo.png`, exibida em moldura circular sem redesenhar o miolo. “Espaço maker online” aparece na marca e na apresentação. Textos, campos e rótulos têm contraste mais escuro; no celular, descrições e campos usam 16 px.
+
+Para criações externas, o compartilhamento nativo entrega os arquivos originais ou um ZIP quando o navegador só aceita esse formato. O ZIP é preparado antes do clique para preservar a ativação necessária à API de compartilhamento. Há também download de ZIP e de e-mail MIME `.eml` com os anexos binários incorporados. O `.eml` precisa de aplicativo de e-mail compatível; não envia automaticamente nem integra diretamente com Gmail Web. Links `wa.me` e `mailto` continuam limitados a texto, identificados dentro da alternativa de envio manual. Nesse caminho, o visitante deve anexar o ZIP no aplicativo. Nenhum arquivo é enviado a um servidor do site.

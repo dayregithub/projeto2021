@@ -938,3 +938,114 @@ test("standing joined lettering forces a base and saves its spacing and orientat
   await expect(page.locator("#quote-message")).toHaveValue(/Posição: em pé/);
   expect(errors).toEqual([]);
 });
+
+test("external downloads contain real file bytes in ZIP and email attachments", async ({
+  page,
+}) => {
+  const { unzipSync } = await import("fflate");
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "canShare", { value: () => false }),
+  );
+  await page.goto("/");
+  await page.locator("[data-send-external]").click();
+  const original = Buffer.from([0, 1, 2, 128, 255, 34, 10]);
+  await page
+    .locator("#external-files")
+    .setInputFiles({
+      name: "peça.stl",
+      mimeType: "model/stl",
+      buffer: original,
+    });
+  await expect(page.locator("#external-download")).toBeEnabled();
+  let pending = page.waitForEvent("download");
+  await page.locator("#external-download").click();
+  const zip = unzipSync(await readFile(await (await pending).path()));
+  expect(Buffer.from(zip["peça.stl"])).toEqual(original);
+  pending = page.waitForEvent("download");
+  await page.locator("#external-email-file").click();
+  const email = await readFile(await (await pending).path(), "utf8");
+  expect(email).toContain("To: papeledmaker@gmail.com");
+  expect(email).toContain("Content-Disposition: attachment;");
+  expect(email).toContain(original.toString("base64"));
+  await expect(page.locator("#external-share")).toBeHidden();
+  await page.locator(".external-fallback summary").click();
+  await expect(page.locator("#external-whatsapp")).toContainText("manualmente");
+});
+
+test("unsupported original formats share a ZIP with original bytes on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "canShare", {
+      value: (data) => data.files.every((f) => f.type === "application/zip"),
+    });
+    Object.defineProperty(navigator, "share", {
+      value: async (data) => {
+        window.sharedZip = {
+          name: data.files[0].name,
+          bytes: Array.from(new Uint8Array(await data.files[0].arrayBuffer())),
+        };
+      },
+    });
+  });
+  await page.goto("/");
+  await page.locator("[data-send-external]").click();
+  await page
+    .locator("#external-files")
+    .setInputFiles({
+      name: "modelo.step",
+      mimeType: "application/step",
+      buffer: Buffer.from("MY STEP DATA"),
+    });
+  await page.locator("#external-share").click();
+  await expect(page.locator("#external-status")).toContainText(
+    "confirme o envio",
+  );
+  const shared = await page.evaluate(() => window.sharedZip);
+  const { unzipSync } = await import("fflate");
+  expect(
+    Buffer.from(
+      unzipSync(new Uint8Array(shared.bytes))["modelo.step"],
+    ).toString(),
+  ).toBe("MY STEP DATA");
+});
+
+test("brown brand and readable mobile text stay within the viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  await expect(page.locator(".site-header .brand small")).toHaveText(
+    "ESPAÇO MAKER ONLINE",
+  );
+  expect(
+    await page
+      .locator(".brand-mark img")
+      .evaluate((e) => e.complete && e.naturalWidth > 0),
+  ).toBe(true);
+  const sizes = await page
+    .locator(".hero p")
+    .evaluate((e) => ({
+      font: parseFloat(getComputedStyle(e).fontSize),
+      color: getComputedStyle(e).color,
+    }));
+  expect(sizes.font).toBeGreaterThanOrEqual(16);
+  expect(sizes.color).toBe("rgb(87, 68, 59)");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await chooseModel(page, "toothbrush");
+  expect(
+    await page
+      .locator("#width")
+      .evaluate((e) => parseFloat(getComputedStyle(e).fontSize)),
+  ).toBeGreaterThanOrEqual(16);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

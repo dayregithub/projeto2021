@@ -1,3 +1,8 @@
+import {
+  deliveryZip,
+  deliveryEmail,
+  downloadDelivery,
+} from "./file-delivery.js";
 // Files stay in browser memory. Delivery happens only in the visitor's chosen
 // application; wa.me and mailto links carry text, never attachments.
 export function initExternalFiles() {
@@ -10,7 +15,10 @@ export function initExternalFiles() {
     links = $("external-contact-links"),
     share = $("external-share"),
     status = $("external-status");
-  let files = [];
+  let files = [],
+    contents = [],
+    archive = null,
+    generation = 0;
   const size = (n) =>
     n < 1024
       ? `${n} B`
@@ -20,13 +28,18 @@ export function initExternalFiles() {
   function message() {
     return `Olá, Papeled Maker! Tenho uma criação própria e gostaria de produzir.\n\n${name.value.trim() ? `Projeto: ${name.value.trim()}\n` : ""}Arquivos que vou anexar:\n${files.map((f) => `• ${f.name} (${size(f.size)})`).join("\n")}\n\n${details.value.trim() || "Quantidade, medidas e material: a combinar."}`;
   }
-  function canShare() {
+  function shareFiles() {
+    if (canShare(files)) return files;
+    if (archive && canShare([archive])) return [archive];
+    return null;
+  }
+  function canShare(selected) {
     try {
       return (
-        files.length > 0 &&
+        selected.length > 0 &&
         typeof navigator.share === "function" &&
         typeof navigator.canShare === "function" &&
-        navigator.canShare({ files })
+        navigator.canShare({ files: selected })
       );
     } catch {
       return false;
@@ -35,7 +48,18 @@ export function initExternalFiles() {
   function update() {
     const text = message();
     links.hidden = !files.length;
-    share.hidden = !canShare();
+    const selected = archive ? shareFiles() : null;
+    share.hidden = !selected;
+    share.disabled = !archive;
+    $("external-download").disabled = $("external-email-file").disabled =
+      !archive;
+    $("external-delivery-note").textContent = !files.length
+      ? ""
+      : !archive
+        ? "Preparando os anexos…"
+        : selected
+          ? "Envie com os anexos: toque no botão acima, escolha WhatsApp ou e-mail e selecione o contato Papeled Maker. Se o formato original não for aceito, enviamos um ZIP com os mesmos arquivos."
+          : "Este navegador não permite levar anexos direto ao aplicativo. Baixe o ZIP para anexar no WhatsApp ou baixe o e-mail .eml, que já contém os arquivos.";
     $("external-whatsapp").href =
       "https://wa.me/5561992430051?text=" + encodeURIComponent(text);
     $("external-email").href =
@@ -61,6 +85,7 @@ export function initExternalFiles() {
       remove.onclick = () => {
         files.splice(index, 1);
         render();
+        prepare();
       };
       row.append(label, remove);
       list.append(row);
@@ -75,17 +100,57 @@ export function initExternalFiles() {
       render();
       dialog.showModal();
     };
+  async function prepare() {
+    const version = ++generation,
+      selected = [...files];
+    archive = null;
+    contents = [];
+    update();
+    if (!selected.length) return;
+    try {
+      const bytes = await Promise.all(
+        selected.map(async (f) => new Uint8Array(await f.arrayBuffer())),
+      );
+      if (version !== generation) return;
+      contents = bytes;
+      archive = deliveryZip(selected, bytes);
+      update();
+    } catch {
+      if (version === generation)
+        status.textContent =
+          "Não foi possível preparar os anexos. Selecione os arquivos novamente.";
+    }
+  }
+  $("external-download").onclick = () => {
+    if (!archive) return;
+    downloadDelivery(archive);
+    status.textContent =
+      "ZIP baixado com os arquivos. No WhatsApp ou e-mail, use o clipe para anexar o pacote antes de enviar.";
+  };
+  $("external-email-file").onclick = () => {
+    if (!archive) return;
+    downloadDelivery(
+      deliveryEmail(files, contents, {
+        name: name.value.trim(),
+        text: message(),
+      }),
+    );
+    status.textContent =
+      "E-mail baixado com os arquivos anexados. Abra o .eml em um aplicativo de e-mail compatível, revise e envie para papeledmaker@gmail.com.";
+  };
   input.onchange = () => {
     if (input.files.length) {
       files = [...input.files];
       input.value = "";
       render();
+      prepare();
     }
   };
   name.oninput = details.oninput = update;
   share.onclick = async () => {
     if (!files.length) return;
-    const selected = [...files];
+    const selected = shareFiles();
+    if (!selected || !archive) return;
     share.disabled = true;
     try {
       await navigator.share({
@@ -101,7 +166,7 @@ export function initExternalFiles() {
           ? "Compartilhamento cancelado. Seus arquivos continuam selecionados."
           : "Não foi possível compartilhar. Abra o WhatsApp ou e-mail abaixo e anexe os arquivos na conversa.";
     } finally {
-      share.disabled = false;
+      share.disabled = !archive;
     }
   };
   for (const id of ["external-whatsapp", "external-email"])
@@ -110,6 +175,9 @@ export function initExternalFiles() {
         "No aplicativo que abrir, anexe os arquivos selecionados antes de enviar a mensagem.";
     });
   dialog.addEventListener("close", () => {
+    generation++;
+    archive = null;
+    contents = [];
     files = [];
     input.value = "";
     render();

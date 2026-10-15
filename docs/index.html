@@ -3,22 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f7f8fa" />
+    <meta name="theme-color" content="#684b43" />
     <meta
       name="description"
       content="Crie caixas, divisórias e gaveteiros sob medida no Papeled Maker. Personalize, visualize e exporte projetos para corte a laser ou impressão 3D."
     />
     <title>Papeled Maker — seu espaço maker online</title>
-    <script type="module" crossorigin src="./assets/index-DqrFul5a.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/geometry-Vtc_SVKH.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-DtV-IlyH.css">
+    <link rel="icon" type="image/png" href="./papeled-logo.png" />
+    <script type="module" crossorigin src="./assets/index-C6OLM-0-.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/geometry-Sqx3V8BO.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-0hRGk-DZ.css">
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="#modelos" aria-label="Papeled Maker início"
-        ><span class="brand-mark" aria-hidden="true">P<span>m</span></span
+        ><span class="brand-mark" aria-hidden="true"
+          ><img src="./papeled-logo.png" alt="" width="50" height="50" /></span
         ><span
-          >Papeled <strong>Maker</strong><small>ESPAÇO DE CRIAÇÃO</small></span
+          >Papeled <strong>Maker</strong
+          ><small>ESPAÇO MAKER ONLINE</small></span
         ></a
       >
       <nav aria-label="Navegação principal">
@@ -39,9 +42,7 @@
       <section id="catalog-view">
         <div class="hero">
           <div class="hero-copy">
-            <div class="eyebrow">
-              <span></span> UM ESPAÇO PARA TIRAR IDEIAS DO PAPEL
-            </div>
+            <div class="eyebrow"><span></span> SEU ESPAÇO MAKER ONLINE</div>
             <h1>Imagine. Ajuste.<br /><em>Faça acontecer.</em></h1>
             <p>
               Caixas, organizadores e soluções que se adaptam à sua ideia.<br />Escolha
@@ -808,7 +809,7 @@
     <footer>
       <a class="brand footer-brand" href="#modelos"
         >Papeled <strong>Maker</strong></a
-      ><span>Ideias digitais. Objetos reais.</span
+      ><span>Espaço maker online · Ideias digitais. Objetos reais.</span
       ><a href="mailto:papeledmaker@gmail.com"
         >papeledmaker@gmail.com <span data-icon="arrow-up-right"></span
       ></a>
@@ -949,21 +950,38 @@
       ></textarea>
       <p class="field-hint" id="external-status" role="status"></p>
       <button class="button primary full" id="external-share" hidden>
-        Compartilhar arquivos como anexo
+        Enviar arquivos anexados
       </button>
+      <p class="external-delivery-note" id="external-delivery-note"></p>
       <div id="external-contact-links" hidden>
-        <a
-          class="button secondary full"
-          id="external-whatsapp"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Abrir WhatsApp para enviar
-          <span data-icon="arrow-up-right"></span></a
-        ><a class="email-link" id="external-email">Abrir e-mail para enviar</a>
+        <button class="button secondary full" id="external-download">
+          Baixar pacote ZIP com os arquivos
+        </button>
+        <button class="button secondary full" id="external-email-file">
+          Baixar e-mail com anexos (.eml)
+        </button>
         <p class="field-hint">
-          Ao abrir por esses links, anexe os arquivos no WhatsApp ou e-mail
-          antes de enviar. Eles levam a mensagem, sem anexos.
+          Abra o .eml em um aplicativo de e-mail compatível, revise e envie.
+          Para Gmail no navegador ou WhatsApp Web, use o ZIP e anexe na
+          conversa.
         </p>
+        <details class="external-fallback">
+          <summary>Enviar manualmente pelo WhatsApp ou e-mail</summary>
+          <p class="external-delivery-note">
+            Estes links abrem só a mensagem. Baixe o ZIP acima e use o clipe no
+            aplicativo para anexá-lo antes de enviar.
+          </p>
+          <a
+            class="button secondary full"
+            id="external-whatsapp"
+            target="_blank"
+            rel="noopener noreferrer"
+            >WhatsApp · anexar ZIP manualmente</a
+          >
+          <a class="email-link" id="external-email"
+            >E-mail · anexar ZIP manualmente</a
+          >
+        </details>
       </div>
       <p class="field-hint">
         WhatsApp: (61) 99243-0051 · papeledmaker@gmail.com
