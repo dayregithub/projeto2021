@@ -137,7 +137,7 @@ MODELS.push(
     h: 65,
     cols: 2,
     rows: 3,
-    preset: { lidType: "hinged", joint: "finger", ratio: 65, finish: "walnut" },
+    preset: { lidType: "hinged", joint: "finger", ratio: 65, finish: "natural" },
   },
   {
     id: "pencilcase",
@@ -227,7 +227,7 @@ MODELS.push(
     h: 28,
     cols: 4,
     rows: 2,
-    preset: { finish: "coral" },
+    preset: { finish: "black" },
   },
   {
     id: "compacthinge",
@@ -311,7 +311,7 @@ MODELS.push(
     h: 8,
     cols: 1,
     rows: 1,
-    preset: { finish: "coral" },
+    preset: { finish: "black" },
   },
 );
 const baseUsages = {
@@ -353,7 +353,7 @@ export function defaults(id = "grid") {
     rows: m.rows,
     ratio: 60,
     clearance: 0.6,
-    finish: m.category === "print" ? "sage" : "natural",
+    finish: m.category === "print" ? "black" : "natural",
     joint: m.family === "hinged" ? "finger" : "straight",
     fingerSize: 9,
     drawerGripWidth: 18,

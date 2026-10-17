@@ -12,12 +12,8 @@ import {
   panelContours,
   panels,
 } from "./geometry.js";
-export const FINISHES = {
-  natural: { label: "Madeira natural", color: "#e4bb67" },
-  walnut: { label: "Nogueira", color: "#a87347" },
-  sage: { label: "Verde sálvia", color: "#9eae91" },
-  coral: { label: "Terracota", color: "#d78b6b" },
-};
+import { FINISHES, resolvedFinish } from "./finishes.js";
+export { FINISHES } from "./finishes.js";
 export const escapeHTML = (s) =>
   String(s).replace(
     /[&<>"']/g,
@@ -321,7 +317,7 @@ export function previewSVG(
   const rad = (angle * Math.PI) / 180,
     sa = Math.sin(rad),
     ca = Math.cos(rad),
-    base = FINISHES[s.finish]?.color || FINISHES.natural.color;
+    base = FINISHES[resolvedFinish(s)].color;
   const project = ([x, y, z]) => [
     (x * ca - y * sa) * 1.1,
     (x * sa + y * ca) * 0.48 - z,

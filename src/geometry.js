@@ -1,3 +1,4 @@
+import { finishKeys, resolvedFinish } from "./finishes.js";
 import { validSignText, LETTER_FONTS } from "./lettering.js";
 import { PRINT_LIDS, printLayout, brushOpenings } from "./print3d.js";
 import { decoratePanels, DECORATIONS, validEngraving } from "./decoration.js";
@@ -63,6 +64,8 @@ export function cuts(s) {
 export function validate(s) {
   const errors = [];
   if (!modelById(s.model)) return ["Modelo desconhecido."];
+  if (!finishKeys(s).includes(s.finish))
+    errors.push("Escolha uma cor disponível para este processo.");
   for (const [k, label, min, max] of [
     ["width", "Largura", 40, 1000],
     ["depth", "Profundidade", 40, 1000],
@@ -768,8 +771,9 @@ export function readProject(input) {
     s.dividerJoint = "cross";
   if (typeof s.name !== "string" || !s.name.trim() || s.name.length > 80)
     throw Error("Nome do projeto inválido.");
-  if (!["natural", "walnut", "sage", "coral"].includes(s.finish))
+  if (!["natural", "white", "black", "walnut", "sage", "coral"].includes(s.finish))
     throw Error("Acabamento inválido.");
+  s.finish = resolvedFinish(s);
   const errors = validate(s);
   if (errors.length) throw Error(errors[0]);
   return s;

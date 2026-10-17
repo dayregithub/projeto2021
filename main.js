@@ -1,3 +1,4 @@
+import { finishKeys } from "./src/finishes.js";
 import { BRUSH_TEXTURES, brushDrainage } from "./src/brush-features.js";
 import { initExternalFiles } from "./src/external-files.js";
 import { LETTER_FONTS, letterContours, signMetrics } from "./src/lettering.js";
@@ -286,7 +287,8 @@ function syncFields() {
   $("#engraveName").value = state.engraveName;
   $("#project-name").value = state.name;
   $("#finish-name").textContent = FINISHES[state.finish].label;
-  $("#finishes").innerHTML = Object.entries(FINISHES)
+  $("#finishes").innerHTML = finishKeys(state)
+    .map((key) => [key, FINISHES[key]])
     .map(
       ([key, v]) =>
         `<button class="finish ${state.finish === key ? "selected" : ""}" style="--finish:${v.color}" data-finish="${key}" aria-label="${v.label}" aria-pressed="${state.finish === key}">${state.finish === key ? icon("check") : ""}</button>`,
