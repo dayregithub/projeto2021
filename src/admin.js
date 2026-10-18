@@ -1,3 +1,4 @@
+import { initEstimates } from "./estimate-ui.js";
 import { initAdminAssistant } from "./admin-assistant.js";
 import { openAdminEditor, takeEditorReturn } from "./admin-editor.js";
 import {
@@ -172,7 +173,7 @@ function render() {
     ? quotes
         .map(
           (q) =>
-            `<article class="card"><p class="muted">${escape(new Date(q.created_at).toLocaleString("pt-BR"))}</p><h3>${escape(q.customer_name)}</h3><p>Contato: ${escape(q.contact)}</p><p>${escape(q.message)}</p><details><summary>Projeto solicitado</summary><pre class="quote-details">${escape(JSON.stringify(q.project, null, 2))}</pre></details><label>Situação<select data-quote="${escape(q.id)}">${[
+            `<article class="card"><p class="muted">${escape(new Date(q.created_at).toLocaleString("pt-BR"))}</p><h3>${escape(q.customer_name)}</h3><button class="secondary" data-price-request="${escape(q.id)}">Preparar orçamento</button><p>Contato: ${escape(q.contact)}</p><p>${escape(q.message)}</p><details><summary>Projeto solicitado</summary><pre class="quote-details">${escape(JSON.stringify(q.project, null, 2))}</pre></details><label>Situação<select data-quote="${escape(q.id)}">${[
               ["new", "Novo"],
               ["contacted", "Em atendimento"],
               ["quoted", "Orçamento enviado"],
@@ -223,6 +224,15 @@ function render() {
         }
       }),
   );
+  document
+    .querySelectorAll("[data-price-request]")
+    .forEach(
+      (button) =>
+        (button.onclick = () =>
+          estimates.fromRequest(
+            quotes.find((q) => q.id === button.dataset.priceRequest),
+          )),
+    );
   document.querySelectorAll("[data-quote]").forEach(
     (e) =>
       (e.onchange = async () => {
@@ -345,6 +355,7 @@ async function enter() {
     : "Conectado ao estúdio. Dados protegidos por login e permissões do banco.";
   tab("overview");
   await load();
+  await estimates.refresh();
   try {
     const returned = takeEditorReturn();
     if (returned) {
@@ -415,6 +426,10 @@ $("export-stats").onclick = () => {
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 };
 
+const estimates = initEstimates({
+  getState: () => ({ client, local }),
+  navigate: tab,
+});
 const refreshAssistant = initAdminAssistant({
   getState: () => ({ client, local, products, quotes, readLocal, writeLocal }),
   reload: load,

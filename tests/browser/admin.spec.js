@@ -72,6 +72,14 @@ test("local panel publishes a product to this browser, records opted-in metrics 
   await expect(page.locator("#quote-list")).toContainText(
     "cliente@example.com",
   );
+  await page.locator("[data-price-request]").click();
+  await expect(page.locator('#estimate-form [name="customer"]')).toHaveValue(
+    "Cliente teste",
+  );
+  await expect(page.locator('#estimate-form [name="contact"]')).toHaveValue(
+    "cliente@example.com",
+  );
+  await page.locator('[data-tab="quotes"]').click();
   await page.locator("[data-quote]").selectOption("contacted");
   await expect(page.locator("#notice")).toContainText("atualizada");
   await page.locator('[data-tab="products"]').click();
