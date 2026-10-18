@@ -6,10 +6,10 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-qKoPqv5w.js"></script>
+    <script type="module" crossorigin src="./assets/admin-p4EiPGs0.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
     <link rel="modulepreload" crossorigin href="./assets/geometry-B4XCVL7w.js">
-    <link rel="modulepreload" crossorigin href="./assets/platform-data-nLmDLJpM.js">
+    <link rel="modulepreload" crossorigin href="./assets/platform-data-Doy3QUUq.js">
     <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-20nhsxAk.js">
     <link rel="stylesheet" crossorigin href="./assets/admin-Rw56dKHt.css">
   </head>
@@ -76,7 +76,8 @@
                 <option value="30" selected>Últimos 30 dias</option>
                 <option value="60">Últimos 60 dias</option>
                 <option value="90">Últimos 90 dias</option>
-                <option value="0">Todo o período</option>
+                <option value="365">Último ano (365 dias)</option>
+                <option value="0">Todo o período (histórico completo)</option>
               </select></label
             ><button class="secondary" id="refresh">Atualizar</button
             ><button class="secondary" id="export-stats">Exportar CSV</button>
@@ -86,6 +87,7 @@
             únicas. Downloads contam acionamentos, sem confirmação de arquivo
             salvo. Dias em UTC.
           </p>
+          <p id="statistics-range" role="status"></p>
           <div id="metrics" class="metrics"></div>
           <div class="grid">
             <article class="card">

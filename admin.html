@@ -71,7 +71,8 @@
                 <option value="30" selected>Últimos 30 dias</option>
                 <option value="60">Últimos 60 dias</option>
                 <option value="90">Últimos 90 dias</option>
-                <option value="0">Todo o período</option>
+                <option value="365">Último ano (365 dias)</option>
+                <option value="0">Todo o período (histórico completo)</option>
               </select></label
             ><button class="secondary" id="refresh">Atualizar</button
             ><button class="secondary" id="export-stats">Exportar CSV</button>
@@ -81,6 +82,7 @@
             únicas. Downloads contam acionamentos, sem confirmação de arquivo
             salvo. Dias em UTC.
           </p>
+          <p id="statistics-range" role="status"></p>
           <div id="metrics" class="metrics"></div>
           <div class="grid">
             <article class="card">

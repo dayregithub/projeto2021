@@ -147,6 +147,23 @@ function render() {
         `<div class="metric"><span>${label}</span><strong>${Number(value).toLocaleString("pt-BR")}</strong></div>`,
     )
     .join("");
+  const allTime = $("period").value === "0";
+  const formatDay = (day) => day.split("-").reverse().join("/");
+  const first = stats.series[0]?.day;
+  const last = stats.series.at(-1)?.day;
+  $("statistics-range").textContent = allTime
+    ? !first
+      ? "Todo o período: nenhum registro encontrado no histórico. A consulta não tem limite de data."
+      : `Todo o período: histórico completo de ${formatDay(first)} até ${formatDay(last)} (${stats.series.length} dia(s)). Sem limite de data na consulta.${stats.series.length === 1 ? " Os registros disponíveis começam hoje; não há registros anteriores nesta base." : ""} Estatísticas anteriores ao início da coleta não podem ser recuperadas pelo painel.`
+    : first
+      ? `Período consultado: ${formatDay(first)} até ${formatDay(last)}. Datas em UTC.`
+      : "Nenhum registro no período.";
+  $("chart").setAttribute(
+    "aria-label",
+    allTime
+      ? "Acessos em todo o histórico disponível"
+      : "Acessos no período selecionado",
+  );
   const maximum = Math.max(1, ...stats.series.map((p) => Number(p.visits)));
   $("chart").innerHTML = stats.series
     .map(

@@ -260,5 +260,8 @@ test("60 days and all-time include every page of events and quotes without a dat
   assert.equal(all.visits, 1001);
   assert.equal(all.quotes, 1104);
   assert.equal(all.series.length, 121);
-  assert.equal(summarize([], [], 0).series.length, 1);
+  assert.equal(summarize([], [], 0).series.length, 0);
+  const year = await getStatistics(client, 365);
+  assert.equal(year.visits, 1001);
+  assert.equal(year.series.length, 365);
 });

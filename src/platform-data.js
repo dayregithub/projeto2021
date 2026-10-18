@@ -51,7 +51,7 @@ export async function connection() {
   });
 }
 export function summarize(events, quotes, days, now = new Date()) {
-  if (![0, 7, 30, 60, 90].includes(days)) throw Error("Período inválido.");
+  if (![0, 7, 30, 60, 90, 365].includes(days)) throw Error("Período inválido.");
   const until = new Date(now),
     since = new Date(until);
   since.setUTCHours(0, 0, 0, 0);
@@ -106,13 +106,19 @@ export function summarize(events, quotes, days, now = new Date()) {
         since.getTime()) /
         86400000,
     ) + 1;
-  const series = Array.from({ length }, (_, i) => {
-    const date = new Date(since);
-    date.setUTCDate(date.getUTCDate() + i);
-    const day = date.toISOString().slice(0, 10);
-    return { day, ...(dates.get(day) || { visits: 0, downloads: 0 }) };
-  });
+  const series = Array.from(
+    {
+      length: days === 0 && !rows.length && !filteredQuotes.length ? 0 : length,
+    },
+    (_, i) => {
+      const date = new Date(since);
+      date.setUTCDate(date.getUTCDate() + i);
+      const day = date.toISOString().slice(0, 10);
+      return { day, ...(dates.get(day) || { visits: 0, downloads: 0 }) };
+    },
+  );
   return {
+    historyRecords: rows.length + filteredQuotes.length,
     visits,
     views,
     downloads,
@@ -123,7 +129,7 @@ export function summarize(events, quotes, days, now = new Date()) {
 }
 
 export async function getStatistics(client, days) {
-  if (![0, 7, 30, 60, 90].includes(days)) throw Error("Período inválido.");
+  if (![0, 7, 30, 60, 90, 365].includes(days)) throw Error("Período inválido.");
   if ([7, 30, 90].includes(days)) {
     const result = await client.rpc("admin_dashboard", { p_days: days });
     if (result.error) throw result.error;

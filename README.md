@@ -205,7 +205,7 @@ O botão “Voltar ao painel com ajustes” transporta as configurações comple
 
 ### Consulta de todo o histórico
 
-O filtro oferece 7, 30, 60 e 90 dias e **Todo o período**. A última opção começa na primeira data registrada entre eventos e solicitações e vai até o dia atual em UTC. Sem histórico, mostra o dia atual com zero. O gráfico, os totais, o ranking e o CSV usam o mesmo conjunto de dados. Os novos períodos leem somente os campos necessários das tabelas já autorizadas para administradores, em páginas ordenadas por ID e com um instante máximo fixado no início da consulta. A lista de pedidos continua exibindo os 250 mais recentes, enquanto os indicadores consideram todos os pedidos no período. Em históricos grandes, a consulta completa pode demorar mais.
+O filtro oferece 7, 30, 60 e 90 dias e **Todo o período**. A última opção começa na primeira data registrada entre eventos e solicitações e vai até o dia atual em UTC. Sem histórico, mostra explicitamente que não há registros e deixa o gráfico vazio. O painel informa o intervalo completo encontrado e explica quando os registros começam apenas hoje. “Todo o período” não aplica limite inferior de data; a opção separada de 365 dias cobre o último ano. O gráfico, os totais, o ranking e o CSV usam o mesmo conjunto de dados. Os novos períodos leem somente os campos necessários das tabelas já autorizadas para administradores, em páginas ordenadas por ID e com um instante máximo fixado no início da consulta. A lista de pedidos continua exibindo os 250 mais recentes, enquanto os indicadores consideram todos os pedidos no período. Em históricos grandes, a consulta completa pode demorar mais.
 
 ### Assistente operacional versão 2
 

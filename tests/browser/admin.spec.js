@@ -223,6 +223,9 @@ test("60 days and all-time update totals and CSV using the complete local histor
 }) => {
   await page.goto("/admin.html");
   await page.locator("#local-preview").click();
+  await page.locator("#period").selectOption("0");
+  await expect(page.locator("#statistics-range")).toContainText("nenhum registro encontrado");
+  await expect(page.locator("#chart .bar")).toHaveCount(0);
   const now = new Date().toISOString(),
     old = new Date(Date.now() - 120 * 86400000).toISOString();
   await page.evaluate(
@@ -256,6 +259,12 @@ test("60 days and all-time update totals and CSV using the complete local histor
   await page.locator("#period").selectOption("0");
   await expect(page.locator("#metrics .metric strong").first()).toHaveText("2");
   await expect(page.locator("#metrics .metric strong").nth(3)).toHaveText("1");
+  await expect(page.locator("#statistics-range")).toContainText(
+    "histórico completo",
+  );
+  await expect(page.locator("#statistics-range")).toContainText(
+    old.slice(0, 10).split("-").reverse().join("/"),
+  );
   await expect(page.locator("#export-stats")).toBeEnabled();
   const pending = page.waitForEvent("download");
   await page.locator("#export-stats").click();
