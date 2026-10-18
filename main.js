@@ -1,3 +1,4 @@
+import { editingProject, returnToAdmin } from "./src/admin-editor.js";
 import { archiveDownload } from "./src/download-archive.js";
 import { initPlatform, trackEvent } from "./src/platform.js";
 import { finishKeys } from "./src/finishes.js";
@@ -206,6 +207,7 @@ function openModel(id) {
   openProject(defaults(id));
 }
 let activeProductId = null;
+let adminEdit = null;
 function openProject(project, id = null, productId = null) {
   activeProductId = productId;
   clearTimeout(saveTimer);
@@ -509,6 +511,7 @@ function renderEditor() {
   $("#validation").textContent = errors.join(" ");
   $("#export-project").disabled = !valid || !state.name.trim();
   $("#save-project").disabled = !valid || !state.name.trim();
+  $("#return-admin").disabled = !valid || !state.name.trim();
   $("#quote-project").disabled = !valid;
   $("#explode").hidden = isPrint || view === "2d";
   $("#explode").classList.toggle("selected", exploded);
@@ -1212,3 +1215,20 @@ void initPlatform({
   openProject: (project, productId) =>
     openProject(readProject(project), null, productId),
 }).catch(() => console.warn("Plataforma indisponível."));
+
+try {
+  adminEdit = editingProject();
+  if (adminEdit) {
+    $("#admin-edit-banner").hidden = false;
+    openProject(adminEdit.project);
+  }
+} catch (error) {
+  toast(error.message);
+}
+$("#return-admin").onclick = () => {
+  try {
+    returnToAdmin(adminEdit.token, state);
+  } catch (error) {
+    toast(error.message);
+  }
+};

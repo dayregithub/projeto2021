@@ -120,10 +120,26 @@
             “Criações do estúdio” do site. Um novo mecanismo paramétrico exige
             desenvolvimento.
           </p>
+          <h3>Modelos 3D já disponíveis no site</h3>
+          <p>
+            Abra o configurador completo para ajustar tampas, cantos,
+            divisórias, texturas, fontes e outras opções. Volte com os ajustes
+            para cadastrar uma variação. Os modelos originais continuam no
+            catálogo.
+          </p>
+          <div id="builtin-3d" class="grid"></div>
+          <h3>Produtos cadastrados pelo painel</h3>
           <div id="product-list" class="grid"></div>
           <form id="product-form" class="card" hidden>
             <h3 id="product-form-title">Novo produto</h3>
             <input name="id" type="hidden" />
+            <button type="button" class="secondary" id="configure-product">
+              Abrir todos os parâmetros no configurador
+            </button>
+            <p class="muted">
+              Ao terminar, clique em “Voltar ao painel com ajustes”. Revise e
+              salve o produto para publicar.
+            </p>
             <div class="grid">
               <label>Nome<input name="title" maxlength="80" required /></label
               ><label

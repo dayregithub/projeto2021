@@ -165,3 +165,23 @@ test("panel retrieves the exact downloaded bytes and honors disabling the archiv
   await page.locator("[data-delete-file]").first().click();
   await expect(page.locator("[data-download-file]")).toHaveCount(1);
 });
+
+test('existing 3D models open the full configurator and return all parameters to a new or existing panel product',async({page})=>{
+ await page.goto('/admin.html');await page.locator('#local-preview').click();await page.locator('[data-tab="products"]').click();
+ await expect(page.locator('[data-configure-model]')).toHaveCount(5);
+ await page.locator('[data-configure-model="toothbrush"]').click();
+ await expect(page.locator('#admin-edit-banner')).toBeVisible();
+ await expect(page.locator('#brush-options')).toBeVisible();
+ await page.locator('#width').fill('88');await page.selectOption('#brush-texture','ribbed');await page.selectOption('#brush-cover','yes');
+ await page.locator('#return-admin').click();
+ await expect(page.locator('#product-form')).toBeVisible();await expect(page.locator('#product-form [name="width"]')).toHaveValue('88');
+ await page.locator('#product-form [name="title"]').fill('Porta-escovas canelado do estúdio');await page.locator('#product-form [name="published"]').check();
+ await page.locator('#product-form button').filter({hasText:'Salvar produto'}).click();
+ await expect(page.locator('#product-list')).toContainText('Porta-escovas canelado do estúdio');
+ await page.locator('[data-edit]').click();await page.locator('#configure-product').click();
+ await expect(page.locator('#brush-texture')).toHaveValue('ribbed');await expect(page.locator('#brush-cover')).toHaveValue('yes');await expect(page.locator('#width')).toHaveValue('88');
+ await page.locator('#width').fill('90');await page.locator('#return-admin').click();
+ await page.locator('#product-form button').filter({hasText:'Salvar produto'}).click();
+ await expect(page.locator('#product-list [data-edit]')).toHaveCount(1);await expect(page.locator('#product-list')).toContainText('90 × 90');
+ await page.locator('[data-use-model="lettering"]').click();await expect(page.locator('#product-model')).toHaveValue('lettering');
+});

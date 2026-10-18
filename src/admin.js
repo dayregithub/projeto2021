@@ -1,3 +1,4 @@
+import { openAdminEditor, takeEditorReturn } from "./admin-editor.js";
 import {
   listDownloads,
   getDownload,
@@ -55,6 +56,38 @@ document
 $("product-model").innerHTML = MODELS.map(
   (m) => `<option value="${escape(m.id)}">${escape(m.name)}</option>`,
 ).join("");
+$("builtin-3d").innerHTML = MODELS.filter((m) => m.category === "print")
+  .map(
+    (m) =>
+      `<article class="card"><p class="eyebrow">MODELO ORIGINAL · IMPRESSÃO 3D</p><h3>${escape(m.name)}</h3><p>${escape(m.description)}</p><p class="muted">${m.w} × ${m.d} × ${m.h} mm · dimensões ajustáveis</p><div class="actions"><button data-configure-model="${escape(m.id)}">Abrir configurador 3D</button><button class="secondary" data-use-model="${escape(m.id)}">Criar variação no painel</button></div></article>`,
+  )
+  .join("");
+document.querySelectorAll("[data-configure-model]").forEach(
+  (button) =>
+    (button.onclick = () => {
+      try {
+        const m = modelById(button.dataset.configureModel);
+        openAdminEditor(defaults(m.id), {
+          description: m.description,
+          published: false,
+        });
+      } catch (error) {
+        notice(error.message);
+      }
+    }),
+);
+document.querySelectorAll("[data-use-model]").forEach(
+  (button) =>
+    (button.onclick = () => {
+      const m = modelById(button.dataset.useModel);
+      edit({
+        title: m.name,
+        description: m.description,
+        settings: defaults(m.id),
+        published: false,
+      });
+    }),
+);
 async function load() {
   try {
     if (local) {
@@ -299,6 +332,22 @@ async function enter() {
     : "Conectado ao estúdio. Dados protegidos por login e permissões do banco.";
   tab("overview");
   await load();
+  try {
+    const returned = takeEditorReturn();
+    if (returned) {
+      tab("products");
+      edit({
+        ...returned.meta,
+        title: returned.project.name,
+        settings: returned.project,
+      });
+      notice(
+        "Ajustes recebidos do configurador. Revise os dados e salve para publicar.",
+      );
+    }
+  } catch (error) {
+    notice(error.message);
+  }
 }
 $("local-preview").onclick = async () => {
   localStorage.setItem("papeled-console-preview", "true");
@@ -465,3 +514,25 @@ async function refreshFiles() {
   }
 }
 $("refresh-files").onclick = refreshFiles;
+
+$("configure-product").onclick = () => {
+  try {
+    const f = $("product-form");
+    const project = readProject({
+      ...settings,
+      name: f.elements.title.value.trim() || settings.name,
+      width: Number(f.elements.width.value),
+      depth: Number(f.elements.depth.value),
+      height: Number(f.elements.height.value),
+    });
+    openAdminEditor(project, {
+      id: f.elements.id.value,
+      title: project.name,
+      description: f.elements.description.value,
+      image_url: f.elements.image.value,
+      published: f.elements.published.checked,
+    });
+  } catch (error) {
+    notice(error.message);
+  }
+};
