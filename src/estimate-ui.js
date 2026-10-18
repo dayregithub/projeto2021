@@ -69,8 +69,31 @@ export function initEstimates({ getState, navigate }) {
   function field(key, label, value, type = "number", scope = "pricing") {
     return `<label>${esc(label)}<input data-${scope}="${key}" type="${type}" ${type === "number" ? 'step="any"' : ""} value="${esc(value)}"></label>`;
   }
-  $("estimate-pricing").innerHTML = pricingFields
-    .map(([key, label]) => field(key, label, DEFAULT_PRICING[key]))
+  const pricingGroups = [
+    [
+      "laser",
+      "Corte e gravação a laser",
+      pricingFields.slice(0, 16),
+      "Chapa MDF, tubo, máquina e tarifa por minuto. Estes custos são usados somente nos itens de laser.",
+    ],
+    [
+      "print",
+      "Impressão 3D",
+      pricingFields.slice(16, 22),
+      "Filamento em gramas, tempo de impressão em horas e consumo em watts. Estes custos são usados somente nos itens 3D.",
+    ],
+    [
+      "common",
+      "Regras comerciais e acabamento",
+      pricingFields.slice(22),
+      "Regras compartilhadas pelos itens deste orçamento: trabalho manual, acréscimo, margem e impostos.",
+    ],
+  ];
+  $("estimate-pricing").innerHTML = pricingGroups
+    .map(
+      ([process, title, fields, note]) =>
+        `<section data-pricing-process="${process}"><h4>${title}</h4><p class="muted">${note}</p><div class="grid three">${fields.map(([key, label]) => field(key, label, DEFAULT_PRICING[key])).join("")}</div></section>`,
+    )
     .join("");
   $("estimate-layout-fields").innerHTML = [
     ["businessName", "Nome da empresa"],
@@ -242,10 +265,21 @@ export function initEstimates({ getState, navigate }) {
     $("estimate-preview").removeAttribute("src");
   }
   function renderSummary() {
+    const processes = new Set(quote.items.map((item) => item.process));
+    $("estimate-pricing")
+      .querySelectorAll("[data-pricing-process]")
+      .forEach((section) => {
+        section.hidden =
+          section.dataset.pricingProcess !== "common" &&
+          !processes.has(section.dataset.pricingProcess);
+      });
+    form
+      .querySelectorAll("[data-laser-help]")
+      .forEach((element) => (element.hidden = !processes.has("laser")));
     try {
       const result = calculateEstimate(quote);
       $("estimate-summary").innerHTML =
-        `<div class="metrics"><div class="metric">Custo interno<strong>${brl(result.cost)}</strong></div><div class="metric">Subtotal<strong>${brl(result.subtotal)}</strong></div><div class="metric">Total ao cliente<strong>${brl(result.total)}</strong></div><div class="metric">Resultado após impostos<strong>${brl(result.profit)}</strong></div></div><p class="muted">Laser: custo operacional ${brl(result.laser.hour)}/h (${brl(result.laser.minute)}/min) · MDF: ${brl(result.materialM2)}/m² · Impostos inclusos estimados: ${brl(result.tax)}. Frete é repasse e não integra a base de impostos.</p>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`;
+        `<div class="metrics"><div class="metric">Custo interno<strong>${brl(result.cost)}</strong></div><div class="metric">Subtotal<strong>${brl(result.subtotal)}</strong></div><div class="metric">Total ao cliente<strong>${brl(result.total)}</strong></div><div class="metric">Resultado após impostos<strong>${brl(result.profit)}</strong></div></div><p class="muted">${processes.has("laser") ? `Laser: custo operacional ${brl(result.laser.hour)}/h (${brl(result.laser.minute)}/min) · MDF: ${brl(result.materialM2)}/m² · ` : ""}${processes.has("print") ? `3D: filamento ${brl(quote.pricing.filamentKg)}/kg · energia ${brl(quote.pricing.printEnergy)}/kWh · ` : ""}Impostos inclusos estimados: ${brl(result.tax)}. Frete é repasse e não integra a base de impostos.</p>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`;
       result.items.forEach((item, i) => {
         const row =
           $("estimate-items").querySelectorAll("[data-item-result]")[i];

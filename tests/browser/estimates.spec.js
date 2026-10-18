@@ -11,6 +11,10 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.locator("#local-preview").click();
   await page.locator('[data-tab="estimates"]').click();
   await page.locator("#new-laser-estimate").click();
+  await page.getByText("Custos, tarifas e regras de cálculo", {exact:true}).click();
+  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeVisible();
+  await expect(page.locator('[data-pricing="filamentKg"]')).toBeHidden();
+  await expect(page.locator('[data-pricing="markupPercent"]')).toBeVisible();
   await page.locator('[data-item="description"]').fill("Caixa personalizada");
   await page.locator('[data-item="minutes"]').fill("60");
   await page.locator('[data-item="quantity"]').fill("2");
@@ -56,6 +60,10 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
     "Cliente de teste",
   );
   await page.locator("#new-print-estimate").click();
+  await page.getByText("Custos, tarifas e regras de cálculo", {exact:true}).click();
+  await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
+  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeHidden();
+  await expect(page.locator("#estimate-summary")).not.toContainText("MDF");
   await page.locator('[data-item="grams"]').fill("110");
   await page.locator('[data-item="hours"]').fill("5");
   await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
@@ -63,5 +71,11 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   );
   await page.locator("#estimate-preview-button").click();
   await expect(page.locator("#estimate-preview")).toBeVisible();
+  await page.locator("#add-laser-item").click();
+  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeVisible();
+  await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
+  await page.locator('[data-remove="1"]').click();
+  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeHidden();
+  await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
   expect(errors).toEqual([]);
 });
