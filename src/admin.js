@@ -1,3 +1,4 @@
+import { initAdminAssistant } from "./admin-assistant.js";
 import { openAdminEditor, takeEditorReturn } from "./admin-editor.js";
 import {
   listDownloads,
@@ -133,6 +134,7 @@ async function load() {
   }
 }
 function render() {
+  refreshAssistant();
   $("metrics").innerHTML = [
     ["Acessos", stats.visits],
     ["Modelos abertos", stats.views],
@@ -412,32 +414,13 @@ $("export-stats").onclick = () => {
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 };
-$("ask-assistant").onclick = async () => {
-  const prompt = $("assistant-prompt").value.trim();
-  if (!prompt) return;
-  const status = $("assistant-status"),
-    button = $("ask-assistant");
-  $("assistant-result").textContent = "";
-  if (local) {
-    status.textContent =
-      "A IA precisa da conexão Supabase e da função maker-assistant configurada com a chave no servidor. A prévia local não faz chamadas de IA.";
-    return;
-  }
-  button.disabled = true;
-  status.textContent = "Preparando sugestão…";
-  try {
-    const data = check(
-      await client.functions.invoke("maker-assistant", { body: { prompt } }),
-    );
-    $("assistant-result").textContent = data.text;
-    status.textContent = "Sugestão gerada. Revise antes de usar.";
-  } catch {
-    status.textContent =
-      "Assistente indisponível. Verifique a função e a chave de IA no servidor.";
-  } finally {
-    button.disabled = false;
-  }
-};
+
+const refreshAssistant = initAdminAssistant({
+  getState: () => ({ client, local, products, quotes, readLocal, writeLocal }),
+  reload: load,
+  navigate: tab,
+  editProduct: edit,
+});
 try {
   client = await connection();
   if (client) {

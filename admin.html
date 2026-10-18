@@ -215,23 +215,71 @@
         </section>
         <section data-section="assistant" hidden>
           <div class="card">
-            <p class="eyebrow">AJUDA PARA O SEU CATÁLOGO</p>
-            <h2>Assistente de IA</h2>
+            <p class="eyebrow">SEU ASSISTENTE DO ESPAÇO MAKER</p>
+            <h2>Textos, produtos e ajustes no painel</h2>
             <p>
-              A IA pode sugerir descrições e perguntas para o cliente. Revise o
-              resultado; ela não publica produtos nem altera arquivos de
-              fabricação.
+              Peça descrições, textos de divulgação, novos produtos a partir dos
+              modelos existentes ou correções nos cadastros. O assistente usa o
+              catálogo e indicadores dos últimos 30 dias. Cada alteração aparece
+              como proposta para você conferir e aplicar.
             </p>
+            <div class="actions">
+              <button id="assistant-health" class="secondary">
+                Verificar configuração</button
+              ><button id="assistant-audit" class="secondary">
+                Revisar cadastros</button
+              ><a href="./admin-setup.html#ia" target="_blank" rel="noopener"
+                >Como ativar a IA ↗</a
+              >
+            </div>
+            <label
+              >Produto de referência<select id="assistant-product">
+                <option value="">Catálogo geral</option>
+              </select></label
+            >
+            <div class="actions">
+              <button
+                class="secondary"
+                data-assistant-prompt="Melhore o nome e a descrição do produto de referência e prepare uma proposta de atualização sem mudar seus parâmetros nem sua publicação."
+              >
+                Melhorar texto do produto</button
+              ><button
+                class="secondary"
+                data-assistant-prompt="Crie um rascunho de um organizador 3D para bancada com 4 compartimentos e descrição clara. Use um modelo existente."
+              >
+                Criar produto 3D</button
+              ><button
+                class="secondary"
+                data-assistant-prompt="Analise os indicadores dos últimos 30 dias e sugira três ações práticas para melhorar o catálogo. Não altere nada automaticamente."
+              >
+                Analisar indicadores
+              </button>
+            </div>
             <label
               >O que você precisa?<textarea
                 id="assistant-prompt"
                 rows="5"
                 maxlength="2000"
-                placeholder="Crie uma descrição de um organizador com 4 divisórias…"
+                placeholder="Ex.: crie um porta-escovas quadrado, com cobertura alta e textura canelada, de 80 × 80 × 110 mm"
               ></textarea></label
-            ><button id="ask-assistant">Gerar sugestão</button>
+            ><button id="ask-assistant">Conversar com o assistente</button
+            ><button class="secondary" id="assistant-new-chat">
+              Nova conversa</button
+            ><button class="secondary" id="assistant-demo" hidden>
+              Testar uma proposta local (sem IA)
+            </button>
             <p id="assistant-status" role="status"></p>
             <pre id="assistant-result"></pre>
+            <button class="secondary" id="assistant-copy">
+              Copiar resposta
+            </button>
+            <div id="assistant-proposals"></div>
+            <div id="assistant-audit-result"></div>
+            <p class="muted">
+              Novos produtos começam como rascunhos. O agente ajusta cadastros e
+              parâmetros existentes; alterações de código e novos mecanismos
+              exigem desenvolvimento. Não envie senhas ou chaves na conversa.
+            </p>
           </div>
         </section>
       </div>

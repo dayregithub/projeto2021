@@ -254,3 +254,48 @@ test("60 days and all-time update totals and CSV using the complete local histor
   const csv = await readFile(await (await pending).path(), "utf8");
   expect(csv).toContain(old.slice(0, 10) + ";1;0");
 });
+
+test("assistant local proposal previews changes, creates only a draft after click and links to editing", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="assistant"]').click();
+  await page.locator("#assistant-demo").click();
+  await expect(page.locator("#assistant-result")).toContainText(
+    "sem chamada de IA",
+  );
+  await expect(page.locator("#assistant-proposals")).toContainText(
+    "Organizador 3D de bancada",
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(
+          localStorage.getItem("papeled-console-local-v1") || '{"products":[]}',
+        ).products.length,
+    ),
+  ).toBe(0);
+  await page
+    .getByRole("button", { name: "Criar este rascunho", exact: true })
+    .click();
+  await expect(page.locator("#assistant-proposals")).toContainText(
+    "Alteração aplicada",
+  );
+  await expect(
+    page.getByRole("button", { name: "Aplicado", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Abrir produto no formulário", exact: true })
+    .click();
+  await expect(page.locator("#product-form")).toBeVisible();
+  await expect(
+    page.locator('#product-form [name="published"]'),
+  ).not.toBeChecked();
+  await expect(page.locator('#product-form [name="width"]')).toHaveValue("120");
+  await page.locator('[data-tab="assistant"]').click();
+  await page.locator("#assistant-audit").click();
+  await expect(page.locator("#assistant-audit-result")).toContainText(
+    "Sem foto",
+  );
+});

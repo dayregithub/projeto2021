@@ -275,3 +275,21 @@ pre {
     font-size: 16px;
   }
 }
+
+#assistant-proposals dl {
+  margin: 14px 0;
+}
+#assistant-proposals dt {
+  font-weight: 700;
+}
+#assistant-proposals dd {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#assistant-proposals button {
+  margin: 6px 8px 6px 0;
+}
+[data-assistant-prompt] {
+  font-size: 14px;
+}
