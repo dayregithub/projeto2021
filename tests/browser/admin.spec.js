@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { readFile } from "node:fs/promises";
 
 test("local panel publishes a product to this browser, records opted-in metrics and receives a real quote form", async ({

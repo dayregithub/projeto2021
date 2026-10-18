@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 import { readFile } from "node:fs/promises";
 import { MODELS, catalogGroupFor } from "../../src/models.js";
 const chooseModel = async (page, model) => {
