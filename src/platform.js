@@ -1,3 +1,4 @@
+import { setArchiveBackend } from "./download-archive.js";
 import {
   connection,
   localMode,
@@ -53,6 +54,7 @@ export async function initPlatform({ openProject }) {
   if (client) local = false;
   enabled = !!client || local;
   if (!enabled) return;
+  setArchiveBackend(client, local);
   const consent = document.getElementById("metrics-consent");
   if (
     !localStorage.getItem("papeled-metrics-consent") &&

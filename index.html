@@ -855,6 +855,18 @@
       <p class="dialog-description">
         Escolha o formato para continuar o seu projeto.
       </p>
+      <div data-archive-option hidden>
+        <label class="field-hint"
+          ><input type="checkbox" id="archive-export" checked /> Guardar no
+          painel privado do estúdio uma cópia deste arquivo baixado para
+          atendimento e produção.</label
+        >
+        <p class="field-hint">
+          A cópia contém o arquivo completo, inclusive textos personalizados.
+          Desmarque se preferir baixar sem enviar a cópia.
+        </p>
+        <p id="archive-export-status" role="status" class="field-hint"></p>
+      </div>
       <div id="export-options"></div>
       <div class="export-note" id="export-note"></div>
       <p class="dialog-footnote">
@@ -913,6 +925,18 @@
         Seu projeto já vai na mensagem. Conte para nós a quantidade e como
         pretende usar.
       </p>
+      <div data-archive-option hidden>
+        <label class="field-hint"
+          ><input type="checkbox" id="archive-quote" checked /> Guardar no
+          painel privado do estúdio uma cópia deste arquivo baixado para
+          atendimento e produção.</label
+        >
+        <p class="field-hint">
+          A cópia contém o arquivo completo, inclusive textos personalizados.
+          Desmarque se preferir baixar sem enviar a cópia.
+        </p>
+        <p id="archive-quote-status" role="status" class="field-hint"></p>
+      </div>
       <div class="export-note">
         <strong>Arquivos do orçamento</strong>
         <p id="quote-package-status" role="status"></p>
@@ -1018,6 +1042,18 @@
         Enviar arquivos anexados
       </button>
       <p class="external-delivery-note" id="external-delivery-note"></p>
+      <div data-archive-option hidden>
+        <label class="field-hint"
+          ><input type="checkbox" id="archive-external" checked /> Guardar no
+          painel privado do estúdio uma cópia deste arquivo baixado para
+          atendimento e produção.</label
+        >
+        <p class="field-hint">
+          A cópia contém o arquivo completo, inclusive textos personalizados.
+          Desmarque se preferir baixar sem enviar a cópia.
+        </p>
+        <p id="archive-external-status" role="status" class="field-hint"></p>
+      </div>
       <div id="external-contact-links" hidden>
         <button class="button secondary full" id="external-download">
           Baixar pacote ZIP com os arquivos

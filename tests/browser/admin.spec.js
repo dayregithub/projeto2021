@@ -118,3 +118,50 @@ test("declining statistics records nothing and mobile panel fits", async ({
   const csv = await readFile(await (await pending).path(), "utf8");
   expect(csv).toContain("dia_UTC;acessos;downloads");
 });
+
+test("panel retrieves the exact downloaded bytes and honors disabling the archive copy", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  const site = await context.newPage();
+  await site.goto("/");
+  await site.locator("#metrics-decline").click();
+  await site.locator('[data-group="laser-boxes"]').click();
+  await site.locator("#export-project").click();
+  const originalPending = site.waitForEvent("download");
+  await site.locator('[data-export="svg"]').click();
+  const original = await readFile(await (await originalPending).path());
+  await expect(site.locator("#archive-export-status")).toContainText(
+    "Cópia guardada",
+  );
+  await page.locator('[data-tab="files"]').click();
+  await page.locator("#refresh-files").click();
+  await expect(page.locator("[data-download-file]")).toHaveCount(1);
+  const copiedPending = page.waitForEvent("download");
+  await page.locator("[data-download-file]").click();
+  expect(await readFile(await (await copiedPending).path())).toEqual(original);
+  await expect(page.locator("#notice")).toContainText("verificada");
+  await site.locator("#archive-export").uncheck();
+  const second = site.waitForEvent("download");
+  await site.locator('[data-export="dxf"]').click();
+  await second;
+  await page.locator("#refresh-files").click();
+  await expect(page.locator("[data-download-file]")).toHaveCount(1);
+  await site.locator("#export-dialog [data-close]").click();
+  const zipPending = site.waitForEvent("download");
+  await site.locator("#quote-project").click();
+  const zip = await readFile(await (await zipPending).path());
+  await expect(site.locator("#archive-quote-status")).toContainText(
+    "Cópia guardada",
+  );
+  await page.locator("#refresh-files").click();
+  await expect(page.locator("[data-download-file]")).toHaveCount(2);
+  const zipCopy = page.waitForEvent("download");
+  await page.locator("[data-download-file]").first().click();
+  expect(await readFile(await (await zipCopy).path())).toEqual(zip);
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("[data-delete-file]").first().click();
+  await expect(page.locator("[data-download-file]")).toHaveCount(1);
+});

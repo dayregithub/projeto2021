@@ -1,4 +1,9 @@
 import {
+  listDownloads,
+  getDownload,
+  deleteDownload,
+} from "./download-archive.js";
+import {
   connection,
   readLocal,
   writeLocal,
@@ -25,7 +30,8 @@ let client = null,
   products = [],
   quotes = [],
   stats = null,
-  settings = null;
+  settings = null,
+  downloadFiles = [];
 const notice = (text) => {
   $("notice").textContent = text;
 };
@@ -74,6 +80,7 @@ async function load() {
       stats = check(results[2]);
     }
     render();
+    await refreshFiles();
     notice("");
   } catch {
     notice(
@@ -399,3 +406,62 @@ try {
   $("connection-status").textContent =
     "Falha na configuração. Verifique platform-config.json e a conexão.";
 }
+
+async function refreshFiles() {
+  try {
+    downloadFiles = await listDownloads(client, local);
+    $("download-list").innerHTML = downloadFiles.length
+      ? downloadFiles
+          .map(
+            (file) =>
+              `<article class="card"><h3>${escape(file.filename)}</h3><p>${escape(new Date(file.created_at).toLocaleString("pt-BR"))} · ${escape(file.format.toUpperCase())} · ${(Number(file.size_bytes) / 1024).toFixed(1)} KB</p><p class="muted">${escape(products.find((p) => p.id === file.product_id)?.title || modelById(file.model_id)?.name || file.model_id)}</p><div class="actions"><button data-download-file="${escape(file.id)}">Baixar cópia original</button><button class="secondary" data-delete-file="${escape(file.id)}">Excluir cópia</button></div></article>`,
+          )
+          .join("")
+      : '<div class="card">Nenhuma cópia recebida. Os arquivos aparecerão depois que visitantes baixarem com a opção de guardar cópia habilitada.</div>';
+    document.querySelectorAll("[data-download-file]").forEach(
+      (button) =>
+        (button.onclick = async () => {
+          button.disabled = true;
+          try {
+            const file = await getDownload(
+              client,
+              local,
+              downloadFiles.find((f) => f.id === button.dataset.downloadFile),
+            );
+            const url = URL.createObjectURL(file),
+              link = document.createElement("a");
+            link.href = url;
+            link.download = file.name;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+            notice("Cópia verificada e preparada para download.");
+          } catch (error) {
+            notice(error.message);
+          } finally {
+            button.disabled = false;
+          }
+        }),
+    );
+    document.querySelectorAll("[data-delete-file]").forEach(
+      (button) =>
+        (button.onclick = async () => {
+          if (!confirm("Excluir esta cópia do painel?")) return;
+          try {
+            await deleteDownload(
+              client,
+              local,
+              downloadFiles.find((f) => f.id === button.dataset.deleteFile),
+            );
+            await refreshFiles();
+            notice("Cópia excluída.");
+          } catch {
+            notice("Não foi possível excluir a cópia.");
+          }
+        }),
+    );
+  } catch {
+    $("download-list").textContent =
+      "O histórico de arquivos não está disponível. Verifique a instalação da migração 002 e do bucket privado.";
+  }
+}
+$("refresh-files").onclick = refreshFiles;

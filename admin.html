@@ -56,6 +56,7 @@
         </div>
         <nav aria-label="Seções do painel">
           <button data-tab="overview">Visão geral</button
+          ><button data-tab="files">Arquivos baixados</button
           ><button data-tab="products">Produtos</button
           ><button data-tab="quotes">Orçamentos</button
           ><button data-tab="assistant">Assistente de IA</button>
@@ -88,6 +89,26 @@
               <div id="top-downloads"></div>
             </article>
           </div>
+        </section>
+        <section data-section="files" hidden>
+          <div class="heading">
+            <h2>Arquivos baixados</h2>
+            <button class="secondary" id="refresh-files">
+              Atualizar arquivos
+            </button>
+          </div>
+          <p>
+            Cópias privadas dos arquivos efetivamente gerados, quando o envio da
+            cópia estiver habilitado no download. A lista mostra os 250 mais
+            recentes. A verificação SHA-256 confere se os bytes da cópia
+            permanecem iguais. O navegador do visitante ainda pode cancelar o
+            salvamento local.
+          </p>
+          <p class="muted">
+            Arquivos anteriores à ativação ou sem cópia não podem ser
+            recuperados por estatísticas.
+          </p>
+          <div id="download-list"></div>
         </section>
         <section data-section="products" hidden>
           <div class="heading">

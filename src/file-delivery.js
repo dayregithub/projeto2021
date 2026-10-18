@@ -1,3 +1,4 @@
+import { archiveDownload } from "./download-archive.js";
 import { zipSync, strToU8 } from "fflate";
 
 export function deliveryZip(files, contents) {
@@ -69,13 +70,22 @@ export function deliveryEmail(files, contents, { name, text }) {
   });
 }
 export function downloadDelivery(file) {
+  void archiveDownload(file, {
+    model: "external",
+    checkbox: "archive-external",
+    status: "archive-external-status",
+  });
   const url = URL.createObjectURL(file),
     link = document.createElement("a");
   link.href = url;
   link.download = file.name;
   document.body.append(link);
   link.click();
-  window.dispatchEvent(new CustomEvent("papeled-file-download", {detail: file.name.endsWith(".eml") ? "eml" : "zip"}));
+  window.dispatchEvent(
+    new CustomEvent("papeled-file-download", {
+      detail: file.name.endsWith(".eml") ? "eml" : "zip",
+    }),
+  );
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }

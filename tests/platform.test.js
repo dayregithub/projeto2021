@@ -101,3 +101,87 @@ test("local dashboard excludes old events and keeps downloads separate from visi
   assert.equal(stats.series.length, 7);
   assert.equal(stats.top[0].format, "stl");
 });
+
+test("archive reserves private paths, rejects arbitrary uploads and exposes ready copies only to admins", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(
+      `create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid; $$;create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,metadata jsonb);alter table storage.objects enable row level security;grant usage on schema storage to anon,authenticated;grant insert,select,delete on storage.objects to anon,authenticated;`,
+    );
+    await db.exec(
+      await readFile(
+        new URL("../supabase/migrations/001_platform.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    await db.exec(
+      await readFile(
+        new URL(
+          "../supabase/migrations/002_download_archive.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
+    const admin = "11111111-1111-4111-8111-111111111111",
+      id = "44444444-4444-4444-8444-444444444444",
+      hash = "a".repeat(64);
+    await db.exec(
+      `insert into auth.users values('${admin}');insert into public.admin_users values('${admin}');set role anon;`,
+    );
+    await assert.rejects(db.query("select * from public.download_files"));
+    await assert.rejects(
+      db.query(
+        "insert into storage.objects(bucket_id,name,metadata) values('maker-downloads','arbitrary/file.stl','{}')",
+      ),
+    );
+    await db.query(
+      `select public.reserve_download('${id}','original.stl','print','stl',123,'${hash}')`,
+    );
+    await assert.rejects(db.query(`select public.complete_download('${id}')`));
+    await db.query(
+      `insert into storage.objects(bucket_id,name,metadata) values('maker-downloads','${id}/file.stl','{"size":123}')`,
+    );
+    assert.equal(
+      (await db.query("select * from storage.objects")).rows.length,
+      0,
+    );
+    await db.query(`select public.complete_download('${id}')`);
+    await assert.rejects(
+      db.query(
+        `insert into storage.objects(bucket_id,name,metadata) values('maker-downloads','${id}/file.stl','{}')`,
+      ),
+    );
+    await db.exec(
+      `reset role;set role authenticated;set request.jwt.claim.sub='${admin}';`,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "select * from public.download_files where state='ready'",
+        )
+      ).rows.length,
+      1,
+    );
+    assert.equal(
+      (await db.query("select * from storage.objects")).rows.length,
+      1,
+    );
+    await db.exec(
+      "delete from storage.objects;delete from public.download_files;",
+    );
+    assert.equal(
+      (await db.query("select * from public.download_files")).rows.length,
+      0,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test('a changed archive object fails the original checksum verification',async()=>{
+ const {getDownload,fileHash}=await import('../src/download-archive.js');
+ const original=new Blob(['original data']),changed=new Blob(['different data']);
+ const client={storage:{from:()=>({download:async()=>({data:changed,error:null})})}};
+ await assert.rejects(getDownload(client,false,{object_path:'id/file.stl',filename:'file.stl',sha256:await fileHash(original)}),/integridade/);
+});

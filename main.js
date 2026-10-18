@@ -1,3 +1,4 @@
+import { archiveDownload } from "./src/download-archive.js";
 import { initPlatform, trackEvent } from "./src/platform.js";
 import { finishKeys } from "./src/finishes.js";
 import { BRUSH_TEXTURES, brushDrainage } from "./src/brush-features.js";
@@ -591,7 +592,9 @@ function renderEditor() {
   }
 }
 function download(content, filename, type) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
+  const file = new File([content], filename, { type });
+  const url = URL.createObjectURL(file);
+  void archiveDownload(file, { model: state.model, product: activeProductId });
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -851,8 +854,15 @@ $("#quote-project").onclick = async () => {
     if (quoteURL) URL.revokeObjectURL(quoteURL);
     quoteURL = URL.createObjectURL(quoteFile);
     const link = $("#quote-package");
-    link.onclick = () =>
+    link.onclick = () => {
       trackEvent("download", snapshot.model, "zip", activeProductId);
+      void archiveDownload(quoteFile, {
+        model: snapshot.model,
+        product: activeProductId,
+        checkbox: "archive-quote",
+        status: "archive-quote-status",
+      });
+    };
     link.href = quoteURL;
     link.download = bundle.name;
     link.hidden = false;
