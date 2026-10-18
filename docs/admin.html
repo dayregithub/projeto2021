@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Painel — Papeled Maker</title>
+    <link rel="icon" href="./papeled-logo.png" />
+    <script type="module" crossorigin src="./assets/admin-tkGT-MIq.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/platform-data-ClICmHTk.js">
+    <link rel="modulepreload" crossorigin href="./assets/geometry-BpkK8C_x.js">
+    <link rel="stylesheet" crossorigin href="./assets/admin-ulYLLq4d.css">
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./"
+        ><img src="./papeled-logo.png" alt="Logo Papeled Maker" />Papeled Maker
+        <small>GESTÃO DO ESPAÇO MAKER ONLINE</small></a
+      ><a href="./" target="_blank" rel="noopener">Abrir site ↗</a>
+    </header>
+    <main>
+      <section id="access" class="card">
+        <p class="eyebrow">SEU ESTÚDIO, EM UM SÓ LUGAR</p>
+        <h1>Painel do Papeled Maker</h1>
+        <p id="connection-status">Verificando conexão…</p>
+        <form id="login" hidden>
+          <label
+            >E-mail<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              required /></label
+          ><label
+            >Senha<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required /></label
+          ><button>Entrar no painel</button>
+        </form>
+        <div id="setup" hidden>
+          <p>
+            O banco de dados ainda não está conectado. A prévia permite
+            experimentar o painel neste navegador; não recebe estatísticas dos
+            outros visitantes.
+          </p>
+          <button id="local-preview">Experimentar prévia local</button>
+          <p><a href="./admin-setup.html">Como conectar o Supabase</a></p>
+        </div>
+      </section>
+      <div id="workspace" hidden>
+        <div class="heading">
+          <div>
+            <p class="eyebrow">ESPAÇO MAKER ONLINE</p>
+            <h1>Seu estúdio por dentro.</h1>
+            <p id="mode-note"></p>
+          </div>
+          <button class="secondary" id="logout">Sair</button>
+        </div>
+        <nav aria-label="Seções do painel">
+          <button data-tab="overview">Visão geral</button
+          ><button data-tab="products">Produtos</button
+          ><button data-tab="quotes">Orçamentos</button
+          ><button data-tab="assistant">Assistente de IA</button>
+        </nav>
+        <section data-section="overview">
+          <div class="heading">
+            <h2>Visitas e downloads</h2>
+            <label
+              >Período<select id="period">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="90">Últimos 90 dias</option>
+              </select></label
+            ><button class="secondary" id="refresh">Atualizar</button
+            ><button class="secondary" id="export-stats">Exportar CSV</button>
+          </div>
+          <p class="muted">
+            Acessos com estatísticas autorizadas; não representam pessoas
+            únicas. Downloads contam acionamentos, sem confirmação de arquivo
+            salvo. Dias em UTC.
+          </p>
+          <div id="metrics" class="metrics"></div>
+          <div class="grid">
+            <article class="card">
+              <h3>Acessos por dia</h3>
+              <div id="chart" class="chart"></div>
+            </article>
+            <article class="card">
+              <h3>Downloads por produto e formato</h3>
+              <div id="top-downloads"></div>
+            </article>
+          </div>
+        </section>
+        <section data-section="products" hidden>
+          <div class="heading">
+            <h2>Produtos do painel</h2>
+            <button id="new-product">Novo produto</button>
+          </div>
+          <p>
+            Crie variações dos modelos existentes. A publicação aparece na seção
+            “Criações do estúdio” do site. Um novo mecanismo paramétrico exige
+            desenvolvimento.
+          </p>
+          <div id="product-list" class="grid"></div>
+          <form id="product-form" class="card" hidden>
+            <h3 id="product-form-title">Novo produto</h3>
+            <input name="id" type="hidden" />
+            <div class="grid">
+              <label>Nome<input name="title" maxlength="80" required /></label
+              ><label
+                >Modelo de construção<select
+                  name="model"
+                  id="product-model"
+                ></select
+              ></label>
+            </div>
+            <label
+              >Descrição<textarea
+                name="description"
+                maxlength="1000"
+                rows="3"
+                required
+              ></textarea></label
+            ><label
+              >Foto (endereço HTTPS, opcional)<input
+                name="image"
+                type="url"
+                placeholder="https://…"
+            /></label>
+            <div class="grid three">
+              <label
+                >Largura (mm)<input
+                  name="width"
+                  type="number"
+                  required /></label
+              ><label
+                >Profundidade (mm)<input
+                  name="depth"
+                  type="number"
+                  required /></label
+              ><label
+                >Altura (mm)<input name="height" type="number" required
+              /></label>
+            </div>
+            <label
+              >Projeto do editor (.papeled.json, opcional)<input
+                id="product-json"
+                type="file"
+                accept=".json,application/json"
+            /></label>
+            <p class="muted">
+              Importe um projeto para manter tampa, textura, fonte, encaixes e
+              outras configurações do editor.
+            </p>
+            <label class="check"
+              ><input name="published" type="checkbox" />Publicar no
+              catálogo</label
+            >
+            <div class="actions">
+              <button>Salvar produto</button
+              ><button type="button" class="secondary" id="cancel-product">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </section>
+        <section data-section="quotes" hidden>
+          <div class="heading">
+            <h2>Solicitações de orçamento</h2>
+            <button class="secondary" id="refresh-quotes">Atualizar</button>
+          </div>
+          <p>
+            Pedidos enviados pelo formulário do site. Abrir o WhatsApp ou
+            preparar um ZIP, sozinho, não registra um pedido aqui. Exibimos os
+            250 mais recentes.
+          </p>
+          <div id="quote-list"></div>
+        </section>
+        <section data-section="assistant" hidden>
+          <div class="card">
+            <p class="eyebrow">AJUDA PARA O SEU CATÁLOGO</p>
+            <h2>Assistente de IA</h2>
+            <p>
+              A IA pode sugerir descrições e perguntas para o cliente. Revise o
+              resultado; ela não publica produtos nem altera arquivos de
+              fabricação.
+            </p>
+            <label
+              >O que você precisa?<textarea
+                id="assistant-prompt"
+                rows="5"
+                maxlength="2000"
+                placeholder="Crie uma descrição de um organizador com 4 divisórias…"
+              ></textarea></label
+            ><button id="ask-assistant">Gerar sugestão</button>
+            <p id="assistant-status" role="status"></p>
+            <pre id="assistant-result"></pre>
+          </div>
+        </section>
+      </div>
+      <p id="notice" role="status" aria-live="polite"></p>
+    </main>
+  </body>
+</html>

@@ -3113,3 +3113,71 @@ textarea::placeholder {
     align-items: flex-start;
   }
 }
+
+.platform-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px;
+  font-size: 14px;
+  color: #684b43;
+}
+.platform-footer button {
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+}
+#metrics-consent {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 40;
+  max-width: 520px;
+  padding: 20px;
+  border: 1px solid #bfa99b;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 8px 30px #33272133;
+  font-size: 14px;
+}
+#metrics-consent p {
+  margin-top: 0;
+}
+#metrics-consent .button {
+  margin: 4px;
+}
+.platform-request {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #d9cbc3;
+}
+.platform-request input[type="checkbox"] {
+  width: auto;
+}
+.managed-card {
+  border: 1px solid #d9cbc3;
+  border-radius: 12px;
+  padding: 22px;
+  background: white;
+}
+.managed-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.managed-card h3 {
+  font-size: 20px;
+}
+.managed-card p {
+  font-size: 15px;
+  color: #65524a;
+}
+@media (max-width: 600px) {
+  #metrics-consent {
+    right: 16px;
+    bottom: 10px;
+    padding: 15px;
+  }
+}

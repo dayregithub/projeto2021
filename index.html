@@ -114,6 +114,11 @@
           </div>
           <div id="resume-banner" hidden></div>
           <div class="model-grid" id="model-grid"></div>
+          <section id="managed-catalog" hidden>
+            <h2>Criações do estúdio</h2>
+            <p>Produtos personalizados pelo Papeled Maker.</p>
+            <div id="managed-products" class="model-grid"></div>
+          </section>
           <div class="import-banner external-banner">
             <div class="import-icon" data-icon="upload"></div>
             <div>
@@ -668,7 +673,9 @@
                 Cor do produto <span id="finish-name"></span>
               </div>
               <div id="finishes" class="finish-options"></div>
-              <p class="field-hint">Para mais variações de cores, consulte-nos.</p>
+              <p class="field-hint">
+                Para mais variações de cores, consulte-nos.
+              </p>
               <p class="field-hint" id="material-hint"></p>
             </div>
             <div id="validation" class="validation" role="alert" hidden></div>
@@ -813,6 +820,26 @@
         >papeledmaker@gmail.com <span data-icon="arrow-up-right"></span
       ></a>
     </footer>
+    <div class="platform-footer">
+      <a href="./admin.html">Painel do estúdio</a
+      ><button id="metrics-preference" hidden>
+        Preferências de estatísticas
+      </button>
+    </div>
+    <aside
+      id="metrics-consent"
+      hidden
+      aria-label="Preferências de estatísticas"
+    >
+      <p>
+        Podemos contar acessos e downloads para melhorar o espaço maker? Não
+        registramos seu nome nem criamos identificação pessoal nas estatísticas.
+        Você pode mudar a escolha no rodapé.
+      </p>
+      <button id="metrics-accept" class="button primary">
+        Permitir estatísticas</button
+      ><button id="metrics-decline" class="button secondary">Agora não</button>
+    </aside>
     <input
       id="project-file"
       type="file"
@@ -908,6 +935,45 @@
         rel="noopener noreferrer"
         >Conversar no WhatsApp <span data-icon="arrow-up-right"></span></a
       ><a id="quote-email" class="email-link">Prefiro enviar por e-mail</a>
+      <form id="platform-quote" hidden class="platform-request">
+        <h3>Enviar solicitação ao estúdio</h3>
+        <p class="field-hint">
+          Registre seu pedido no painel para acompanhamento. Os arquivos do ZIP
+          continuam disponíveis acima.
+        </p>
+        <label class="field-label"
+          >Seu nome<input
+            class="text-input"
+            name="customer"
+            maxlength="100"
+            required
+            autocomplete="name"
+        /></label>
+        <label class="field-label"
+          >WhatsApp ou e-mail<input
+            class="text-input"
+            name="contact"
+            minlength="3"
+            maxlength="180"
+            required
+        /></label>
+        <label class="field-label"
+          >Quantidade e detalhes<textarea
+            class="text-input"
+            name="message"
+            maxlength="2000"
+            rows="3"
+          ></textarea>
+        </label>
+        <label class="field-hint"
+          ><input type="checkbox" required /> Autorizo o uso do meu contato e do
+          projeto para responder a este orçamento.</label
+        >
+        <button class="button primary full" type="button">
+          Enviar solicitação ao painel
+        </button>
+        <p id="platform-quote-status" role="status"></p>
+      </form>
     </dialog>
     <dialog id="external-files-dialog" aria-labelledby="external-files-title">
       <button class="dialog-close icon-button" data-close aria-label="Fechar">

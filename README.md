@@ -156,3 +156,31 @@ O letreiro pode ficar deitado ou em pé sobre a base. Em pé, o campo de altura 
 A identidade usa marrom e branco e a logo original em `public/papeled-logo.png`, exibida em moldura circular sem redesenhar o miolo. “Espaço maker online” aparece na marca e na apresentação. Textos, campos e rótulos têm contraste mais escuro; no celular, descrições e campos usam 16 px.
 
 Para criações externas, o compartilhamento nativo entrega os arquivos originais ou um ZIP quando o navegador só aceita esse formato. O ZIP é preparado antes do clique para preservar a ativação necessária à API de compartilhamento. Há também download de ZIP e de e-mail MIME `.eml` com os anexos binários incorporados. O `.eml` precisa de aplicativo de e-mail compatível; não envia automaticamente nem integra diretamente com Gmail Web. Links `wa.me` e `mailto` continuam limitados a texto, identificados dentro da alternativa de envio manual. Nesse caminho, o visitante deve anexar o ZIP no aplicativo. Nenhum arquivo é enviado a um servidor do site.
+
+## Painel do estúdio e integração de dados
+
+Abra `admin.html` no mesmo endereço do site. O build agora tem duas entradas Vite: o configurador e o painel. O rodapé oferece “Painel do estúdio”.
+
+Sem configuração, o painel oferece uma **prévia local explícita**, sem senha: produtos, pedidos e eventos ficam no `localStorage` deste navegador, não são dados de outros visitantes. A prévia começa vazia, sem números fictícios. Para experimentar, clique em “Experimentar prévia local”, crie/publice um produto, abra o site no mesmo navegador, autorize estatísticas e envie uma solicitação. “Sair” desativa a prévia; os dados locais permanecem neste navegador. A conexão real, quando configurada, prevalece sobre a prévia.
+
+Com Supabase conectado, o painel exige e-mail/senha e permissão em `admin_users`. Produtos publicados são públicos; rascunhos, estatísticas e solicitações são protegidos por RLS. Somente administradores alteram produtos e a situação de pedidos. Anônimos não têm acesso direto de escrita a tabelas; duas funções com campos e tamanhos limitados recebem estatísticas e solicitações. Não são coletados nomes, contatos, URLs de origem nem IPs nas linhas de estatísticas. Contatos são coletados somente no formulário explícito de orçamento, com autorização, e ficam privados.
+
+Funcionalidades desta entrega:
+
+- Indicadores de acessos, modelos abertos, downloads iniciados e solicitações em 7/30/90 dias; gráfico diário, ranking por produto/modelo e formato e CSV diário. O agregado roda no banco, sem a limitação de 1.000 linhas do retorno padrão REST. Eventos em UTC; pedidos exibem horário do navegador.
+- Cadastrar, editar, publicar, ocultar e excluir produtos do painel. São variações dos modelos existentes: dimensões, descrição, foto por URL HTTPS e importação opcional do projeto `.papeled.json` para preservar encaixes, tampas, fontes e texturas. O catálogo original permanece disponível. Novos mecanismos exigem desenvolvimento.
+- Formulário de solicitação dentro de “Pedir orçamento”. Contato, mensagem e projeto ficam no painel; estados: novo, em atendimento, orçamento enviado e concluído. Abrir WhatsApp ou baixar ZIP não registra um pedido. A lista mostra os 250 mais recentes. O ZIP permanece no navegador; não há upload automático de anexos para o banco.
+- Compartilhamento externo continua funcionando; seus downloads ZIP/EML também entram nas estatísticas quando autorizados. Downloads contam acionamentos, não conclusão física, nem compartilhamentos nativos sem download. Acessos não são pessoas únicas. A escolha de estatísticas pode ser revista no rodapé; DNT é respeitado. Nenhum dado anterior à ativação é recuperado. Endpoints públicos de métricas não são auditoria antifraude; antes de campanhas com tráfego elevado, configure monitoramento, limites e proteção contra abuso no projeto.
+- Assistente de IA com função Supabase protegida por administrador: somente sugestões revisáveis, sem publicação automática nem alteração de arquivos. Na prévia fica claramente indisponível.
+
+### Ativação do Supabase
+
+O guia para o proprietário está em `public/admin-setup.html` (publicado como `admin-setup.html`).
+
+1. Crie o projeto Supabase e execute **uma vez**, no SQL Editor de um projeto novo, `supabase/migrations/001_platform.sql`. `public/admin-schema.sql` é a cópia distribuída para instalação; mantenha ambas iguais.
+2. Crie o usuário em Authentication → Users e desative cadastros públicos. No SQL Editor, autorize seu ID: `insert into public.admin_users(id) values ('UUID-DO-USUARIO');`. Nenhum e-mail recebe privilégio automaticamente.
+3. Preencha `public/platform-config.json` com a URL HTTPS do projeto e a chave **pública anon/publishable**. Nunca coloque `service_role`, chave `secret`, senha de usuário ou de banco nesse arquivo. Ele é público por definição. O cliente rejeita chaves secret e JWTs com papel diferente de anon.
+4. Execute `npm run build:pages` e publique `docs/` em GitHub Pages. Entre em `admin.html`. Faça uma verificação entre dois navegadores: produto publicado deve aparecer no site, pedido deve aparecer somente no painel autenticado, métricas autorizadas devem ser agregadas. A validação em Supabase real depende da conta/projeto do proprietário; não foi executada sem esse projeto.
+5. Opcionalmente publique a função com Supabase CLI: `supabase functions deploy maker-assistant --project-ref SEU-PROJETO`. Cadastre `OPENAI_API_KEY` apenas nos Secrets do Supabase. O modelo padrão da função é `gpt-4.1-mini`; uso da API é cobrado pela OpenAI. Não desative autenticação da função. O código verifica o usuário e `require_admin` antes de chamar a API. Nenhuma chave de IA vai para o frontend. A chamada real de IA não foi executada nesta entrega sem credenciais.
+
+`npm test` inclui geometria e testes SQL em PostgreSQL embarcado (PGlite), com uma simulação mínima de `auth.uid()` e papéis Supabase para verificar políticas reais de RLS e permissões; não substitui o teste no Supabase configurado. `npm run test:e2e` inclui os fluxos locais ponta a ponta do painel. O assistente remoto é fornecido como integração opcional; o build de frontend não valida o runtime Deno da função.

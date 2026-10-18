@@ -75,6 +75,7 @@ export function downloadDelivery(file) {
   link.download = file.name;
   document.body.append(link);
   link.click();
+  window.dispatchEvent(new CustomEvent("papeled-file-download", {detail: file.name.endsWith(".eml") ? "eml" : "zip"}));
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }

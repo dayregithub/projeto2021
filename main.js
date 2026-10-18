@@ -1,3 +1,4 @@
+import { initPlatform, trackEvent } from "./src/platform.js";
 import { finishKeys } from "./src/finishes.js";
 import { BRUSH_TEXTURES, brushDrainage } from "./src/brush-features.js";
 import { initExternalFiles } from "./src/external-files.js";
@@ -203,9 +204,12 @@ function setFilter(value) {
 function openModel(id) {
   openProject(defaults(id));
 }
-function openProject(project, id = null) {
+let activeProductId = null;
+function openProject(project, id = null, productId = null) {
+  activeProductId = productId;
   clearTimeout(saveTimer);
   state = { ...project };
+  trackEvent("model_view", state.model, "", activeProductId);
   savedId = id;
   angle = 35;
   view = "3d";
@@ -593,6 +597,12 @@ function download(content, filename, type) {
   a.download = filename;
   document.body.append(a);
   a.click();
+  trackEvent(
+    "download",
+    state.model,
+    filename.split(".").pop(),
+    activeProductId,
+  );
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
@@ -818,6 +828,7 @@ $("#quote-share").onclick = async () => {
   }
 };
 $("#quote-project").onclick = async () => {
+  $("#platform-quote").dataset.project = JSON.stringify(state);
   const m = modelById(state.model);
   $("#quote-message").value =
     `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}${extraProductQuote(state)}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
@@ -840,6 +851,8 @@ $("#quote-project").onclick = async () => {
     if (quoteURL) URL.revokeObjectURL(quoteURL);
     quoteURL = URL.createObjectURL(quoteFile);
     const link = $("#quote-package");
+    link.onclick = () =>
+      trackEvent("download", snapshot.model, "zip", activeProductId);
     link.href = quoteURL;
     link.download = bundle.name;
     link.hidden = false;
@@ -1184,3 +1197,8 @@ function extraProductQuote(s) {
     return `Posição: ${s.signOrientation === "standing" ? "em pé sobre a base; espessura das letras " + s.height + " mm; altura montada " + fmt(signMetrics(s).totalHeight) + " mm" : "deitadas"}\nLetras unidas: ${s.signJoin ? "sim" : "não"}\nEspaçamento: ${s.signSpacing}%\n`;
   return "";
 }
+
+void initPlatform({
+  openProject: (project, productId) =>
+    openProject(readProject(project), null, productId),
+}).catch(() => console.warn("Plataforma indisponível."));
