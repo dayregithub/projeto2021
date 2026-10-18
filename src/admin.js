@@ -10,6 +10,7 @@ import {
   writeLocal,
   localMode,
   summarize,
+  getStatistics,
 } from "./platform-data.js";
 import { MODELS, defaults, modelById } from "./models.js";
 import { readProject } from "./geometry.js";
@@ -88,13 +89,19 @@ document.querySelectorAll("[data-use-model]").forEach(
       });
     }),
 );
+let loadVersion = 0;
 async function load() {
+  const job = ++loadVersion,
+    period = Number($("period").value);
+  stats = null;
+  $("export-stats").disabled = true;
+  notice("Carregando indicadores…");
   try {
     if (local) {
       const data = readLocal();
       products = data.products;
       quotes = data.quotes.slice(0, 250);
-      stats = summarize(data.events, data.quotes, Number($("period").value));
+      stats = summarize(data.events, data.quotes, period);
     } else {
       const results = await Promise.all([
         client
@@ -106,19 +113,23 @@ async function load() {
           .select("*")
           .order("created_at", { ascending: false })
           .limit(250),
-        client.rpc("admin_dashboard", { p_days: Number($("period").value) }),
+        getStatistics(client, period),
       ]);
+      if (job !== loadVersion) return;
       products = check(results[0]);
       quotes = check(results[1]);
-      stats = check(results[2]);
+      stats = results[2];
     }
     render();
     await refreshFiles();
-    notice("");
+    if (job === loadVersion) notice("");
   } catch {
-    notice(
-      "Não foi possível carregar os dados. Verifique a conexão, as permissões e a instalação do banco.",
-    );
+    if (job === loadVersion)
+      notice(
+        "Não foi possível carregar os dados. Verifique a conexão, as permissões e a instalação do banco.",
+      );
+  } finally {
+    if (job === loadVersion) $("export-stats").disabled = !stats;
   }
 }
 function render() {

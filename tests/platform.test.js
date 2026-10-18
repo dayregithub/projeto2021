@@ -179,9 +179,86 @@ test("archive reserves private paths, rejects arbitrary uploads and exposes read
   }
 });
 
-test('a changed archive object fails the original checksum verification',async()=>{
- const {getDownload,fileHash}=await import('../src/download-archive.js');
- const original=new Blob(['original data']),changed=new Blob(['different data']);
- const client={storage:{from:()=>({download:async()=>({data:changed,error:null})})}};
- await assert.rejects(getDownload(client,false,{object_path:'id/file.stl',filename:'file.stl',sha256:await fileHash(original)}),/integridade/);
+test("a changed archive object fails the original checksum verification", async () => {
+  const { getDownload, fileHash } = await import("../src/download-archive.js");
+  const original = new Blob(["original data"]),
+    changed = new Blob(["different data"]);
+  const client = {
+    storage: {
+      from: () => ({ download: async () => ({ data: changed, error: null }) }),
+    },
+  };
+  await assert.rejects(
+    getDownload(client, false, {
+      object_path: "id/file.stl",
+      filename: "file.stl",
+      sha256: await fileHash(original),
+    }),
+    /integridade/,
+  );
+});
+
+test("60 days and all-time include every page of events and quotes without a database upgrade", async () => {
+  const { getStatistics } = await import("../src/platform-data.js");
+  const now = new Date().toISOString(),
+    old = new Date(Date.now() - 120 * 86400000).toISOString();
+  const events = Array.from({ length: 1205 }, (_, i) => ({
+    id: i,
+    kind: i < 1000 ? "page_view" : "download",
+    model_id: "print",
+    format: "stl",
+    created_at: now,
+  }));
+  events.push({ id: 1205, kind: "page_view", created_at: old });
+  const quotes = Array.from({ length: 1103 }, (_, i) => ({
+    id: i,
+    created_at: now,
+  }));
+  quotes.push({ id: 1103, created_at: old });
+  const client = {
+    from(table) {
+      return {
+        lower: null,
+        upper: null,
+        select() {
+          return this;
+        },
+        order() {
+          return this;
+        },
+        lte(_, value) {
+          this.upper = value;
+          return this;
+        },
+        gte(_, value) {
+          this.lower = value;
+          return this;
+        },
+        async range(start, end) {
+          const rows = (table === "site_events" ? events : quotes).filter(
+            (r) =>
+              r.created_at <= this.upper &&
+              (!this.lower || r.created_at >= this.lower),
+          );
+          return {
+            data: rows.slice(start, Math.min(end + 1, start + 73)),
+            error: null,
+          };
+        },
+      };
+    },
+    rpc() {
+      throw Error("Extra periods must work with the existing database.");
+    },
+  };
+  const sixty = await getStatistics(client, 60);
+  assert.equal(sixty.visits, 1000);
+  assert.equal(sixty.downloads, 205);
+  assert.equal(sixty.quotes, 1103);
+  assert.equal(sixty.series.length, 60);
+  const all = await getStatistics(client, 0);
+  assert.equal(all.visits, 1001);
+  assert.equal(all.quotes, 1104);
+  assert.equal(all.series.length, 121);
+  assert.equal(summarize([], [], 0).series.length, 1);
 });

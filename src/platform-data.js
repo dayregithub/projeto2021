@@ -50,44 +50,111 @@ export async function connection() {
     auth: { persistSession: true, autoRefreshToken: true },
   });
 }
-export function summarize(events, quotes, days) {
-  const since = new Date();
+export function summarize(events, quotes, days, now = new Date()) {
+  if (![0, 7, 30, 60, 90].includes(days)) throw Error("Período inválido.");
+  const until = new Date(now),
+    since = new Date(until);
   since.setUTCHours(0, 0, 0, 0);
-  since.setUTCDate(since.getUTCDate() - days + 1);
-  const rows = events.filter((e) => new Date(e.created_at) >= since),
-    filteredQuotes = quotes.filter((q) => new Date(q.created_at) >= since);
-  const series = Array.from({ length: days }, (_, i) => {
+  if (days === 0) {
+    for (const row of [...events, ...quotes]) {
+      const date = new Date(row.created_at);
+      if (date < since) since.setTime(date.getTime());
+    }
+    since.setUTCHours(0, 0, 0, 0);
+  } else since.setUTCDate(since.getUTCDate() - days + 1);
+  const rows = events.filter(
+    (e) => new Date(e.created_at) >= since && new Date(e.created_at) <= until,
+  );
+  const filteredQuotes = quotes.filter(
+    (q) => new Date(q.created_at) >= since && new Date(q.created_at) <= until,
+  );
+  const dates = new Map(),
+    top = new Map();
+  let visits = 0,
+    views = 0,
+    downloads = 0;
+  for (const e of rows) {
+    const day = new Date(e.created_at).toISOString().slice(0, 10),
+      counts = dates.get(day) || { visits: 0, downloads: 0 };
+    if (e.kind === "page_view") {
+      visits++;
+      counts.visits++;
+    }
+    if (e.kind === "model_view") views++;
+    if (e.kind === "download") {
+      downloads++;
+      counts.downloads++;
+      const key = `${e.product_id || e.model_id}|${e.format}`;
+      const record = top.get(key) || {
+        model: e.model_id,
+        product: e.product_id,
+        format: e.format,
+        total: 0,
+      };
+      record.total++;
+      top.set(key, record);
+    }
+    dates.set(day, counts);
+  }
+  const length =
+    Math.floor(
+      (Date.UTC(
+        until.getUTCFullYear(),
+        until.getUTCMonth(),
+        until.getUTCDate(),
+      ) -
+        since.getTime()) /
+        86400000,
+    ) + 1;
+  const series = Array.from({ length }, (_, i) => {
     const date = new Date(since);
     date.setUTCDate(date.getUTCDate() + i);
-    const key = date.toISOString().slice(0, 10);
-    return {
-      day: key,
-      visits: rows.filter(
-        (e) => e.kind === "page_view" && e.created_at.slice(0, 10) === key,
-      ).length,
-      downloads: rows.filter(
-        (e) => e.kind === "download" && e.created_at.slice(0, 10) === key,
-      ).length,
-    };
+    const day = date.toISOString().slice(0, 10);
+    return { day, ...(dates.get(day) || { visits: 0, downloads: 0 }) };
   });
-  const map = new Map();
-  for (const e of rows.filter((e) => e.kind === "download")) {
-    const k = `${e.product_id || e.model_id}|${e.format}`;
-    const p = map.get(k) || {
-      model: e.model_id,
-      product: e.product_id,
-      format: e.format,
-      total: 0,
-    };
-    p.total++;
-    map.set(k, p);
-  }
   return {
-    visits: rows.filter((e) => e.kind === "page_view").length,
-    views: rows.filter((e) => e.kind === "model_view").length,
-    downloads: rows.filter((e) => e.kind === "download").length,
+    visits,
+    views,
+    downloads,
     quotes: filteredQuotes.length,
     series,
-    top: [...map.values()].sort((a, b) => b.total - a.total).slice(0, 20),
+    top: [...top.values()].sort((a, b) => b.total - a.total).slice(0, 20),
   };
+}
+
+export async function getStatistics(client, days) {
+  if (![0, 7, 30, 60, 90].includes(days)) throw Error("Período inválido.");
+  if ([7, 30, 90].includes(days)) {
+    const result = await client.rpc("admin_dashboard", { p_days: days });
+    if (result.error) throw result.error;
+    return result.data;
+  }
+  // Existing databases already grant admins SELECT on both tables. Paginate the
+  // extra periods without requiring owners to rerun their installed SQL schema.
+  const now = new Date(),
+    since = new Date(now);
+  since.setUTCHours(0, 0, 0, 0);
+  since.setUTCDate(since.getUTCDate() - days + 1);
+  async function allRows(table, columns) {
+    const rows = [];
+    let offset = 0;
+    for (;;) {
+      let query = client
+        .from(table)
+        .select(columns)
+        .order("id", { ascending: true })
+        .lte("created_at", now.toISOString());
+      if (days) query = query.gte("created_at", since.toISOString());
+      const result = await query.range(offset, offset + 499);
+      if (result.error) throw result.error;
+      if (!result.data.length) return rows;
+      rows.push(...result.data);
+      offset += result.data.length;
+    }
+  }
+  const [events, quotes] = await Promise.all([
+    allRows("site_events", "id,kind,model_id,product_id,format,created_at"),
+    allRows("quote_requests", "id,created_at"),
+  ]);
+  return summarize(events, quotes, days, now);
 }

@@ -166,22 +166,91 @@ test("panel retrieves the exact downloaded bytes and honors disabling the archiv
   await expect(page.locator("[data-download-file]")).toHaveCount(1);
 });
 
-test('existing 3D models open the full configurator and return all parameters to a new or existing panel product',async({page})=>{
- await page.goto('/admin.html');await page.locator('#local-preview').click();await page.locator('[data-tab="products"]').click();
- await expect(page.locator('[data-configure-model]')).toHaveCount(5);
- await page.locator('[data-configure-model="toothbrush"]').click();
- await expect(page.locator('#admin-edit-banner')).toBeVisible();
- await expect(page.locator('#brush-options')).toBeVisible();
- await page.locator('#width').fill('88');await page.selectOption('#brush-texture','ribbed');await page.selectOption('#brush-cover','yes');
- await page.locator('#return-admin').click();
- await expect(page.locator('#product-form')).toBeVisible();await expect(page.locator('#product-form [name="width"]')).toHaveValue('88');
- await page.locator('#product-form [name="title"]').fill('Porta-escovas canelado do estúdio');await page.locator('#product-form [name="published"]').check();
- await page.locator('#product-form button').filter({hasText:'Salvar produto'}).click();
- await expect(page.locator('#product-list')).toContainText('Porta-escovas canelado do estúdio');
- await page.locator('[data-edit]').click();await page.locator('#configure-product').click();
- await expect(page.locator('#brush-texture')).toHaveValue('ribbed');await expect(page.locator('#brush-cover')).toHaveValue('yes');await expect(page.locator('#width')).toHaveValue('88');
- await page.locator('#width').fill('90');await page.locator('#return-admin').click();
- await page.locator('#product-form button').filter({hasText:'Salvar produto'}).click();
- await expect(page.locator('#product-list [data-edit]')).toHaveCount(1);await expect(page.locator('#product-list')).toContainText('90 × 90');
- await page.locator('[data-use-model="lettering"]').click();await expect(page.locator('#product-model')).toHaveValue('lettering');
+test("existing 3D models open the full configurator and return all parameters to a new or existing panel product", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="products"]').click();
+  await expect(page.locator("[data-configure-model]")).toHaveCount(5);
+  await page.locator('[data-configure-model="toothbrush"]').click();
+  await expect(page.locator("#admin-edit-banner")).toBeVisible();
+  await expect(page.locator("#brush-options")).toBeVisible();
+  await page.locator("#width").fill("88");
+  await page.selectOption("#brush-texture", "ribbed");
+  await page.selectOption("#brush-cover", "yes");
+  await page.locator("#return-admin").click();
+  await expect(page.locator("#product-form")).toBeVisible();
+  await expect(page.locator('#product-form [name="width"]')).toHaveValue("88");
+  await page
+    .locator('#product-form [name="title"]')
+    .fill("Porta-escovas canelado do estúdio");
+  await page.locator('#product-form [name="published"]').check();
+  await page
+    .locator("#product-form button")
+    .filter({ hasText: "Salvar produto" })
+    .click();
+  await expect(page.locator("#product-list")).toContainText(
+    "Porta-escovas canelado do estúdio",
+  );
+  await page.locator("[data-edit]").click();
+  await page.locator("#configure-product").click();
+  await expect(page.locator("#brush-texture")).toHaveValue("ribbed");
+  await expect(page.locator("#brush-cover")).toHaveValue("yes");
+  await expect(page.locator("#width")).toHaveValue("88");
+  await page.locator("#width").fill("90");
+  await page.locator("#return-admin").click();
+  await page
+    .locator("#product-form button")
+    .filter({ hasText: "Salvar produto" })
+    .click();
+  await expect(page.locator("#product-list [data-edit]")).toHaveCount(1);
+  await expect(page.locator("#product-list")).toContainText("90 × 90");
+  await page.locator('[data-use-model="lettering"]').click();
+  await expect(page.locator("#product-model")).toHaveValue("lettering");
+});
+
+test("60 days and all-time update totals and CSV using the complete local history", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  const now = new Date().toISOString(),
+    old = new Date(Date.now() - 120 * 86400000).toISOString();
+  await page.evaluate(
+    ({ now, old }) => {
+      const data = JSON.parse(
+        localStorage.getItem("papeled-console-local-v1") ||
+          '{"products":[],"events":[],"quotes":[]}',
+      );
+      data.events = [
+        { kind: "page_view", created_at: now },
+        { kind: "page_view", created_at: old },
+      ];
+      data.quotes = [
+        {
+          id: "old",
+          customer_name: "Teste antigo",
+          contact: "teste",
+          message: "",
+          project: {},
+          status: "new",
+          created_at: old,
+        },
+      ];
+      localStorage.setItem("papeled-console-local-v1", JSON.stringify(data));
+    },
+    { now, old },
+  );
+  await page.locator("#period").selectOption("60");
+  await expect(page.locator("#metrics .metric strong").first()).toHaveText("1");
+  await expect(page.locator("#metrics .metric strong").nth(3)).toHaveText("0");
+  await page.locator("#period").selectOption("0");
+  await expect(page.locator("#metrics .metric strong").first()).toHaveText("2");
+  await expect(page.locator("#metrics .metric strong").nth(3)).toHaveText("1");
+  await expect(page.locator("#export-stats")).toBeEnabled();
+  const pending = page.waitForEvent("download");
+  await page.locator("#export-stats").click();
+  const csv = await readFile(await (await pending).path(), "utf8");
+  expect(csv).toContain(old.slice(0, 10) + ";1;0");
 });
