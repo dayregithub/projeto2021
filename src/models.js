@@ -137,7 +137,12 @@ MODELS.push(
     h: 65,
     cols: 2,
     rows: 3,
-    preset: { lidType: "hinged", joint: "finger", ratio: 65, finish: "natural" },
+    preset: {
+      lidType: "hinged",
+      joint: "finger",
+      ratio: 65,
+      finish: "natural",
+    },
   },
   {
     id: "pencilcase",
@@ -353,6 +358,7 @@ export function defaults(id = "grid") {
     rows: m.rows,
     ratio: 60,
     clearance: 0.6,
+    slotWidth: null,
     finish: m.category === "print" ? "black" : "natural",
     joint: m.family === "hinged" ? "finger" : "straight",
     fingerSize: 9,

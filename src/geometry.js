@@ -3,7 +3,7 @@ import { validSignText, LETTER_FONTS } from "./lettering.js";
 import { PRINT_LIDS, printLayout, brushOpenings } from "./print3d.js";
 import { decoratePanels, DECORATIONS, validEngraving } from "./decoration.js";
 import { buildDrawerCabinet, attachDividers } from "./assemblies.js";
-import { resolvedJoint, JOINT_GROUPS } from "./joinery.js";
+import { fitWidth, fitDelta, resolvedJoint, JOINT_GROUPS } from "./joinery.js";
 import {
   HINGES,
   hingeType,
@@ -78,6 +78,15 @@ export function validate(s) {
   ])
     if (!Number.isFinite(s[k]) || s[k] < min || s[k] > max)
       errors.push(`${label}: use um valor entre ${min} e ${max}.`);
+  if (
+    modelById(s.model).category === "laser" &&
+    (!Number.isFinite(fitWidth(s)) ||
+      fitWidth(s) < 0.2 ||
+      Math.abs(fitDelta(s)) > Math.min(1, s.thickness / 2))
+  )
+    errors.push(
+      "Encaixe: use uma largura positiva até 1 mm acima ou abaixo da espessura (no máximo metade da chapa).",
+    );
   if (!Number.isInteger(s.cols) || !Number.isInteger(s.rows))
     errors.push("Linhas e colunas precisam ser números inteiros.");
   for (const [key, min, max] of [
@@ -449,7 +458,12 @@ export function panels(s) {
           make(
             `Divisória longitudinal ${i + 1}`,
             d - 2 * t,
-            ys.map((y) => ({ x: y - t, width: t, from: "top", depth: ih / 2 })),
+            ys.map((y) => ({
+              x: y - t,
+              width: t,
+              from: "top",
+              depth: ih / 2,
+            })),
             {
               origin: [x, t, dividerTop],
               u: [0, 1, 0],
@@ -771,7 +785,9 @@ export function readProject(input) {
     s.dividerJoint = "cross";
   if (typeof s.name !== "string" || !s.name.trim() || s.name.length > 80)
     throw Error("Nome do projeto inválido.");
-  if (!["natural", "white", "black", "walnut", "sage", "coral"].includes(s.finish))
+  if (
+    !["natural", "white", "black", "walnut", "sage", "coral"].includes(s.finish)
+  )
     throw Error("Acabamento inválido.");
   s.finish = resolvedFinish(s);
   const errors = validate(s);

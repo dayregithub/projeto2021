@@ -1,5 +1,7 @@
 import {
   joinContact,
+  fitWidth,
+  fitDelta,
   makePanel,
   rectanglePose,
   resolvedJoint,
@@ -186,6 +188,11 @@ export function buildBoxPanels(s) {
     m = shellMetrics(s),
     fh = m.frontHeight,
     body = [];
+  const fit = fitWidth(s),
+    delta = fitDelta(s);
+  // Finger gaps change along the mating edge; keep tab depth and sheet thickness.
+  const gapX = (x, y, w, h) => rect(x - delta / 2, y, w + delta, h);
+  const gapY = (x, y, w, h) => rect(x, y - delta / 2, w, h + delta);
   let base = rect(0, 0, w, d),
     front = rect(0, 0, w, fh - t),
     back = rect(0, 0, w, h - t),
@@ -199,14 +206,14 @@ export function buildBoxPanels(s) {
       ...bottomX
         .filter((i) => i.tab)
         .flatMap((i) => [
-          rect(i.start, 0, i.end - i.start, t),
-          rect(i.start, d - t, i.end - i.start, t),
+          gapX(i.start, 0, i.end - i.start, t),
+          gapX(i.start, d - t, i.end - i.start, t),
         ]),
       ...bottomY
         .filter((i) => i.tab)
         .flatMap((i) => [
-          rect(0, i.start, t, i.end - i.start),
-          rect(w - t, i.start, t, i.end - i.start),
+          gapY(0, i.start, t, i.end - i.start),
+          gapY(w - t, i.start, t, i.end - i.start),
         ]),
     );
     const frontShape = (height) => {
@@ -214,8 +221,8 @@ export function buildBoxPanels(s) {
       const holes = toothIntervals(t, height, s.fingerSize)
         .filter((i) => i.tab)
         .flatMap((i) => [
-          rect(0, height - i.end, t, i.end - i.start),
-          rect(w - t, height - i.end, t, i.end - i.start),
+          gapY(0, height - i.end, t, i.end - i.start),
+          gapY(w - t, height - i.end, t, i.end - i.start),
         ]);
       shape = diff(shape, ...holes, rect(0, height - t, w, t));
       return union(
@@ -236,7 +243,7 @@ export function buildBoxPanels(s) {
       for (const i of toothIntervals(t, height, s.fingerSize).filter(
         (i) => !i.tab,
       ))
-        holes.push(rect(at, h - i.end, t, i.end - i.start));
+        holes.push(gapY(at, h - i.end, t, i.end - i.start));
     // Above the lowered sliding front, the side wall continues to the full height.
     side = diff(side, ...holes, rect(0, h - t, d, t));
     side = union(
@@ -254,7 +261,14 @@ export function buildBoxPanels(s) {
         holes = [];
       for (const x of [m.inset, m.inset + t + m.innerWidth]) {
         for (const q of [0.25, 0.75])
-          holes.push(rect(x, span - (span * q + t), t, 2 * t));
+          holes.push(
+            rect(
+              x - delta / 2,
+              span - (span * q + t) - delta / 2,
+              fit,
+              2 * t + delta,
+            ),
+          );
         holes.push(circle(x + t / 2, span / 2, 1.6));
       }
       return diff(rect(0, 0, w, span), ...holes);
@@ -617,7 +631,7 @@ function applyLidJoinery(s, parts) {
 }
 export function constructionNotes(s) {
   if (!supportsConstruction(s))
-    return `Estrutura ${JOINTS[jointType(s)]}; prateleiras/separadores ${JOINTS[resolvedJoint(s, "dividerJoint")]}; gavetas ${JOINTS[resolvedJoint(s, "drawerJoint")]}. União T usa conjuntos M3. Confira as peças e a quantidade de fixações no projeto.`;
+    return `Rasgos de encaixe: ${fitWidth(s)} mm para chapa de ${s.thickness} mm. Estrutura ${JOINTS[jointType(s)]}; prateleiras/separadores ${JOINTS[resolvedJoint(s, "dividerJoint")]}; gavetas ${JOINTS[resolvedJoint(s, "drawerJoint")]}. União T usa conjuntos M3. Confira as peças e a quantidade de fixações no projeto.`;
   const joints = {
     straight: "União reta com colagem.",
     finger:
@@ -642,6 +656,7 @@ export function constructionNotes(s) {
   return (
     joints[jointType(s)] +
     lids[lidType(s)] +
+    ` Rasgos de encaixe: ${fitWidth(s)} mm para chapa de ${s.thickness} mm (ajuste nominal; faça teste de corte).` +
     ` Uniões: tampa ${JOINTS[resolvedJoint(s, "lidJoint")]}; divisórias ${JOINTS[resolvedJoint(s, "dividerJoint")] || "Cruzada"}.` +
     " Sem compensação de kerf; teste uma amostra na espessura real antes da fabricação."
   );

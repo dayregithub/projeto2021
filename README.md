@@ -240,3 +240,9 @@ O PDF A4 inclui logo, dados comerciais, itens e condições, com paginação; cu
 Para armazenamento compartilhado, execute **somente** `public/pricing-schema.sql` no SQL Editor do projeto Supabase já instalado (migração 003). As tabelas `issued_quotes` e `pricing_profiles` são privadas e exigem administrador via RLS. Não execute novamente o script inicial do painel. Sem essas tabelas, os orçamentos ficam apenas neste navegador, conforme aviso da tela. Exportar JSON permite cópia de segurança e transferência manual; não há envio automático dos registros locais ao banco. Com a migração, novos salvamentos usam o banco e o histórico mostra até 250 registros recentes. A instalação remota dessa migração não é feita pelo build do site.
 
 Validação: testes de fórmulas com valores das planilhas, limites/descontos, extração de PDF com múltiplas páginas sem notas internas, RLS real no PGlite e fluxo de navegador para edição, histórico, PDF e uso no celular.
+
+### Ajuste de encaixes a laser
+
+Em Material e acabamento, **Largura dos encaixes dedo/T (mm)** define o corte nominal dos rasgos receptores, separado da espessura estrutural. Exemplo: chapa de 3 mm, largura de 2,8 ou 2,9 mm. O padrão `slotWidth: null` acompanha a espessura e mantém os projetos anteriores; um valor digitado fica fixo e acompanha o JSON, o projeto salvo e os arquivos gerados. O intervalo permitido é ±1 mm em relação à chapa, limitado à metade da espessura, com largura mínima de 0,2 mm.
+
+O ajuste atua somente nos encaixes de dedos e T (corpo, tampa, trilhos, divisórias e gavetas) e nas lacunas entre dedos da caixa. Abas e espessuras estruturais permanecem nominais. Rasgos cruzados de divisórias, alojamentos de dobradiças/eixos, furos M3, recortes decorativos e furos circulares de giro ficam independentes. Uniões retas coladas não criam rasgos. A medida é nominal, não uma compensação automática de kerf em todo o contorno: calibre com uma amostra da chapa e da máquina antes de produzir.

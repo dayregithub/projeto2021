@@ -1014,3 +1014,59 @@ test("standing letters support accents on their base and joined letters form a s
     letterContours({ ...s, signSpacing: -20 }).width < letterContours(s).width,
   );
 });
+
+test("laser fit width adjusts only finger and T receivers, preserving cross slots and pivot holes", async () => {
+  const { fitWidth } = await import("../src/joinery.js");
+  const grid = { ...defaults("grid"), dividerJoint: "cross", slotWidth: 2.8 };
+  assert.deepEqual(validate(grid), []);
+  const slots = panels(grid).flatMap((p) => p.slots);
+  assert.ok(slots.length > 0);
+  slots.forEach((s) => near(s.width, 3));
+  assert.equal(grid.thickness, 3);
+  assert.equal(readProject({ ...grid, version: 1 }).slotWidth, 2.8);
+  const old = { ...grid };
+  delete old.slotWidth;
+  assert.equal(fitWidth(readProject(old)), 3);
+  assert.ok(validate({ ...grid, slotWidth: 0 }).length);
+  assert.ok(validate({ ...grid, slotWidth: 5 }).length);
+  for (const m of MODELS.filter((m) => m.category === "laser")) {
+    const s = { ...defaults(m.id), slotWidth: 2.9 };
+    assert.deepEqual(validate(s), [], m.id);
+    assert.ok(panels(s).length >= 5, m.id);
+    assert.match(exportSVG(s), /2.9 mm para chapa/);
+  }
+  const hinged = { ...defaults("hinged"), hingeType: "laser", slotWidth: 2.8 };
+  const disc = panels(hinged).find((p) => p.role === "pivot-disc");
+  assert.ok(disc);
+  const hole = disc.shape[0][1];
+  near(
+    Math.max(...hole.map((v) => v[0])) - Math.min(...hole.map((v) => v[0])),
+    3,
+  );
+  const { joinContact, makePanel, rectanglePose } =
+    await import("../src/joinery.js");
+  for (const joint of ["finger", "tslot"]) {
+    const receiver = makePanel("Receptor", 100, 100, rectanglePose(0, 0, 0));
+    const male = makePanel(
+      "Aba",
+      100,
+      30,
+      rectanglePose(0, 50, 30, [1, 0, 0], [0, 0, -1], [0, 1, 0]),
+    );
+    joinContact(receiver, male, [0, 50, 0], [100, 50, 0], [0, 0, -1], joint, {
+      ...grid,
+      joint,
+    });
+    const holes = receiver.shape.flatMap((poly) => poly.slice(1));
+    assert.ok(
+      holes.some(
+        (h) =>
+          Math.abs(
+            Math.max(...h.map((v) => v[1])) -
+              Math.min(...h.map((v) => v[1])) -
+              2.8,
+          ) < 1e-6,
+      ),
+    );
+  }
+});

@@ -255,6 +255,7 @@ function syncFields() {
     "depth",
     "height",
     "thickness",
+    "slotWidth",
     "cols",
     "rows",
     "ratio",
@@ -275,7 +276,8 @@ function syncFields() {
     "brushDrainDiameter",
     "signSpacing",
   ])
-    $("#" + k).value = state[k];
+    $("#" + k).value =
+      k === "slotWidth" ? (state.slotWidth ?? state.thickness) : state[k];
   $("#lid-type").value = state.lidType;
   $("#print-lid").value = state.printLid;
   $("#brush-shape").value = state.brushShape;
@@ -474,6 +476,7 @@ function renderEditor() {
   if (lid === "hinged" && hingeType(state) === "laser")
     $("#lid-hint").textContent =
       "Sem eixos comprados: dois discos e dois eixos retangulares são recortados na chapa. Os braços giram ao redor dos discos. Consulte a montagem abaixo.";
+  $("#slot-width-label").hidden = isPrint;
   $("#clearance-label").hidden =
     familyFor(state) !== "drawers" &&
     lid === "none" &&
@@ -837,7 +840,7 @@ $("#quote-project").onclick = async () => {
   $("#platform-quote").dataset.project = JSON.stringify(state);
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}${extraProductQuote(state)}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${m.category === "laser" ? `Encaixes: ${state.slotWidth ?? state.thickness} mm\n` : ""}${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}${extraProductQuote(state)}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-package-status").textContent = "Preparando arquivos do projeto…";
   $("#quote-package").hidden = true;
@@ -887,6 +890,7 @@ for (const key of [
   "depth",
   "height",
   "thickness",
+  "slotWidth",
   "cols",
   "rows",
   "ratio",
@@ -909,6 +913,8 @@ for (const key of [
 ])
   $("#" + key).addEventListener("input", (e) => {
     state[key] = e.target.value === "" ? NaN : Number(e.target.value);
+    if (key === "thickness" && state.slotWidth == null)
+      $("#slotWidth").value = state.thickness;
     if (key === "width" && familyFor(state) === "toothbrush") {
       state.depth = state.width;
       $("#depth").value = state.depth;

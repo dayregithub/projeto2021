@@ -949,13 +949,11 @@ test("external downloads contain real file bytes in ZIP and email attachments", 
   await page.goto("/");
   await page.locator("[data-send-external]").click();
   const original = Buffer.from([0, 1, 2, 128, 255, 34, 10]);
-  await page
-    .locator("#external-files")
-    .setInputFiles({
-      name: "peça.stl",
-      mimeType: "model/stl",
-      buffer: original,
-    });
+  await page.locator("#external-files").setInputFiles({
+    name: "peça.stl",
+    mimeType: "model/stl",
+    buffer: original,
+  });
   await expect(page.locator("#external-download")).toBeEnabled();
   let pending = page.waitForEvent("download");
   await page.locator("#external-download").click();
@@ -991,13 +989,11 @@ test("unsupported original formats share a ZIP with original bytes on mobile", a
   });
   await page.goto("/");
   await page.locator("[data-send-external]").click();
-  await page
-    .locator("#external-files")
-    .setInputFiles({
-      name: "modelo.step",
-      mimeType: "application/step",
-      buffer: Buffer.from("MY STEP DATA"),
-    });
+  await page.locator("#external-files").setInputFiles({
+    name: "modelo.step",
+    mimeType: "application/step",
+    buffer: Buffer.from("MY STEP DATA"),
+  });
   await page.locator("#external-share").click();
   await expect(page.locator("#external-status")).toContainText(
     "confirme o envio",
@@ -1024,12 +1020,10 @@ test("brown brand and readable mobile text stay within the viewport", async ({
       .locator(".brand-mark img")
       .evaluate((e) => e.complete && e.naturalWidth > 0),
   ).toBe(true);
-  const sizes = await page
-    .locator(".hero p")
-    .evaluate((e) => ({
-      font: parseFloat(getComputedStyle(e).fontSize),
-      color: getComputedStyle(e).color,
-    }));
+  const sizes = await page.locator(".hero p").evaluate((e) => ({
+    font: parseFloat(getComputedStyle(e).fontSize),
+    color: getComputedStyle(e).color,
+  }));
   expect(sizes.font).toBeGreaterThanOrEqual(16);
   expect(sizes.color).toBe("rgb(87, 68, 59)");
   expect(
@@ -1048,4 +1042,28 @@ test("brown brand and readable mobile text stay within the viewport", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("laser slot width is editable, exported and restored independently of thickness", async ({
+  page,
+}) => {
+  await open(page, "grid");
+  await expect(page.locator("#slotWidth")).toHaveValue("3");
+  await page.locator("#slotWidth").fill("2.8");
+  await expect(page.locator("#thickness")).toHaveValue("3");
+  await expect(page.locator("#validation")).toBeHidden();
+  const download = page.waitForEvent("download");
+  await page.locator("#export-project").click();
+  await page.locator('[data-export="json"]').click();
+  const file = await download;
+  expect(JSON.parse(await readFile(await file.path(), "utf8")).slotWidth).toBe(
+    2.8,
+  );
+  await page.keyboard.press("Escape");
+  await page.locator("#save-project").click();
+  await page.reload();
+  await expect(page.locator("#slotWidth")).toHaveValue("2.8");
+  await page.locator("#back-models").click();
+  await chooseModel(page, "print");
+  await expect(page.locator("#slotWidth")).toBeHidden();
 });

@@ -7,6 +7,9 @@ export const JOINT_GROUPS = {
 };
 export const resolvedJoint = (s, key) =>
   s[key] === "inherit" || !s[key] ? s.joint : s[key];
+// Nominal cut width, independent from the structural material thickness.
+export const fitWidth = (s) => s.slotWidth ?? s.thickness;
+export const fitDelta = (s) => fitWidth(s) - s.thickness;
 const contacts = new WeakMap();
 const dot = (a, b) => a.reduce((n, v, i) => n + v * b[i], 0);
 const add = (a, b, k = 1) => a.map((v, i) => v + b[i] * k);
@@ -121,13 +124,16 @@ export function joinContact(receiver, male, start, end, depth, joint, s) {
         add(at(hi), depth, v1),
         add(at(lo), depth, v1),
       ]);
-  const slot = (lo, hi) =>
-    polyFromWorld(receiver, [
-      add(at(lo), male.pose.normal, -t / 2),
-      add(at(hi), male.pose.normal, -t / 2),
-      add(at(hi), male.pose.normal, t / 2),
-      add(at(lo), male.pose.normal, t / 2),
+  const slot = (lo, hi) => {
+    const half = fitWidth(s) / 2,
+      adjustment = fitDelta(s) / 2;
+    return polyFromWorld(receiver, [
+      add(at(lo - adjustment), male.pose.normal, -half),
+      add(at(hi + adjustment), male.pose.normal, -half),
+      add(at(hi + adjustment), male.pose.normal, half),
+      add(at(lo - adjustment), male.pose.normal, half),
     ]);
+  };
   if (joint === "finger") {
     let count = Math.max(3, Math.round(L / s.fingerSize));
     if (count % 2 === 0) count++;
