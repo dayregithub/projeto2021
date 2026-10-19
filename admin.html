@@ -461,11 +461,19 @@
                 </button>
               </div>
             </form>
-            <iframe
+            <section
               id="estimate-preview"
               hidden
-              title="Prévia do orçamento em PDF"
-            ></iframe>
+              aria-label="Prévia do orçamento em PDF"
+            >
+              <h3>Prévia do orçamento</h3>
+              <p>
+                <a id="estimate-preview-open" target="_blank" rel="noopener"
+                  >Abrir PDF em outra aba</a
+                >
+              </p>
+              <div id="estimate-preview-pages"></div>
+            </section>
           </div>
           <p id="estimate-status" role="status"></p>
         </section>

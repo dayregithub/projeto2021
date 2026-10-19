@@ -11,7 +11,9 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.locator("#local-preview").click();
   await page.locator('[data-tab="estimates"]').click();
   await page.locator("#new-laser-estimate").click();
-  await page.getByText("Custos, tarifas e regras de cálculo", {exact:true}).click();
+  await page
+    .getByText("Custos, tarifas e regras de cálculo", { exact: true })
+    .click();
   await expect(page.locator('[data-pricing="sheetPrice"]')).toBeVisible();
   await expect(page.locator('[data-pricing="filamentKg"]')).toBeHidden();
   await expect(page.locator('[data-pricing="markupPercent"]')).toBeVisible();
@@ -60,7 +62,9 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
     "Cliente de teste",
   );
   await page.locator("#new-print-estimate").click();
-  await page.getByText("Custos, tarifas e regras de cálculo", {exact:true}).click();
+  await page
+    .getByText("Custos, tarifas e regras de cálculo", { exact: true })
+    .click();
   await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
   await expect(page.locator('[data-pricing="sheetPrice"]')).toBeHidden();
   await expect(page.locator("#estimate-summary")).not.toContainText("MDF");
@@ -71,6 +75,20 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   );
   await page.locator("#estimate-preview-button").click();
   await expect(page.locator("#estimate-preview")).toBeVisible();
+  await expect(page.locator("#estimate-preview canvas")).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.locator("[data-page]")).toContainText("Página 1 de 1");
+  expect(
+    await page.locator("#estimate-preview canvas").evaluate((c) => c.width),
+  ).toBeGreaterThan(500);
+  await expect(page.locator("#estimate-preview-open")).toHaveAttribute(
+    "href",
+    /^blob:/,
+  );
+  await expect(page.locator("#estimate-status")).toContainText(
+    "Prévia atualizada",
+  );
   await page.locator("#add-laser-item").click();
   await expect(page.locator('[data-pricing="sheetPrice"]')).toBeVisible();
   await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();

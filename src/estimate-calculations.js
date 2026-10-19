@@ -44,7 +44,7 @@ export const DEFAULT_LAYOUT = {
   email: "papeledmaker@gmail.com",
   businessId: "",
   address: "",
-  footer: "Obrigado por criar com o Papeled Maker.",
+  footer: "Obrigado por criar com a Papeled Maker.",
   showTechnical: true,
   showPayment: true,
   logoData: null,

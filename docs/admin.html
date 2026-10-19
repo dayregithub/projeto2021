@@ -6,12 +6,12 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-BTzoEJrn.js"></script>
+    <script type="module" crossorigin src="./assets/admin-Cr_riUjQ.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
     <link rel="modulepreload" crossorigin href="./assets/geometry-BvhQWFpt.js">
     <link rel="modulepreload" crossorigin href="./assets/platform-data-5Dg0wUu7.js">
-    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-20nhsxAk.js">
-    <link rel="stylesheet" crossorigin href="./assets/admin-Rw56dKHt.css">
+    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-B26bidXY.js">
+    <link rel="stylesheet" crossorigin href="./assets/admin-BweLg3cY.css">
   </head>
   <body>
     <header>
@@ -466,11 +466,19 @@
                 </button>
               </div>
             </form>
-            <iframe
+            <section
               id="estimate-preview"
               hidden
-              title="Prévia do orçamento em PDF"
-            ></iframe>
+              aria-label="Prévia do orçamento em PDF"
+            >
+              <h3>Prévia do orçamento</h3>
+              <p>
+                <a id="estimate-preview-open" target="_blank" rel="noopener"
+                  >Abrir PDF em outra aba</a
+                >
+              </p>
+              <div id="estimate-preview-pages"></div>
+            </section>
           </div>
           <p id="estimate-status" role="status"></p>
         </section>

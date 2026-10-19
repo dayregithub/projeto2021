@@ -55,7 +55,10 @@ export function initEstimates({ getState, navigate }) {
     profile = {},
     cloud = false,
     active = false,
-    previewURL = null;
+    previewURL = null,
+    previewVersion = 0,
+    disposePreview = null,
+    pdfBusy = false;
   const message = (text) => ($("estimate-status").textContent = text);
   const read = (key, fallback) => {
     try {
@@ -110,6 +113,8 @@ export function initEstimates({ getState, navigate }) {
     )
     .join("");
   function sync() {
+    if (quote.layout.footer === "Obrigado por criar com o Papeled Maker.")
+      quote.layout.footer = DEFAULT_LAYOUT.footer;
     for (const key of [
       "number",
       "issuedOn",
@@ -257,12 +262,16 @@ export function initEstimates({ getState, navigate }) {
     return `<label>${esc(label)}<input data-item="${key}" type="number" step="any" value="${esc(value)}"></label>`;
   }
   function invalidate() {
+    previewVersion++;
+    disposePreview?.();
+    disposePreview = null;
+    $("estimate-preview-pages").replaceChildren();
+    $("estimate-preview-open").removeAttribute("href");
     if (previewURL) {
       URL.revokeObjectURL(previewURL);
       previewURL = null;
     }
     $("estimate-preview").hidden = true;
-    $("estimate-preview").removeAttribute("src");
   }
   function renderSummary() {
     const processes = new Set(quote.items.map((item) => item.process));
@@ -289,7 +298,7 @@ export function initEstimates({ getState, navigate }) {
       $("estimate-save").disabled =
         $("estimate-pdf").disabled =
         $("estimate-preview-button").disabled =
-          false;
+          pdfBusy;
     } catch (error) {
       $("estimate-summary").textContent = error.message;
       $("estimate-save").disabled =
@@ -389,20 +398,61 @@ export function initEstimates({ getState, navigate }) {
     }
   };
   async function pdf(preview) {
+    if (pdfBusy) return;
+    const button = $(preview ? "estimate-preview-button" : "estimate-pdf"),
+      label = button.textContent;
     try {
       readForm();
       validateEstimate(quote);
+      pdfBusy = true;
+      button.textContent = preview ? "Carregando prévia…" : "Gerando PDF…";
+      button.setAttribute("aria-busy", "true");
+      renderSummary();
+      message(
+        preview
+          ? "Preparando prévia do orçamento…"
+          : "Gerando PDF do orçamento…",
+      );
+      const requestedVersion = previewVersion;
+      const snapshot = structuredClone(quote);
       if (!preview) await save();
       const { estimatePDF } = await import("./estimate-pdf.js");
-      const file = await estimatePDF(quote);
+      const file = await estimatePDF(snapshot);
+      if (preview && requestedVersion !== previewVersion) return;
       if (preview) {
         invalidate();
         previewURL = URL.createObjectURL(
           new Blob([file.bytes], { type: "application/pdf" }),
         );
-        $("estimate-preview").src = previewURL;
+        const version = previewVersion;
+        $("estimate-preview-open").href = previewURL;
         $("estimate-preview").hidden = false;
-        message("Prévia atualizada. Custos internos não aparecem no PDF.");
+        $("estimate-preview-pages").textContent = "Carregando páginas…";
+        $("estimate-preview").scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+        message("Carregando a prévia do orçamento…");
+        try {
+          const { renderEstimatePreview } =
+            await import("./estimate-preview.js");
+          const dispose = await renderEstimatePreview(
+            file.bytes,
+            $("estimate-preview-pages"),
+            () => version === previewVersion,
+          );
+          if (version !== previewVersion) {
+            dispose();
+            return;
+          }
+          disposePreview = dispose;
+          message("Prévia atualizada. Custos internos não aparecem no PDF.");
+        } catch (error) {
+          if (version !== previewVersion) return;
+          $("estimate-preview-pages").textContent =
+            "Não foi possível exibir as páginas neste navegador. Use o link acima para abrir o PDF.";
+          message("PDF gerado. Use ‘Abrir PDF em outra aba’ para visualizar.");
+        }
       } else
         download(
           new Blob([file.bytes], { type: "application/pdf" }),
@@ -410,6 +460,11 @@ export function initEstimates({ getState, navigate }) {
         );
     } catch (e) {
       message(e.message);
+    } finally {
+      pdfBusy = false;
+      button.textContent = label;
+      button.removeAttribute("aria-busy");
+      renderSummary();
     }
   }
   $("estimate-pdf").onclick = () => pdf(false);

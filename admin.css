@@ -308,7 +308,8 @@ pre {
 }
 #estimate-preview {
   width: 100%;
-  height: 650px;
+  padding: 16px;
+  box-sizing: border-box;
   border: 1px solid #bfa99b;
   margin-top: 20px;
 }
@@ -344,7 +345,45 @@ details > summary {
   #estimate-form > .actions {
     position: static;
   }
-  #estimate-preview {
-    height: 480px;
+}
+
+#estimate-preview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: white;
+  margin-top: 16px;
+}
+#estimate-preview .actions {
+  align-items: center;
+}
+
+/* Immediate press feedback for mouse, touch and keyboard activation. */
+button:not(:disabled),
+.button {
+  touch-action: manipulation;
+  transition:
+    transform 100ms ease,
+    box-shadow 100ms ease,
+    filter 100ms ease;
+}
+button:not(:disabled):active,
+.button:active {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: inset 0 2px 5px #0003;
+  filter: brightness(0.9);
+}
+button:focus-visible,
+.button:focus-visible {
+  outline: 3px solid #a77742;
+  outline-offset: 3px;
+}
+button[aria-busy="true"] {
+  cursor: progress;
+}
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .button {
+    transition: none !important;
   }
 }
