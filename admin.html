@@ -55,40 +55,53 @@
           <button class="secondary" id="logout">Sair</button>
         </div>
         <nav aria-label="Seções do painel">
-          <div class="nav-group">
-            <span>SITE</span><button data-tab="overview">Estatísticas</button
-            ><button data-tab="files">Arquivos baixados</button
-            ><button data-tab="quotes">Solicitações</button
-            ><button data-tab="customer-projects">Projetos de clientes</button
-            ><button data-tab="products">Produtos do site</button>
-          </div>
-          <div class="nav-group">
-            <span>COMERCIAL</span
-            ><button data-tab="production" class="production-nav">
-              Produção · Kanban</button
-            ><button data-tab="estimates">Novo orçamento</button
-            ><button data-tab="estimate-history">Orçamento</button
-            ><button data-tab="work-reports">Relatórios de trabalhos</button>
-          </div>
-          <div class="nav-group">
-            <span>CADASTROS</span
-            ><button data-tab="resources">Materiais e serviços</button>
-            <div
-              class="nav-subgroup"
-              role="group"
-              aria-label="Materiais por processo"
-            >
-              <button data-tab="resources-laser">Laser</button
-              ><button data-tab="resources-print">Impressão 3D</button>
+          <details class="nav-group" open data-nav-group="SITE">
+            <summary>SITE</summary>
+            <div class="nav-links">
+              <button data-tab="overview">Estatísticas</button
+              ><button data-tab="files">Arquivos baixados</button
+              ><button data-tab="quotes">Solicitações</button
+              ><button data-tab="customer-projects">Projetos de clientes</button
+              ><button data-tab="products">Produtos do site</button>
             </div>
-            <button data-tab="estimate-settings">Custos</button
-            ><button data-tab="brand">Marca da empresa</button>
-          </div>
-          <div class="nav-group">
-            <span>GESTÃO</span><button data-tab="finance">Financeiro</button
-            ><button data-tab="assistant">Assistente de IA</button
-            ><button data-tab="database">Banco de dados</button>
-          </div>
+          </details>
+          <details class="nav-group" open data-nav-group="COMERCIAL">
+            <summary>COMERCIAL</summary>
+            <div class="nav-links">
+              <button data-tab="production" class="production-nav">
+                Produção · Kanban</button
+              ><button data-tab="estimates">Novo orçamento</button
+              ><button data-tab="estimate-history">Orçamento</button
+              ><button data-tab="work-reports">Relatórios de trabalhos</button>
+            </div>
+          </details>
+          <details class="nav-group" open data-nav-group="CADASTROS">
+            <summary>CADASTROS</summary>
+            <div class="nav-links">
+              <details class="nav-materials" open data-nav-group="materials">
+                <summary>Materiais e serviços</summary>
+                <div
+                  class="nav-subgroup"
+                  role="group"
+                  aria-label="Materiais por processo"
+                >
+                  <button data-tab="resources">Todos os cadastros</button
+                  ><button data-tab="resources-laser">Laser</button
+                  ><button data-tab="resources-print">Impressão 3D</button>
+                </div>
+              </details>
+              <button data-tab="estimate-settings">Custos</button
+              ><button data-tab="brand">Marca da empresa</button>
+            </div>
+          </details>
+          <details class="nav-group" open data-nav-group="GESTÃO">
+            <summary>GESTÃO</summary>
+            <div class="nav-links">
+              <button data-tab="finance">Financeiro</button
+              ><button data-tab="assistant">Assistente de IA</button
+              ><button data-tab="database">Banco de dados</button>
+            </div>
+          </details>
         </nav>
         <section data-section="work-reports" hidden>
           <div class="heading">
@@ -866,15 +879,6 @@
             /></label>
           </details>
           <div id="estimate-editor" hidden>
-            <div
-              class="estimate-floating-actions"
-              role="group"
-              aria-label="Ações do orçamento"
-            >
-              <button id="estimate-close" type="button" class="secondary">
-                Fechar orçamento</button
-              ><button id="estimate-new" type="button">+ Novo orçamento</button>
-            </div>
             <h2 id="estimate-editor-title"></h2>
             <p id="estimate-format-note" class="muted" hidden>
               Orçamento anterior: valores e regras originais preservados. Para o
@@ -1083,6 +1087,23 @@
             ><button id="estimate-new-back" class="secondary">Voltar</button>
           </div>
         </dialog>
+        <div
+          class="estimate-floating-actions"
+          role="group"
+          aria-label="Ações rápidas do painel"
+        >
+          <button id="estimate-new" type="button">+ Novo orçamento</button
+          ><button id="estimate-close" type="button" class="secondary">
+            Fechar orçamento</button
+          ><button
+            id="admin-scroll-top"
+            type="button"
+            class="secondary"
+            aria-label="Ir para o topo da página"
+          >
+            ↑ Topo
+          </button>
+        </div>
         <section data-section="assistant" hidden>
           <div class="card">
             <p class="eyebrow">SEU ASSISTENTE DO ESPAÇO MAKER</p>

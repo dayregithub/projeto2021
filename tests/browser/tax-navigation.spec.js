@@ -29,7 +29,7 @@ test("registered materials, tax breakdowns and reorganized navigation work acros
   });
   await page.goto("/admin.html");
   await page.locator("#local-preview").click();
-  await expect(page.locator(".nav-group > span")).toHaveText([
+  await expect(page.locator(".nav-group > summary")).toHaveText([
     "SITE",
     "COMERCIAL",
     "CADASTROS",

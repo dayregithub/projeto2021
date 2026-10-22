@@ -131,3 +131,44 @@ test("finance, archived work reports and exports stay consistent after reload", 
   });
   expect(errors).toEqual([]);
 });
+
+test("global floating actions and collapsible navigation work on desktop and mobile", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  const site = page.locator('details[data-nav-group="SITE"]');
+  await site.locator(":scope > summary").click();
+  await expect(page.locator('[data-tab="overview"]')).toBeHidden();
+  await site.locator(":scope > summary").click();
+  await expect(page.locator('[data-tab="overview"]')).toBeVisible();
+  const materials = page.locator('details[data-nav-group="materials"]');
+  await materials.locator(":scope > summary").click();
+  await expect(page.locator('[data-tab="resources-laser"]')).toBeHidden();
+  await materials.locator(":scope > summary").click();
+  await expect(page.locator('[data-tab="resources-laser"]')).toBeVisible();
+  await expect(page.locator("#estimate-new")).toBeVisible();
+  await expect(page.locator("#estimate-close")).toBeHidden();
+  await page.locator("#estimate-new").click();
+  await page.locator("#estimate-new-laser").click();
+  await expect(page.locator("#estimate-close")).toBeVisible();
+  await page.locator('[data-item="minutes"]').fill("60");
+  await page.locator("#estimate-save").click();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(100);
+  await page.locator("#admin-scroll-top").click();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  for (const id of ["estimate-new", "estimate-close", "admin-scroll-top"]) {
+    const rect = await page.locator("#" + id).boundingBox();
+    expect(rect.x).toBeGreaterThanOrEqual(0);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(390);
+    expect(rect.y + rect.height).toBeLessThanOrEqual(844);
+  }
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+});

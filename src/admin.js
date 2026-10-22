@@ -69,6 +69,13 @@ function tab(name) {
     resources.setProcess(name === "resources" ? "all" : name.slice(10));
   if (name === "brand" || name === "estimate-settings")
     estimateSettings.show(name === "brand" ? "brand" : "laser");
+  const selectedButton = document.querySelector(`[data-tab="${name}"]`);
+  for (
+    let group = selectedButton?.closest("details");
+    group;
+    group = group.parentElement?.closest("details")
+  )
+    group.open = true;
   document
     .querySelectorAll("[data-tab]")
     .forEach((e) =>
@@ -78,6 +85,13 @@ function tab(name) {
 document
   .querySelectorAll("[data-tab]")
   .forEach((e) => (e.onclick = () => tab(e.dataset.tab)));
+$("admin-scroll-top").onclick = () =>
+  window.scrollTo({
+    top: 0,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+  });
 $("product-model").innerHTML = MODELS.map(
   (m) => `<option value="${escape(m.id)}">${escape(m.name)}</option>`,
 ).join("");
