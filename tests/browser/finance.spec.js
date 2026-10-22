@@ -189,3 +189,20 @@ test("global floating actions and collapsible navigation work on desktop and mob
     ),
   ).toBeTruthy();
 });
+
+test("database diagnostics do not pretend local preview confirms a live database", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="database"]').click();
+  await expect(page.locator("#database-check-summary")).toContainText(
+    "Prévia local",
+  );
+  await expect(page.locator("#database-check-copy")).toBeDisabled();
+  await page.locator("#database-check-run").click();
+  await expect(page.locator("#database-check-results")).toBeEmpty();
+  await expect(page.locator("#database-check-summary")).toContainText(
+    "login de administrador",
+  );
+});

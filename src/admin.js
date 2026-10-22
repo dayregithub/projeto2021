@@ -1,3 +1,4 @@
+import { initDatabaseDiagnostics } from "./database-diagnostics.js";
 import { initEstimateSettings } from "./estimate-settings.js";
 import { initCustomerProjectsPanel } from "./customer-projects.js";
 import { initResourceCatalog } from "./resource-catalog.js";
@@ -64,6 +65,7 @@ function tab(name) {
   showTab(name);
 }
 function showTab(name) {
+  if (name === "database") void databaseDiagnostics.run();
   if (["finance", "work-reports"].includes(name)) void estimates.refresh();
   const section = name.startsWith("resources-")
     ? "resources"
@@ -518,6 +520,9 @@ $("export-stats").onclick = () => {
 const estimates = initEstimates({
   getState: () => ({ client, local }),
   navigate: tab,
+});
+const databaseDiagnostics = initDatabaseDiagnostics({
+  getState: () => ({ client, local }),
 });
 const resources = initResourceCatalog({
   getState: () => ({ client, local }),

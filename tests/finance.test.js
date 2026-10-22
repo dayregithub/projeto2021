@@ -129,3 +129,52 @@ test("Excel exports use numeric cells, Unicode and inert inline strings", () => 
   assert.ok(!sheet.includes("<f>"));
   assert.ok(files["xl/worksheets/sheet2.xml"]);
 });
+
+test("database diagnostics distinguish missing schema, permission and network failures without writing", async () => {
+  const { checkDatabase, classifyDatabaseError, DATABASE_CHECKS } =
+    await import("../src/database-diagnostics.js");
+  const operations = [];
+  const client = {
+    from: (table) => ({
+      select: (column) => {
+        operations.push([table, column]);
+        return {
+          limit: async (n) => {
+            assert.equal(n, 0);
+            if (table === "finance_expenses")
+              return { error: { code: "PGRST205" } };
+            if (table === "workspace_backups")
+              return { error: { code: "42501" } };
+            if (table === "customer_projects") throw Error("Failed to fetch");
+            return { data: [] };
+          },
+        };
+      },
+    }),
+    rpc: async (name) => {
+      assert.equal(name, "require_admin");
+      return { data: true };
+    },
+  };
+  const rows = await checkDatabase(client);
+  assert.equal(rows.length, DATABASE_CHECKS.length + 1);
+  assert.equal(rows[0].state, "ok");
+  assert.equal(rows.find((row) => row.table === "issued_quotes").state, "ok");
+  assert.equal(
+    rows.find((row) => row.table === "finance_expenses").state,
+    "missing",
+  );
+  assert.equal(
+    rows.find((row) => row.table === "workspace_backups").state,
+    "permission",
+  );
+  assert.equal(
+    rows.find((row) => row.table === "customer_projects").state,
+    "unknown",
+  );
+  assert.equal(
+    classifyDatabaseError({ message: "Failed to fetch" }).state,
+    "unknown",
+  );
+  assert.equal(operations.length, DATABASE_CHECKS.length);
+});

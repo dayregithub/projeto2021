@@ -492,18 +492,55 @@
             uma cópia automática no banco a cada 5 segundos. As cópias são
             separadas por dispositivo para não sobrescrever seu trabalho.
           </p>
+          <section class="card" aria-label="Verificação da instalação">
+            <h3>Verificar banco e pendências</h3>
+            <p>
+              Consulta as tabelas usando seu login, sem criar, alterar ou apagar
+              registros. A verificação de leitura não comprova uma gravação.
+            </p>
+            <div class="actions">
+              <button id="database-check-run" type="button">
+                Verificar agora</button
+              ><button
+                id="database-check-copy"
+                class="secondary"
+                type="button"
+                disabled
+              >
+                Copiar diagnóstico
+              </button>
+            </div>
+            <p id="database-check-summary" role="status"></p>
+            <div id="database-check-results"></div>
+            <p id="database-check-copy-status" role="status"></p>
+            <textarea
+              id="database-check-report"
+              rows="12"
+              readonly
+              hidden
+              aria-label="Texto do diagnóstico"
+            ></textarea>
+          </section>
           <p id="database-status" role="status"></p>
-          <p>
-            Instalação recomendada: execute
-            <a href="./database-update.sql">database-update.sql</a> uma vez no
-            SQL Editor do Supabase. Ele preserva os dados anteriores e ativa
-            orçamentos, cópias e cadastros de clientes. Alternativas
-            individuais: execute
-            <a href="./pricing-schema.sql">pricing-schema.sql</a> se ainda não
-            instalou orçamentos, e
-            <a href="./workspace-schema.sql">workspace-schema.sql</a> para as
-            cópias de trabalho. Não repita o script inicial do painel.
-          </p>
+          <details class="card">
+            <summary>Instruções de instalação e atualização</summary>
+            <p class="muted">
+              Estas são orientações gerais, não um aviso de falha. Use a
+              verificação acima para identificar as pendências antes de executar
+              scripts.
+            </p>
+            <p>
+              Instalação recomendada: execute
+              <a href="./database-update.sql">database-update.sql</a> uma vez no
+              SQL Editor do Supabase. Ele preserva os dados anteriores e ativa
+              orçamentos, cópias e cadastros de clientes. Alternativas
+              individuais: execute
+              <a href="./pricing-schema.sql">pricing-schema.sql</a> se ainda não
+              instalou orçamentos, e
+              <a href="./workspace-schema.sql">workspace-schema.sql</a> para as
+              cópias de trabalho. Não repita o script inicial do painel.
+            </p>
+          </details>
           <button id="database-sync">Salvar agora e atualizar cópias</button>
           <p>
             Restaurar combina projetos e orçamentos sem substituir registros

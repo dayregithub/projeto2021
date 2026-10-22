@@ -1016,3 +1016,37 @@ button.danger {
 #estimate-record-dialog::backdrop {
   background: #20171380;
 }
+
+.database-check-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #e4d9cf;
+  padding: 16px 0;
+}
+.database-check-row p {
+  margin: 6px 0;
+  font-size: 14px;
+}
+.database-check-state {
+  align-self: flex-start;
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: #f4efeb;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.database-check-state[data-state="ok"] {
+  background: #e5f0e7;
+  color: #245b35;
+}
+.database-check-state[data-state="missing"] {
+  background: #fff0d9;
+  color: #7a4b10;
+}
+@media (max-width: 600px) {
+  .database-check-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
