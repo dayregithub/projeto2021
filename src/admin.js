@@ -454,10 +454,29 @@ $("product-form").onsubmit = async (e) => {
     notice(error.message);
   }
 };
+let accessVersion = 0;
+function lockWorkspace(message = "Sua sessão terminou. Entre novamente.") {
+  accessVersion++;
+  loadVersion++;
+  workspaceCloud?.stop();
+  workspaceCloud = null;
+  $("workspace").hidden = true;
+  $("access").hidden = false;
+  products = [];
+  quotes = [];
+  stats = null;
+  downloadFiles = [];
+  $("login").reset();
+  notice(message);
+}
 async function enter() {
+  const version = ++accessVersion;
   if (!local) {
-    check(await client.rpc("require_admin"));
+    const { user } = check(await client.auth.getUser());
+    if (!user || check(await client.rpc("require_admin")) !== true)
+      throw Error("Acesso não autorizado.");
   }
+  if (version !== accessVersion) return;
   $("access").hidden = true;
   $("workspace").hidden = false;
   $("mode-note").textContent = local
@@ -465,10 +484,12 @@ async function enter() {
     : "Conectado ao estúdio. Dados protegidos por login e permissões do banco.";
   tab("overview");
   await load();
+  if (version !== accessVersion) return;
   await estimates.refresh();
   await resources.refresh();
   await estimateSettings.refresh();
   await customerProjects.refresh();
+  if (version !== accessVersion) return;
   workspaceCloud?.stop();
   workspaceCloud = await initWorkspaceCloud({
     client,
@@ -494,6 +515,7 @@ async function enter() {
   }
 }
 $("local-preview").onclick = async () => {
+  if (client) return;
   localStorage.setItem("papeled-console-preview", "true");
   local = true;
   await enter();
@@ -503,19 +525,20 @@ $("login").onsubmit = async (e) => {
   const b = e.target.querySelector("button");
   b.disabled = true;
   try {
+    local = false;
+    localStorage.removeItem("papeled-console-preview");
     check(
       await client.auth.signInWithPassword({
-        email: e.target.elements.email.value,
+        email: e.target.elements.email.value.trim(),
         password: e.target.elements.password.value,
       }),
     );
     await enter();
     e.target.reset();
   } catch {
-    notice(
-      "Acesso não autorizado. Confira o e-mail, a senha e a permissão de administrador.",
-    );
-    await client.auth.signOut();
+    lockWorkspace("Acesso não autorizado. Confira o e-mail, a senha e a permissão de administrador.");
+    await client.auth.signOut({ scope: "local" });
+    notice("Acesso não autorizado. Confira o e-mail, a senha e a permissão de administrador.");
   } finally {
     b.disabled = false;
   }
@@ -524,7 +547,14 @@ $("logout").onclick = () =>
   estimates.leaveForNavigation(async () => {
     workspaceCloud?.stop();
     localStorage.removeItem("papeled-console-preview");
-    if (client) await client.auth.signOut();
+    lockWorkspace("Você saiu do painel.");
+    if (client) {
+      const result = await client.auth.signOut({ scope: "local" });
+      if (result.error) {
+        notice("O painel foi bloqueado, mas não foi possível encerrar a sessão. Entre novamente para tentar sair.");
+        return;
+      }
+    }
     location.reload();
   });
 $("period").onchange =
@@ -580,6 +610,11 @@ const refreshAssistant = initAdminAssistant({
 try {
   client = await connection();
   if (client) {
+    client.auth.onAuthStateChange((event, session) => {
+      // Keep this callback synchronous: Supabase holds its auth lock here.
+      if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session))
+        lockWorkspace();
+    });
     localStorage.removeItem("papeled-console-preview");
     $("connection-status").textContent =
       "Entre com sua conta de administrador.";
@@ -589,8 +624,9 @@ try {
       try {
         await enter();
       } catch {
-        await client.auth.signOut();
-        notice("Conta sem permissão de administrador.");
+        lockWorkspace("Não foi possível validar o acesso. Entre novamente com uma conta de administrador.");
+        await client.auth.signOut({ scope: "local" });
+        notice("Não foi possível validar o acesso. Entre novamente com uma conta de administrador.");
       }
     }
   } else {
