@@ -603,3 +603,33 @@ main {
 #estimate-form > details.card[open] > summary {
   margin-bottom: 16px;
 }
+
+.estimate-column .card h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.kanban-project-name {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #685247;
+}
+.estimate-column .card details summary {
+  font-size: 12px;
+  font-weight: 500;
+  color: #876d5b;
+}
+.estimate-column .card details[open] summary {
+  margin-bottom: 12px;
+}
+.estimate-item fieldset {
+  margin: 20px 0;
+  border: 1px solid #e4d9cf;
+  border-radius: 10px;
+}
+.estimate-item [data-service-pick] {
+  min-width: 0;
+  flex: 1;
+}
+.estimate-item fieldset .actions label {
+  max-width: 130px;
+}

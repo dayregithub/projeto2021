@@ -34,15 +34,22 @@ export function initResourceCatalog({ getState, onSaved }) {
   function fields() {
     const material = form.elements.kind.value === "material",
       laser = form.elements.process.value === "laser";
+    if (!laser) form.elements.materialUnit.value = "kg";
+    form.elements.materialUnit.disabled = !laser;
     form.querySelector("[data-material-fields]").hidden = !material;
     form.querySelector("[data-service-fields]").hidden = material;
     form.querySelector("[data-sheet-fields]").hidden = !material || !laser;
     form.querySelector("[data-material-price-label]").textContent = !material
       ? "Preço de venda por unidade (R$)"
       : laser
-        ? "Preço da chapa (R$)"
-        : "Preço por kg (R$)";
+        ? "Custo de compra por unidade (R$)"
+        : "Custo de compra por kg (R$)";
   }
+  form.elements.materialUnit.onchange = () => {
+    for (const key of ["width", "length"])
+      form.elements.namedItem(key).closest("label").hidden =
+        form.elements.materialUnit.value !== "chapa";
+  };
   form.elements.kind.onchange = fields;
   form.elements.process.onchange = fields;
   fields();
@@ -79,7 +86,7 @@ export function initResourceCatalog({ getState, onSaved }) {
       [
         ...(profile.materials || []).map(
           (entry, i) =>
-            `<article class="card"><h3>${esc(entry.material.name)}</h3><p>${entry.process === "laser" ? "Laser · chapa" : "3D · kg"} · R$ ${entry.material.price.toFixed(2)}${entry.material.thickness ? " · " + entry.material.thickness + " mm" : ""}${entry.material.specification ? " · " + esc(entry.material.specification) : ""}</p><button type="button" data-material-edit="${i}">Editar material</button></article>`,
+            `<article class="card"><h3>${esc(entry.material.name)}</h3><p>${entry.process === "laser" ? "Laser · " + (entry.material.unit || "chapa") : "3D · kg"} · Custo R$ ${entry.material.price.toFixed(2)}${entry.material.salePrice != null ? " · Venda R$ " + entry.material.salePrice.toFixed(2) : " · Venda conforme acréscimo"}${entry.material.thickness ? " · " + entry.material.thickness + " mm" : ""}${entry.material.specification ? " · " + esc(entry.material.specification) : ""}</p><button type="button" data-material-edit="${i}">Editar material</button></article>`,
         ),
         ...(profile.services || []).map(
           (s, i) =>
@@ -108,8 +115,11 @@ export function initResourceCatalog({ getState, onSaved }) {
               "length",
               "thickness",
               "specification",
+              "salePrice",
+              "materialUnit",
             ])
-              form.elements.namedItem(k).value = m[k] ?? "";
+              form.elements.namedItem(k).value =
+                k === "materialUnit" ? m.unit || "chapa" : (m[k] ?? "");
             fields();
           }),
       );
@@ -156,6 +166,9 @@ export function initResourceCatalog({ getState, onSaved }) {
       if (kind === "material") {
         const material = {
           name,
+          salePrice:
+            f.salePrice.value === "" ? null : Number(f.salePrice.value),
+          unit: f.process.value === "print" ? "kg" : f.materialUnit.value,
           price: Number(f.price.value),
           width: Number(f.width.value),
           length: Number(f.namedItem("length").value),

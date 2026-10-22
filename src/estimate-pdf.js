@@ -134,7 +134,7 @@ export async function estimatePDF(quote, { logoData } = {}) {
     y += 5;
   }
   tableHeader();
-  result.items.forEach((item, index) => {
+  (result.invoiceRows || result.items).forEach((item, index) => {
     const description = [
       `${index + 1}. ${item.description}`,
       ...(l.showTechnical
@@ -150,7 +150,19 @@ export async function estimatePDF(quote, { logoData } = {}) {
       tableHeader();
     }
     text(String(item.quantity), 117, y);
-    text(brl(item.unitPrice), 136, y);
+    text(
+      item.preciseUnitPrice
+        ? item.unitPrice.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 6,
+          })
+        : brl(item.unitPrice),
+      136,
+      y,
+      item.preciseUnitPrice ? 8 : font,
+    );
     text(brl(item.subtotal), 166, y, font, "bold");
     for (const entry of lines) {
       if (y + line > bottom) {
@@ -166,7 +178,15 @@ export async function estimatePDF(quote, { logoData } = {}) {
     y += 6;
   });
   const totals = [
-    ["Itens", result.itemSubtotal],
+    ...(quote.calculationVersion === 2
+      ? [
+          ["Valor do material", result.materialTotal],
+          ["Valor do serviço", result.serviceTotal],
+          ...(result.additionalTotal
+            ? [["Serviços adicionais", result.additionalTotal]]
+            : []),
+        ]
+      : [["Itens", result.itemSubtotal]]),
     ...(quote.setupPrice ? [["Preparação / projeto", quote.setupPrice]] : []),
     ...(result.discount ? [["Desconto", -result.discount]] : []),
     ...(quote.adjustment ? [["Ajuste comercial", quote.adjustment]] : []),

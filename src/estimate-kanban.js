@@ -17,6 +17,11 @@ const esc = (s) =>
 export function renderEstimateKanban(root, records, onChange, message) {
   const stage = (q) =>
     ["sent", "rejected"].includes(q.status) ? "draft" : q.status;
+  const expanded = new Set(
+    [...root.querySelectorAll("[data-estimate-card]")]
+      .filter((card) => card.querySelector("details")?.open)
+      .map((card) => card.dataset.estimateCard),
+  );
   root.innerHTML = `<div class="estimate-kanban">${ESTIMATE_STAGES.map(
     ([value, label]) => {
       const group = records.filter((q) => stage(q) === value);
@@ -29,7 +34,7 @@ export function renderEstimateKanban(root, records, onChange, message) {
             } catch {
               total = "Revisar cálculos";
             }
-            return `<article class="card" draggable="true" data-estimate-card="${esc(q.id)}"><h4>${esc(q.number)} · ${esc(q.customer || "Cliente não informado")}</h4><p>${esc(q.title)} · ${total}${q.status === "rejected" ? " · Não aprovado" : ""}</p><label>Etapa<select data-stage-change="${esc(q.id)}">${ESTIMATE_STAGES.map(([v, l]) => `<option value="${v}" ${v === stage(q) ? "selected" : ""}>${l}</option>`).join("")}</select></label><label>Pagamento<select data-payment-change="${esc(q.id)}"><option value="pending" ${q.paymentStatus !== "paid" ? "selected" : ""}>Pendente</option><option value="paid" ${q.paymentStatus === "paid" ? "selected" : ""}>Realizado</option></select></label><label>Data do pagamento<input data-payment-date="${esc(q.id)}" type="date" value="${esc(q.paymentDate || "")}"></label><div class="actions"><button class="secondary" data-open-estimate="${esc(q.id)}">Abrir</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button></div></article>`;
+            return `<article class="card" draggable="true" data-estimate-card="${esc(q.id)}"><h4>${esc(q.customer || "Cliente não informado")}</h4><p class="kanban-project-name">${esc(q.title || q.items?.[0]?.description || "Projeto sem nome")}</p><details ${expanded.has(q.id) ? "open" : ""}><summary>Detalhes e acompanhamento</summary><p>${esc(q.number)} · ${total}${q.status === "rejected" ? " · Não aprovado" : ""}</p><label>Etapa<select data-stage-change="${esc(q.id)}">${ESTIMATE_STAGES.map(([v, l]) => `<option value="${v}" ${v === stage(q) ? "selected" : ""}>${l}</option>`).join("")}</select></label><label>Pagamento<select data-payment-change="${esc(q.id)}"><option value="pending" ${q.paymentStatus !== "paid" ? "selected" : ""}>Pendente</option><option value="paid" ${q.paymentStatus === "paid" ? "selected" : ""}>Realizado</option></select></label><label>Data do pagamento<input data-payment-date="${esc(q.id)}" type="date" value="${esc(q.paymentDate || "")}"></label><div class="actions"><button class="secondary" data-open-estimate="${esc(q.id)}">Abrir</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button></div></details></article>`;
           })
           .join("") || '<p class="muted">Nenhum orçamento nesta etapa.</p>'
       }</section>`;

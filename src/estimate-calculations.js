@@ -1,3 +1,4 @@
+import { calculateSimpleItem } from "./simple-estimate.js";
 import { validateService } from "./resource-catalog.js";
 import { materialFor, validateMaterial } from "./estimate-materials.js";
 export const money = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -196,6 +197,14 @@ export function calculateEstimate(quote) {
     number(item.lossPercent, `${label}, perda filamento`, { max: 1000 });
     if (item.process === "print" && item.method === "rate")
       throw Error(`${label}: impressão 3D usa acréscimo ou margem.`);
+    if (quote.calculationVersion === 2)
+      return calculateSimpleItem(item, p, laser, {
+        money,
+        number,
+        validateMaterial,
+        materialFor,
+        validateService,
+      });
     const selectedMaterial = validateMaterial(
       materialFor(item, p),
       item.process,
@@ -340,6 +349,29 @@ export function calculateEstimate(quote) {
     sheetM2,
     materialM2,
     itemSubtotal,
+    materialTotal: money(
+      items.reduce(
+        (sum, item) =>
+          sum + (item.materialAmount ?? item.costs.material * item.quantity),
+        0,
+      ),
+    ),
+    serviceTotal: money(
+      items.reduce(
+        (sum, item) =>
+          sum +
+          (item.serviceAmount ??
+            item.subtotal - item.costs.material * item.quantity),
+        0,
+      ),
+    ),
+    additionalTotal: money(
+      items.reduce((sum, item) => sum + (item.additionalAmount ?? 0), 0),
+    ),
+    invoiceRows:
+      quote.calculationVersion === 2
+        ? items.flatMap((item) => item.invoiceRows)
+        : null,
     subtotal,
     discount,
     taxable,
@@ -361,6 +393,11 @@ export function calculateEstimate(quote) {
   };
 }
 export function validateEstimate(q) {
+  if (
+    q?.calculationVersion !== undefined &&
+    ![1, 2].includes(q.calculationVersion)
+  )
+    throw Error("Versão de cálculo inválida.");
   calculateEstimate(q);
   if (typeof q.id !== "string" || !/^[a-f0-9-]{36}$/i.test(q.id))
     throw Error("Identificador de orçamento inválido.");

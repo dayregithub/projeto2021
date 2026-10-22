@@ -38,6 +38,7 @@ export function validateMaterial(m, process) {
     throw Error("Material: informe o nome e o preço de compra.");
   if (
     process === "laser" &&
+    (!m.unit || m.unit === "chapa") &&
     (!Number.isFinite(m.width) ||
       !Number.isFinite(m.length) ||
       m.width <= 0 ||
@@ -48,5 +49,16 @@ export function validateMaterial(m, process) {
     throw Error(
       "Material laser: informe largura e comprimento da chapa em cm.",
     );
+  if (
+    m.salePrice !== undefined &&
+    m.salePrice !== null &&
+    (typeof m.salePrice !== "number" ||
+      !Number.isFinite(m.salePrice) ||
+      m.salePrice < 0 ||
+      m.salePrice > 1e7)
+  )
+    throw Error("Preço de venda do material inválido.");
+  if (m.unit && !["chapa", "unidade", "m²", "kg"].includes(m.unit))
+    throw Error("Unidade do material inválida.");
   return m;
 }

@@ -131,6 +131,23 @@
               /></label>
             </div>
             <div data-material-fields>
+              <div class="grid">
+                <label
+                  >Unidade do material<select name="materialUnit">
+                    <option value="chapa">Chapa</option>
+                    <option value="unidade">Unidade / peça</option>
+                    <option value="m²">Metro quadrado (m²)</option>
+                    <option value="kg">Quilograma (3D)</option>
+                  </select></label
+                ><label
+                  >Preço de venda por unidade (R$; vazio = custo +
+                  acréscimo)<input
+                    name="salePrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                /></label>
+              </div>
               <div class="grid three" data-sheet-fields>
                 <label
                   >Largura da chapa (cm)<input
@@ -538,9 +555,25 @@
           </details>
           <div id="estimate-editor" hidden>
             <h2 id="estimate-editor-title"></h2>
+            <p id="estimate-format-note" class="muted" hidden>
+              Orçamento anterior: valores e regras originais preservados. Para o
+              novo formato de planilha, inicie uma nova proposta.
+            </p>
             <form id="estimate-form" onsubmit="return false;">
+              <input type="hidden" name="paymentStatus" /><input
+                type="hidden"
+                name="paymentDate"
+              />
+              <div id="estimate-items"></div>
+              <div class="actions">
+                <button type="button" class="secondary" id="add-laser-item">
+                  Adicionar item laser</button
+                ><button type="button" class="secondary" id="add-print-item">
+                  Adicionar item impressão 3D
+                </button>
+              </div>
               <div class="card">
-                <h3>1. Cliente e projeto</h3>
+                <h3>4. Cliente e projeto</h3>
                 <div class="grid">
                   <label
                     >Nome do cliente<input
@@ -551,8 +584,17 @@
                   /></label>
                 </div>
                 <label
-                  >Projeto / referência<input name="title" maxlength="180"
+                  >Nome / especificação do projeto<input
+                    name="title"
+                    maxlength="180"
                 /></label>
+                <label
+                  >Descrição do cliente<textarea
+                    name="notes"
+                    rows="3"
+                    maxlength="6000"
+                  ></textarea>
+                </label>
                 <details class="item-extra">
                   <summary>Número, validade e dados adicionais</summary>
                   <div class="grid three">
@@ -585,18 +627,6 @@
                     >
                   </div>
                 </details>
-              </div>
-              <input type="hidden" name="paymentStatus" /><input
-                type="hidden"
-                name="paymentDate"
-              />
-              <div id="estimate-items"></div>
-              <div class="actions">
-                <button type="button" class="secondary" id="add-laser-item">
-                  Adicionar item laser</button
-                ><button type="button" class="secondary" id="add-print-item">
-                  Adicionar item impressão 3D
-                </button>
               </div>
               <details class="card" id="estimate-commercial">
                 <summary>Desconto, frete e preparação (opcional)</summary>
@@ -658,12 +688,6 @@
                     name="payment"
                     rows="2"
                     maxlength="1500"
-                  ></textarea></label
-                ><label
-                  >Observações para o cliente<textarea
-                    name="notes"
-                    rows="3"
-                    maxlength="6000"
                   ></textarea></label
                 ><label
                   >Anotações internas (não aparecem no PDF)<textarea

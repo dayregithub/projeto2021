@@ -362,3 +362,79 @@ test("new laser and 3D markups are independent while legacy markup stays support
   q.items[0].material = { name: "PETG", price: 200 };
   assert.equal(calculateEstimate(q).total, 80);
 });
+
+test("spreadsheet quote rounds totals after multiplying and keeps material and extras independent", () => {
+  const q = newEstimate();
+  q.calculationVersion = 2;
+  q.pricing.laserSaleHour = 85;
+  Object.assign(q.items[0], {
+    description: "CORTE PEÇAS",
+    quantity: 40,
+    minutes: 10,
+    materialMode: "included",
+    materialQuantity: 40,
+    material: { name: "MDF 3 mm", unit: "unidade", price: 8, salePrice: 12.5 },
+  });
+  let result = calculateEstimate(q);
+  assert.equal(result.serviceTotal, 566.67);
+  assert.equal(result.materialTotal, 500);
+  assert.equal(result.total, 1066.67);
+  assert.equal(result.items[0].totalMinutes, 400);
+  q.items[0].services = [
+    {
+      type: "service",
+      name: "Acabamento",
+      unit: "unidade",
+      price: 10,
+      cost: 5,
+      quantity: 7,
+    },
+  ];
+  result = calculateEstimate(q);
+  assert.equal(result.additionalTotal, 70);
+  assert.equal(result.total, 1136.67);
+  q.items[0].quantity = 80;
+  result = calculateEstimate(q);
+  assert.equal(result.materialTotal, 500);
+  assert.equal(result.additionalTotal, 70);
+  assert.equal(result.serviceTotal, 1133.33);
+  assert.equal(result.invoiceRows.length, 3);
+  assert.equal(result.invoiceRows[0].quantity, 800);
+  assert.equal(result.invoiceRows[1].quantity, 40);
+  assert.equal(result.invoiceRows[2].quantity, 7);
+  q.items[0].materialMode = "none";
+  assert.equal(calculateEstimate(q).materialTotal, 0);
+});
+
+test("spreadsheet PDF separates the 400-minute service and 40 material units", async () => {
+  const q = newEstimate();
+  q.calculationVersion = 2;
+  q.pricing.laserSaleHour = 85;
+  Object.assign(q.items[0], {
+    description: "CORTE PEÇAS",
+    quantity: 40,
+    minutes: 10,
+    materialMode: "included",
+    materialQuantity: 40,
+    material: { name: "MDF 3 mm", unit: "unidade", price: 8, salePrice: 12.5 },
+  });
+  const file = await estimatePDF(q, {
+    logoData: new Uint8Array(
+      await readFile(new URL("../public/papeled-logo.png", import.meta.url)),
+    ),
+  });
+  await writeFile(
+    "/tmp/papeled-spreadsheet-budget.pdf",
+    new Uint8Array(file.bytes),
+  );
+  const content = execFileSync(
+    "pdftotext",
+    ["-layout", "/tmp/papeled-spreadsheet-budget.pdf", "-"],
+    { encoding: "utf8" },
+  );
+  assert.match(content, /566,67/);
+  assert.match(content, /500,00/);
+  assert.match(content, /1\.066,67/);
+  assert.match(content, /400/);
+  assert.match(content, /MDF 3 mm/);
+});

@@ -141,7 +141,11 @@ export function initEstimateSettings({ getState, onSaved }) {
         next.layout[key] = form.elements[key].checked;
       validateEstimate(newEstimate(next));
       const { client, local } = getState();
-      let data = next;
+      let data = {
+        ...JSON.parse(localStorage.getItem(KEY) || "{}"),
+        pricing: next.pricing,
+        layout: next.layout,
+      };
       if (client && !local) {
         const latest = await client
           .from("pricing_profiles")

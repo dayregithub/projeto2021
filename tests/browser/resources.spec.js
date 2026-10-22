@@ -22,14 +22,12 @@ test("material and service registry feeds quotes with independent prices and sna
   await expect(page.locator("#resource-list")).toContainText("Pintura");
   await page.locator('[data-tab="estimates"]').click();
   await page.locator("#new-laser-estimate").click();
+  await page.locator('[data-item="materialMode"]').selectOption("included");
   await page
     .locator("[data-material-name]")
     .selectOption({ label: "MDF 6 mm" });
-  await expect(page.locator("[data-material-summary]")).toContainText("200,00");
-  await page.locator('[data-item="boards"]').fill("1");
-  await page
-    .getByText("Adicionar serviços e recursos", { exact: true })
-    .click();
+  await expect(page.locator("[data-material-summary]")).toContainText("400,00");
+  await page.locator('[data-item="materialQuantity"]').fill("0.12");
   await page.locator("[data-service-pick]").selectOption("0");
   await page.locator("[data-service-add]").click();
   await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
@@ -39,14 +37,14 @@ test("material and service registry feeds quotes with independent prices and sna
   await page.locator("#estimate-save").click();
   await page.reload();
   await page.locator('[data-tab="estimates"]').click();
-  await expect(page.locator("[data-material-summary]")).toContainText("200,00");
+  await expect(page.locator("[data-material-summary]")).toContainText("400,00");
   await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
   await page.locator('[data-tab="resources"]').click();
   await page.locator("[data-material-edit]").click();
   await f.locator('[name="price"]').fill("250");
   await f.locator('[type="submit"]').click();
   await page.locator('[data-tab="estimates"]').click();
-  await expect(page.locator("[data-material-summary]")).toContainText("200,00");
+  await expect(page.locator("[data-material-summary]")).toContainText("400,00");
 });
 
 test("customer name is required and action is blocked until linked project registration succeeds", async ({
@@ -134,6 +132,7 @@ test("kanban moves issued quotes through delivery and preserves paid date", asyn
   await page.locator('[data-item="minutes"]').fill("60");
   await page.locator("#estimate-save").click();
   await page.locator('[data-tab="production"]').click();
+  await page.locator("[data-estimate-card] details summary").click();
   await page.locator("[data-stage-change]").selectOption("approved");
   await expect(
     page.locator('[data-stage="approved"] [data-estimate-card]'),
@@ -150,6 +149,7 @@ test("kanban moves issued quotes through delivery and preserves paid date", asyn
   await expect(
     page.locator('[data-stage="delivered"] [data-estimate-card]'),
   ).toHaveCount(1);
+  await page.locator("[data-estimate-card] details summary").click();
   await expect(page.locator("[data-payment-change]")).toHaveValue("paid");
   await expect(page.locator("[data-payment-date]")).toHaveValue(date);
   await expect(page.locator('#estimate-form [name="status"]')).toHaveValue(
@@ -216,4 +216,76 @@ test("separate settings affect new quotes only and history reopens original pric
     path: "/tmp/papeled-admin-mobile.png",
     fullPage: true,
   });
+});
+
+test("spreadsheet workflow bills laser, material and extras with independent quantities", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="resources"]').click();
+  const f = page.locator("#resource-form");
+  await f.locator('[name="name"]').fill("MDF 3 mm");
+  await f.locator('[name="materialUnit"]').selectOption("unidade");
+  await f.locator('[name="price"]').fill("8");
+  await f.locator('[name="salePrice"]').fill("12.50");
+  await f.locator('[type="submit"]').click();
+  await expect(page.locator("#resource-status")).toContainText("salvo");
+  await f.locator('[name="kind"]').selectOption("service");
+  await f.locator('[name="name"]').fill("Acabamento");
+  await f.locator('[name="price"]').fill("10");
+  await f.locator('[name="cost"]').fill("5");
+  await f.locator('[type="submit"]').click();
+  await page.locator('[data-tab="estimate-settings"]').click();
+  await page.locator('[data-pricing="laserSaleHour"]').fill("85");
+  await page.locator("#estimate-save-profile").click();
+  await expect(page.locator("#estimate-settings-status")).toContainText(
+    "Configurações salvas",
+  );
+  await page.locator('[data-tab="estimates"]').click();
+  await page.locator("#new-laser-estimate").click();
+  await page.locator('[data-item="description"]').fill("CORTE PEÇAS");
+  await page.locator('[data-item="quantity"]').fill("40");
+  await page.locator('[data-item="minutes"]').fill("10");
+  await expect(page.locator("[data-time-result]")).toContainText("400 minutos");
+  await page.locator('[data-item="materialMode"]').selectOption("included");
+  await page
+    .locator("[data-material-name]")
+    .selectOption({ label: "MDF 3 mm" });
+  await page.locator('[data-item="materialQuantity"]').fill("40");
+  await expect(page.locator("#estimate-summary .metric").nth(0)).toContainText(
+    "500,00",
+  );
+  await expect(page.locator("#estimate-summary .metric").nth(1)).toContainText(
+    "566,67",
+  );
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "1.066,67",
+  );
+  await page.locator("[data-service-pick]").selectOption("0");
+  await page.locator("[data-new-service-quantity]").fill("7");
+  await page.locator("[data-service-add]").click();
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "1.136,67",
+  );
+  await page.locator('[data-item="quantity"]').fill("80");
+  await expect(page.locator("#estimate-summary .metric").nth(0)).toContainText(
+    "500,00",
+  );
+  await expect(page.locator("[data-service-quantity]")).toHaveValue("7");
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "1.703,33",
+  );
+  await page.locator('#estimate-form [name="customer"]').fill("Ana");
+  await page
+    .locator('#estimate-form [name="title"]')
+    .fill("Caixa organizadora");
+  await page.locator("#estimate-save").click();
+  await page.locator('[data-tab="production"]').click();
+  const card = page.locator("[data-estimate-card]");
+  await expect(card.locator("h4")).toHaveText("Ana");
+  await expect(card.locator(".kanban-project-name")).toHaveText(
+    "Caixa organizadora",
+  );
+  await expect(card.locator("[data-payment-change]")).toBeHidden();
 });
