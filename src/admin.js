@@ -56,6 +56,14 @@ document.addEventListener("click", (event) => {
   }
 });
 function tab(name) {
+  if (
+    name !== "estimates" &&
+    !document.querySelector('[data-section="estimates"]').hidden
+  )
+    return estimates.leaveForNavigation(() => showTab(name));
+  showTab(name);
+}
+function showTab(name) {
   if (["finance", "work-reports"].includes(name)) void estimates.refresh();
   const section = name.startsWith("resources-")
     ? "resources"
@@ -479,12 +487,13 @@ $("login").onsubmit = async (e) => {
     b.disabled = false;
   }
 };
-$("logout").onclick = async () => {
-  workspaceCloud?.stop();
-  localStorage.removeItem("papeled-console-preview");
-  if (client) await client.auth.signOut();
-  location.reload();
-};
+$("logout").onclick = () =>
+  estimates.leaveForNavigation(async () => {
+    workspaceCloud?.stop();
+    localStorage.removeItem("papeled-console-preview");
+    if (client) await client.auth.signOut();
+    location.reload();
+  });
 $("period").onchange =
   $("refresh").onclick =
   $("refresh-quotes").onclick =

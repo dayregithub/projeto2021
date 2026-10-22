@@ -14,7 +14,13 @@ const esc = (s) =>
         c
       ],
   );
-export function renderEstimateKanban(root, records, onChange, message) {
+export function renderEstimateKanban(
+  root,
+  records,
+  onChange,
+  message,
+  onConfirmCancel,
+) {
   const stage = (q) =>
     ["sent", "rejected", "cancelled"].includes(q.status) ? "draft" : q.status;
   const expanded = new Set(
@@ -90,11 +96,13 @@ export function renderEstimateKanban(root, records, onChange, message) {
     root.querySelectorAll(selector).forEach(
       (button) =>
         (button.onclick = () =>
-          apply(button.dataset[attribute], {
-            status,
-            archivedAt: new Date().toISOString(),
-            archiveReason: status,
-          })),
+          status === "cancelled" && onConfirmCancel
+            ? onConfirmCancel(button.dataset[attribute])
+            : apply(button.dataset[attribute], {
+                status,
+                archivedAt: new Date().toISOString(),
+                archiveReason: status,
+              })),
     );
   }
   root.querySelectorAll("[data-estimate-card]").forEach(

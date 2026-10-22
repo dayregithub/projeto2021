@@ -1,3 +1,5 @@
+import { customerContacts } from "./customer-contacts.js";
+import { quoteFingerprint } from "./quote-edit-state.js";
 import { costSummaryHTML } from "./estimate-cost-summary.js";
 import { initWorkReports } from "./work-reports.js";
 import { initFinance } from "./finance-ui.js";
@@ -69,6 +71,9 @@ export function initEstimates({ getState, navigate }) {
   const store = (key, value) =>
     localStorage.setItem(key, JSON.stringify(value));
   function sync() {
+    const contacts = customerContacts(quote);
+    quote.customerPhone = contacts.phone;
+    quote.customerEmail = contacts.email;
     $("estimate-format-note").hidden =
       quote.calculationVersion === 2 &&
       !quote.items.some(
@@ -84,6 +89,8 @@ export function initEstimates({ getState, navigate }) {
       "validityDays",
       "customer",
       "contact",
+      "customerPhone",
+      "customerEmail",
       "customerId",
       "title",
       "status",
@@ -114,11 +121,21 @@ export function initEstimates({ getState, navigate }) {
     $("estimate-editor-title").textContent = `Orçamento ${quote.number}`;
   }
   function readForm() {
+    const phone = form.elements.customerPhone.value.trim(),
+      email = form.elements.customerEmail.value.trim();
+    if (
+      phone !== (quote.customerPhone || "") ||
+      email !== (quote.customerEmail || "")
+    )
+      form.elements.contact.value = [phone, email].filter(Boolean).join(" | ");
+
     for (const key of [
       "number",
       "issuedOn",
       "customer",
       "contact",
+      "customerPhone",
+      "customerEmail",
       "customerId",
       "title",
       "status",
@@ -479,6 +496,15 @@ export function initEstimates({ getState, navigate }) {
   }
   form.addEventListener("input", (e) => {
     if (e.target.closest("#estimate-items")) return;
+    if (
+      e.target.name === "status" &&
+      e.target.value === "cancelled" &&
+      quote.status !== "cancelled"
+    ) {
+      e.target.value = quote.status;
+      showRecordOperation("cancel", quote.id, true);
+      return;
+    }
     readForm();
     invalidate();
     renderSummary();
@@ -498,6 +524,8 @@ export function initEstimates({ getState, navigate }) {
     if (source) {
       quote.customer = source.customer_name || "";
       quote.contact = source.contact || "";
+      quote.customerPhone = source.phone || source.customer_phone || "";
+      quote.customerEmail = source.email || source.customer_email || "";
       quote.notes = source.message || "";
       const p = source.project || source.settings;
       quote.customerProjectId =
@@ -509,7 +537,7 @@ export function initEstimates({ getState, navigate }) {
     }
     invalidate();
     sync();
-    cleanSnapshot = JSON.stringify(quote);
+    cleanSnapshot = quoteFingerprint(quote);
     $("estimate-editor").hidden = false;
     navigate("estimates");
     $("estimate-editor").scrollIntoView({ behavior: "smooth" });
@@ -523,28 +551,47 @@ export function initEstimates({ getState, navigate }) {
     message("Edição fechada. Orçamentos salvos continuam no histórico.");
     $("new-laser-estimate").focus();
   }
+  function isDirty() {
+    if ($("estimate-editor").hidden) return false;
+    readForm();
+    return quoteFingerprint(quote) !== cleanSnapshot;
+  }
+  window.addEventListener("beforeunload", (event) => {
+    if (isDirty()) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+  });
   function requestTransition(action) {
     if (pdfBusy) {
       message("Aguarde a geração do PDF antes de sair.");
       return;
     }
-    readForm();
-    if (
-      !$("estimate-editor").hidden &&
-      JSON.stringify(quote) !== cleanSnapshot
-    ) {
+    if (isDirty()) {
       pendingTransition = action;
       $("estimate-leave-status").textContent = "";
       $("estimate-leave-dialog").showModal();
     } else action();
   }
   $("estimate-close").onclick = () => requestTransition(closeEditor);
-  $("estimate-new").onclick = () =>
+  $("estimate-new").onclick = () => {
+    const process =
+      !$("estimate-editor").hidden &&
+      quote.items.every((item) => item.process === quote.items[0].process)
+        ? quote.items[0].process
+        : null;
     requestTransition(() => {
-      closeEditor();
-      $("estimate-new-dialog").showModal();
+      if (process) start(process);
+      else {
+        closeEditor();
+        $("estimate-new-dialog").showModal();
+      }
     });
+  };
   $("estimate-new-back").onclick = () => $("estimate-new-dialog").close();
+  $("estimate-leave-dialog").addEventListener("cancel", () => {
+    pendingTransition = null;
+  });
   $("estimate-leave-back").onclick = () => {
     pendingTransition = null;
     $("estimate-leave-dialog").close();
@@ -553,6 +600,13 @@ export function initEstimates({ getState, navigate }) {
     const action = pendingTransition;
     pendingTransition = null;
     $("estimate-leave-dialog").close();
+    const saved = records.find((row) => row.id === quote.id);
+    if (saved) {
+      quote = structuredClone(saved);
+      sync();
+      cleanSnapshot = quoteFingerprint(quote);
+    } else closeEditor();
+    localStorage.removeItem("papeled-estimate-draft-v1");
     action?.();
   };
   $("estimate-leave-save").onclick = async () => {
@@ -597,6 +651,10 @@ export function initEstimates({ getState, navigate }) {
       renderSummary();
     };
   async function save() {
+    if (getState().client && !getState().local && !cloud)
+      throw Error(
+        "Não foi possível conectar aos orçamentos no banco. Atualize a conexão antes de salvar.",
+      );
     readForm();
     validateEstimate(quote);
     const existing = records.find(
@@ -626,7 +684,8 @@ export function initEstimates({ getState, navigate }) {
       store(KEY, all);
     }
     await refresh();
-    cleanSnapshot = JSON.stringify(quote);
+    readForm();
+    cleanSnapshot = quoteFingerprint(quote);
     message(
       cloud
         ? "Orçamento salvo no Supabase."
@@ -705,17 +764,7 @@ export function initEstimates({ getState, navigate }) {
     } catch (e) {
       message(e.message);
     } finally {
-      ((pdfBusy = false), (cleanSnapshot = ""), (pendingTransition = null));
-      const finance = initFinance({
-        getState,
-        getQuotes: () => records,
-        openQuote: (id) => requestTransition(() => openQuote(id)),
-      });
-      $("finance-refresh").onclick = () => refresh();
-      const workReports = initWorkReports({
-        getQuotes: () => records,
-        openQuote: (id) => requestTransition(() => openQuote(id)),
-      });
+      pdfBusy = false;
       button.textContent = label;
       button.removeAttribute("aria-busy");
       renderSummary();
@@ -766,6 +815,140 @@ export function initEstimates({ getState, navigate }) {
       e.target.value = "";
     }
   };
+  let recordOperation = null,
+    recordBusy = false;
+  function showRecordOperation(type, id, editor = false) {
+    if (recordBusy || pdfBusy) return;
+    const target = editor ? quote : records.find((row) => row.id === id);
+    if (!target) return;
+    recordOperation = { type, id: target.id, editor };
+    const saved = records.some((row) => row.id === target.id);
+    $("estimate-record-title").textContent =
+      type === "delete"
+        ? "Excluir orçamento definitivamente?"
+        : "Cancelar orçamento?";
+    $("estimate-record-description").textContent =
+      `${target.number} · ${target.customer || "Cliente não informado"} · ${target.title}. ` +
+      (type === "delete"
+        ? saved
+          ? "O registro será removido do banco, histórico, Kanban e relatórios; seus valores deixarão de compor o financeiro. Esta ação não pode ser desfeita."
+          : "Este rascunho ainda não foi salvo no histórico e será descartado."
+        : "Será salvo com status Cancelado e arquivado. Dados e pagamentos já registrados serão preservados no sistema e no banco.");
+    $("estimate-record-confirm").textContent =
+      type === "delete"
+        ? "Sim, excluir definitivamente"
+        : "Sim, confirmar cancelamento";
+    $("estimate-record-status").textContent = "";
+    $("estimate-record-dialog").showModal();
+  }
+  function bindRecordActions(root) {
+    root
+      .querySelectorAll("[data-cancel-record]")
+      .forEach(
+        (button) =>
+          (button.onclick = () =>
+            showRecordOperation("cancel", button.dataset.cancelRecord)),
+      );
+    root
+      .querySelectorAll("[data-delete-record]")
+      .forEach(
+        (button) =>
+          (button.onclick = () =>
+            showRecordOperation("delete", button.dataset.deleteRecord)),
+      );
+  }
+  $("estimate-cancel").onclick = () =>
+    showRecordOperation("cancel", quote.id, true);
+  $("estimate-delete").onclick = () =>
+    showRecordOperation("delete", quote.id, true);
+  $("estimate-record-back").onclick = () => {
+    recordOperation = null;
+    $("estimate-record-dialog").close();
+  };
+  $("estimate-record-dialog").addEventListener("cancel", (event) => {
+    if (recordBusy) event.preventDefault();
+  });
+  $("estimate-record-confirm").onclick = async () => {
+    const operation = recordOperation;
+    if (!operation || recordBusy) return;
+    recordBusy = true;
+    $("estimate-record-confirm").disabled = true;
+    $("estimate-record-back").disabled = true;
+    try {
+      if (getState().client && !getState().local && !cloud)
+        throw Error(
+          "Não foi possível conectar ao banco. Atualize a conexão e tente novamente.",
+        );
+      if (operation.type === "cancel") {
+        const changes = {
+          status: "cancelled",
+          archivedAt: new Date().toISOString(),
+          archiveReason: "cancelled",
+        };
+        if (operation.editor) {
+          readForm();
+          const previous = {
+            status: quote.status,
+            archivedAt: quote.archivedAt,
+            archiveReason: quote.archiveReason,
+          };
+          Object.assign(quote, changes);
+          form.elements.status.value = quote.status;
+          try {
+            await save();
+          } catch (error) {
+            Object.assign(quote, previous);
+            form.elements.status.value = quote.status;
+            throw error;
+          }
+        } else await updateRecord(operation.id, changes);
+      } else {
+        if (records.some((row) => row.id === operation.id) && cloud) {
+          const result = await getState()
+            .client.from("issued_quotes")
+            .delete()
+            .eq("id", operation.id)
+            .select("id")
+            .single();
+          if (result.error)
+            throw Error(
+              "Não foi possível excluir do banco. O registro foi mantido; tente novamente.",
+            );
+        }
+        store(
+          KEY,
+          read(KEY, []).filter((row) => row.id !== operation.id),
+        );
+        if (read("papeled-estimate-draft-v1", null)?.id === operation.id)
+          localStorage.removeItem("papeled-estimate-draft-v1");
+        await refresh();
+      }
+      if (quote.id === operation.id) {
+        closeEditor();
+        if (operation.type === "delete") {
+          quote = newEstimate(profile);
+          form.reset();
+          $("estimate-items").replaceChildren();
+          $("estimate-summary").replaceChildren();
+          $("estimate-editor-title").textContent = "";
+        }
+      }
+      recordOperation = null;
+      $("estimate-record-dialog").close();
+      navigate("estimate-history");
+      message(
+        operation.type === "cancel"
+          ? "Orçamento cancelado e salvo. Dados e pagamentos preservados."
+          : "Orçamento excluído. Histórico, produção, relatórios e financeiro atualizados.",
+      );
+    } catch (error) {
+      $("estimate-record-status").textContent = error.message;
+    } finally {
+      recordBusy = false;
+      $("estimate-record-confirm").disabled = false;
+      $("estimate-record-back").disabled = false;
+    }
+  };
   function renderHistory() {
     const term = $("estimate-history-search").value.toLocaleLowerCase("pt-BR");
     const visible = records
@@ -791,10 +974,11 @@ export function initEstimates({ getState, navigate }) {
           } catch {
             total = "Revisar";
           }
-          return `<article class="card history-row"><div><strong>${esc(q.number)}</strong><h3>${esc(q.customer || "Cliente não informado")}</h3><p class="muted">${esc(q.title)} · ${esc(q.issuedOn || "")}${q.archivedAt ? ` · Arquivado: ${q.status === "cancelled" ? "cancelado" : "concluído"}` : ""}</p></div><strong>${total}</strong><div class="actions"><button data-open-estimate="${esc(q.id)}">Abrir proposta</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button>${q.archivedAt ? `<button class="secondary" data-restore-estimate="${esc(q.id)}">Restaurar no Kanban</button>` : ""}</div></article>`;
+          return `<article class="card history-row"><div><strong>${esc(q.number)}</strong><h3>${esc(q.customer || "Cliente não informado")}</h3><p class="muted">${esc(q.title)} · ${esc(q.issuedOn || "")}${q.archivedAt ? ` · Arquivado: ${q.status === "cancelled" ? "cancelado" : "concluído"}` : ""}</p></div><strong>${total}</strong><div class="actions"><button data-open-estimate="${esc(q.id)}">Abrir proposta</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button><button class="secondary" data-cancel-record="${esc(q.id)}">Cancelar orçamento</button><button class="secondary danger" data-delete-record="${esc(q.id)}">Excluir orçamento</button>${q.archivedAt ? `<button class="secondary" data-restore-estimate="${esc(q.id)}">Restaurar no Kanban</button>` : ""}</div></article>`;
         })
         .join("") || '<div class="card">Nenhum orçamento encontrado.</div>';
     bindOpen();
+    bindRecordActions($("estimate-history-list"));
     $("estimate-history-list")
       .querySelectorAll("[data-restore-estimate]")
       .forEach(
@@ -842,7 +1026,7 @@ export function initEstimates({ getState, navigate }) {
       }
       invalidate();
       sync();
-      cleanSnapshot = JSON.stringify(quote);
+      cleanSnapshot = quoteFingerprint(quote);
       $("estimate-editor").hidden = false;
       navigate("estimates");
       $("estimate-editor").scrollIntoView({ behavior: "smooth" });
@@ -891,11 +1075,11 @@ export function initEstimates({ getState, navigate }) {
       store(KEY, rows);
     }
     if (quote.id === id) {
-      const wasClean = JSON.stringify(quote) === cleanSnapshot;
+      const wasClean = quoteFingerprint(quote) === cleanSnapshot;
       Object.assign(quote, changes);
       for (const key of ["status", "paymentStatus", "paymentDate"])
         form.elements[key].value = quote[key] ?? "";
-      if (wasClean) cleanSnapshot = JSON.stringify(quote);
+      if (wasClean) cleanSnapshot = quoteFingerprint(quote);
       if (!$("estimate-editor").hidden)
         store("papeled-estimate-draft-v1", quote);
     }
@@ -934,7 +1118,14 @@ export function initEstimates({ getState, navigate }) {
     $("estimate-storage").textContent = cloud
       ? "Orçamentos conectados ao Supabase. Histórico completo."
       : "Armazenamento local neste navegador. Para sincronizar, instale a área de orçamentos no Supabase. Use JSON para backup.";
-    renderEstimateKanban($("estimate-history"), records, updateRecord, message);
+    renderEstimateKanban(
+      $("estimate-history"),
+      records,
+      updateRecord,
+      message,
+      (id) => showRecordOperation("cancel", id),
+    );
+    bindRecordActions($("estimate-history"));
     renderHistory();
     await finance.refresh();
     workReports.render();
@@ -971,11 +1162,19 @@ export function initEstimates({ getState, navigate }) {
       }
       sync();
       const saved = records.find((r) => r.id === quote.id);
-      if (saved) cleanSnapshot = JSON.stringify(saved);
+      if (saved) {
+        const contacts = customerContacts(saved);
+        cleanSnapshot = quoteFingerprint({
+          ...saved,
+          customerPhone: contacts.phone,
+          customerEmail: contacts.email,
+        });
+      }
     }
   }
   return {
     refresh,
+    leaveForNavigation: (action) => requestTransition(action),
     refreshCatalog: async () => {
       await refresh();
       renderItems();

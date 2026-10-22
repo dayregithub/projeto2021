@@ -900,6 +900,7 @@
               novo formato de planilha, inicie uma nova proposta.
             </p>
             <form id="estimate-form" onsubmit="return false;">
+              <input type="hidden" name="contact" />
               <input type="hidden" name="paymentStatus" /><input
                 type="hidden"
                 name="paymentDate"
@@ -912,7 +913,16 @@
                       name="customer"
                       maxlength="180" /></label
                   ><label
-                    >Telefone ou e-mail<input name="contact" maxlength="180"
+                    >Telefone<input
+                      name="customerPhone"
+                      type="tel"
+                      maxlength="60"
+                  /></label>
+                  <label
+                    >E-mail<input
+                      name="customerEmail"
+                      type="email"
+                      maxlength="150"
                   /></label>
                 </div>
                 <label
@@ -1057,6 +1067,17 @@
                   Exportar JSON editável
                 </button>
               </div>
+              <div class="estimate-record-actions">
+                <button type="button" class="secondary" id="estimate-cancel">
+                  Cancelar orçamento</button
+                ><button
+                  type="button"
+                  class="secondary danger"
+                  id="estimate-delete"
+                >
+                  Excluir orçamento
+                </button>
+              </div>
             </form>
             <section
               id="estimate-preview"
@@ -1119,6 +1140,20 @@
             ↑ Topo
           </button>
         </div>
+        <dialog
+          id="estimate-record-dialog"
+          aria-labelledby="estimate-record-title"
+        >
+          <h2 id="estimate-record-title"></h2>
+          <p id="estimate-record-description"></p>
+          <p id="estimate-record-status" role="status"></p>
+          <div class="actions">
+            <button id="estimate-record-confirm" type="button"></button
+            ><button id="estimate-record-back" class="secondary" type="button">
+              Não, manter orçamento
+            </button>
+          </div>
+        </dialog>
         <section data-section="assistant" hidden>
           <div class="card">
             <p class="eyebrow">SEU ASSISTENTE DO ESPAÇO MAKER</p>

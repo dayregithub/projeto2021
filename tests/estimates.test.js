@@ -124,6 +124,8 @@ test("gross margin includes embedded taxes and invalid inputs cannot be issued",
 test("branded PDF wraps long budgets over pages without exposing internal costs or notes", async () => {
   const q = newEstimate();
   q.customer = "Cliente de teste";
+  q.customerPhone = "61992430051";
+  q.customerEmail = "cliente@example.com";
   q.internalNotes = "SEGREDO_INTERNO_NAO_EXPORTAR";
   q.items = Array.from({ length: 45 }, (_, i) => ({
     ...newEstimateItem("laser"),
@@ -161,6 +163,9 @@ test("branded PDF wraps long budgets over pages without exposing internal costs 
     text.indexOf("papeledmaker@gmail.com") < text.indexOf("Cliente de teste"),
   );
   assert.match(text, /DADOS DO CLIENTE/);
+  assert.match(text, /Telefone do cliente/);
+  assert.match(text, /E-mail do cliente/);
+  assert.match(text, /cliente@example.com/);
   assert.match(text, /Produto 45/);
   assert.match(text, /TOTAL/);
   assert.doesNotMatch(
@@ -207,6 +212,26 @@ test("issued quotes and pricing defaults are private and only administrators can
       db.query(
         "insert into public.issued_quotes(quote_number,data) values('PM-2','{}')",
       ),
+    );
+    assert.equal(
+      (await db.query("delete from public.issued_quotes returning id")).rows
+        .length,
+      0,
+    );
+    await db.exec(
+      "set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111'",
+    );
+    assert.equal(
+      (
+        await db.query(
+          "delete from public.issued_quotes where quote_number='PM-1' returning id",
+        )
+      ).rows.length,
+      1,
+    );
+    assert.equal(
+      (await db.query("select * from public.issued_quotes")).rows.length,
+      0,
     );
   } finally {
     await db.close();
@@ -698,4 +723,45 @@ test("included tax is visible per item and reconciles with actual sale after dis
   );
   assert.equal(r.tax, 0.04);
   assert.equal(r.total, 10.11);
+});
+
+test("saved quote comparisons tolerate JSONB key order and metadata while detecting actual edits", async () => {
+  const { quoteFingerprint } = await import("../src/quote-edit-state.js");
+  const q = newEstimate();
+
+  // Sorting the nested JSONB representation must not turn a saved quote into a dirty one.
+  const reorder = (value) =>
+    Array.isArray(value)
+      ? value.map(reorder)
+      : value && typeof value === "object"
+        ? Object.fromEntries(
+            Object.entries(value)
+              .reverse()
+              .map(([key, v]) => [key, reorder(v)]),
+          )
+        : value;
+  assert.equal(
+    quoteFingerprint(q),
+    quoteFingerprint({ ...reorder(q), updatedAt: "2026-01-01" }),
+  );
+  const edited = structuredClone(q);
+  edited.customer = "Novo cliente";
+  assert.notEqual(quoteFingerprint(q), quoteFingerprint(edited));
+});
+test("separate customer contact fields preserve older combined contacts and validate email", async () => {
+  const { customerContacts } = await import("../src/customer-contacts.js");
+  assert.deepEqual(
+    customerContacts({ contact: "(61) 99243-0051 | maria@example.com" }),
+    { phone: "(61) 99243-0051", email: "maria@example.com" },
+  );
+  assert.deepEqual(customerContacts({ contact: "1234567890@example.com" }), {
+    phone: "",
+    email: "1234567890@example.com",
+  });
+  const q = newEstimate();
+  q.customerPhone = "61992430051";
+  q.customerEmail = "maria@example.com";
+  assert.doesNotThrow(() => validateEstimate(q));
+  q.customerEmail = "inválido";
+  assert.throws(() => validateEstimate(q), /E-mail do cliente/);
 });

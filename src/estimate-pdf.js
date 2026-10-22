@@ -1,3 +1,4 @@
+import { customerContacts } from "./customer-contacts.js";
 import { companyLinks } from "./company-links.js";
 import { jsPDF } from "jspdf";
 import {
@@ -154,7 +155,11 @@ export async function estimatePDF(quote, { logoData } = {}) {
   text("DADOS DO CLIENTE", margin, y, 9, "bold", accent);
   y += 6;
   block("Cliente", quote.customer || "Não informado");
-  if (quote.contact) block("Contato do cliente", quote.contact);
+  const customer = customerContacts(quote);
+  if (customer.phone) block("Telefone do cliente", customer.phone);
+  if (customer.email) block("E-mail do cliente", customer.email);
+  if (!customer.phone && !customer.email && quote.contact)
+    block("Contato do cliente", quote.contact);
   if (quote.customerId) block("CPF / CNPJ do cliente", quote.customerId);
   doc.setDrawColor(228, 217, 207);
   doc.line(margin, y, 194, y);

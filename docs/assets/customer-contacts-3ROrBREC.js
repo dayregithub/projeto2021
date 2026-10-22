@@ -1,0 +1,1 @@
+function s(t){const c=t.contact||"",o=t.customerEmail||c.match(/[^\s<>|;,]+@[^\s<>|;,]+\.[^\s<>|;,]+/)?.[0]||"",e=c.replace(o,"");return{phone:t.customerPhone||e.match(/(?:\+|\()?\d[\d\s().-]{7,}\d/)?.[0]?.trim()||"",email:o}}export{s as c};

@@ -99,6 +99,8 @@ export function newEstimate(profile = {}) {
     validityDays: 7,
     customer: "",
     contact: "",
+    customerPhone: "",
+    customerEmail: "",
     customerId: "",
     customerProjectId: null,
     title: "Projeto personalizado",
@@ -515,7 +517,7 @@ export function validateEstimate(q) {
   for (const [key, max] of [
     ["number", 60],
     ["customer", 180],
-    ["contact", 180],
+    ["contact", 240],
     ["customerId", 40],
     ["title", 180],
     ["delivery", 1500],
@@ -563,6 +565,18 @@ export function validateEstimate(q) {
   }
   if (q.paymentStatus === "paid" && !q.paymentDate)
     throw Error("Informe a data do pagamento realizado.");
+  if (
+    q.customerPhone != null &&
+    (typeof q.customerPhone !== "string" || q.customerPhone.length > 60)
+  )
+    throw Error("Telefone do cliente inválido.");
+  if (
+    q.customerEmail != null &&
+    (typeof q.customerEmail !== "string" ||
+      q.customerEmail.length > 150 ||
+      (q.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q.customerEmail)))
+  )
+    throw Error("E-mail do cliente inválido.");
   const l = q.layout;
   if (
     !l ||

@@ -29,6 +29,7 @@ test("floating quote actions protect edits, close and start a new quote", async 
   await page.locator("#estimate-leave-save").click();
   await expect(page.locator("#estimate-editor")).toBeHidden();
   await page.locator("#new-laser-estimate").click();
+  await page.locator("#estimate-close").click();
   await page.locator("#estimate-new").click();
   await expect(page.locator("#estimate-new-dialog")).toBeVisible();
   await page.locator("#estimate-new-print").click();
@@ -75,6 +76,7 @@ test("finance, archived work reports and exports stay consistent after reload", 
   ).toBe("%PDF");
   await page.locator('[data-tab="production"]').click();
   await page.locator("[data-archive-cancelled]").click();
+  await page.locator("#estimate-record-confirm").click();
   await expect(page.locator("[data-estimate-card]")).toHaveCount(0);
   await page.locator('[data-tab="finance"]').click();
   await expect(page.locator("#finance-summary .metric").nth(0)).toContainText(

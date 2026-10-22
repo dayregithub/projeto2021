@@ -992,3 +992,27 @@ main {
     margin-left: 12px;
   }
 }
+
+.estimate-record-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e4d9cf;
+}
+button.danger {
+  color: #9b3025;
+  border-color: #bd8a82;
+}
+#estimate-record-dialog {
+  max-width: 560px;
+  width: calc(100% - 32px);
+  border: 1px solid #bfa99b;
+  border-radius: 14px;
+  padding: 24px;
+  color: #332721;
+}
+#estimate-record-dialog::backdrop {
+  background: #20171380;
+}
