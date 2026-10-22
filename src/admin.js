@@ -1,3 +1,4 @@
+import { initEstimateSettings } from "./estimate-settings.js";
 import { initCustomerProjectsPanel } from "./customer-projects.js";
 import { initResourceCatalog } from "./resource-catalog.js";
 import { initWorkspaceCloud } from "./workspace-cloud.js";
@@ -47,6 +48,13 @@ const check = (result) => {
   if (result.error) throw result.error;
   return result.data;
 };
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-go]");
+  if (button) {
+    event.preventDefault();
+    tab(button.dataset.go);
+  }
+});
 function tab(name) {
   document
     .querySelectorAll("[data-section]")
@@ -378,6 +386,7 @@ async function enter() {
   await load();
   await estimates.refresh();
   await resources.refresh();
+  await estimateSettings.refresh();
   await customerProjects.refresh();
   workspaceCloud?.stop();
   workspaceCloud = await initWorkspaceCloud({
@@ -464,6 +473,13 @@ const estimates = initEstimates({
 const resources = initResourceCatalog({
   getState: () => ({ client, local }),
   onSaved: () => estimates.refreshCatalog(),
+});
+const estimateSettings = initEstimateSettings({
+  getState: () => ({ client, local }),
+  onSaved: async () => {
+    await estimates.refreshCatalog();
+    await resources.refresh();
+  },
 });
 const customerProjects = initCustomerProjectsPanel({
   getState: () => ({ client, local }),

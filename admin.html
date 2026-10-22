@@ -49,21 +49,33 @@
         <div class="heading">
           <div>
             <p class="eyebrow">ESPAÇO MAKER ONLINE</p>
-            <h1>Seu estúdio por dentro.</h1>
+            <h1>Gestão Papeled Maker</h1>
             <p id="mode-note"></p>
           </div>
           <button class="secondary" id="logout">Sair</button>
         </div>
         <nav aria-label="Seções do painel">
-          <button data-tab="overview">Visão geral</button
-          ><button data-tab="files">Arquivos baixados</button
-          ><button data-tab="products">Produtos</button
-          ><button data-tab="quotes">Solicitações</button
-          ><button data-tab="estimates">Emitir orçamento</button
-          ><button data-tab="customer-projects">Projetos de clientes</button
-          ><button data-tab="resources">Materiais e serviços</button
-          ><button data-tab="database">Banco de dados</button
-          ><button data-tab="assistant">Assistente de IA</button>
+          <div class="nav-group">
+            <span>COMERCIAL</span
+            ><button data-tab="estimates">Novo orçamento</button
+            ><button data-tab="estimate-history">Histórico</button
+            ><button data-tab="production" class="production-nav">
+              Produção · Kanban</button
+            ><button data-tab="quotes">Solicitações</button
+            ><button data-tab="customer-projects">Projetos de clientes</button>
+          </div>
+          <div class="nav-group">
+            <span>CADASTROS</span
+            ><button data-tab="resources">Materiais e serviços</button
+            ><button data-tab="estimate-settings">Custos e marca do PDF</button
+            ><button data-tab="products">Produtos do site</button>
+          </div>
+          <div class="nav-group">
+            <span>GESTÃO</span><button data-tab="overview">Estatísticas</button
+            ><button data-tab="files">Arquivos baixados</button
+            ><button data-tab="assistant">Assistente de IA</button
+            ><button data-tab="database">Banco de dados</button>
+          </div>
         </nav>
         <section data-section="customer-projects" hidden>
           <h2>Projetos de clientes</h2>
@@ -368,125 +380,216 @@
           </p>
           <div id="quote-list"></div>
         </section>
+
+        <section data-section="estimate-history" hidden>
+          <div class="heading">
+            <div>
+              <p class="eyebrow">COMERCIAL</p>
+              <h2>Histórico de orçamentos</h2>
+              <p>Localize uma proposta, confira o valor e retome a edição.</p>
+            </div>
+            <button data-go="estimates">Novo orçamento</button>
+          </div>
+          <label
+            >Buscar cliente ou número<input
+              id="estimate-history-search"
+              type="search"
+              placeholder="Cliente, número ou projeto"
+          /></label>
+          <p id="estimate-history-status" role="status"></p>
+          <div id="estimate-history-list"></div>
+        </section>
+        <section data-section="production" hidden>
+          <div class="heading">
+            <div>
+              <p class="eyebrow">ACOMPANHAMENTO</p>
+              <h2>Produção</h2>
+              <p>
+                Da proposta à entrega, com pagamento e data no próprio cartão.
+              </p>
+            </div>
+            <button data-go="estimates">Novo orçamento</button>
+          </div>
+          <p id="production-status" role="status"></p>
+          <div id="production-summary" class="metrics"></div>
+          <p class="muted">
+            Arraste um cartão ou use o seletor de etapa. Pagamento realizado é
+            um registro manual.
+          </p>
+          <div id="estimate-history"></div>
+        </section>
+        <section data-section="estimate-settings" hidden>
+          <div class="heading">
+            <div>
+              <p class="eyebrow">CONFIGURE UMA VEZ</p>
+              <h2>Configurações de orçamento</h2>
+              <p>
+                Custos e marca para novos orçamentos. Alterações não recalculam
+                propostas já criadas.
+              </p>
+            </div>
+            <button data-go="resources" class="secondary">
+              Cadastrar materiais e serviços
+            </button>
+          </div>
+          <form id="estimate-settings-form">
+            <section class="card">
+              <h3>Laser · tarifa e custo por hora</h3>
+              <p>
+                A venda usa o tempo de máquina. O custo interno reúne energia,
+                operador, manutenção e depreciação; não some esses custos
+                novamente em cada item.
+              </p>
+              <div id="estimate-laser-settings" class="grid"></div>
+              <p id="laser-settings-example" class="muted"></p>
+            </section>
+            <section class="card">
+              <h3>Impressão 3D · máquina e energia</h3>
+              <p>
+                Preço e especificações do filamento ficam no cadastro de
+                materiais. Consumo em gramas e duração vêm do fatiador.
+              </p>
+              <div id="estimate-print-settings" class="grid three"></div>
+            </section>
+            <section class="card">
+              <h3>Regras comerciais</h3>
+              <div id="estimate-commercial-settings" class="grid"></div>
+              <p class="muted">
+                Acréscimo sobre custo e margem sobre venda são métodos
+                diferentes. No laser por tarifa, o acréscimo é aplicado somente
+                ao material e acabamento; a hora de máquina já tem preço de
+                venda.
+              </p>
+            </section>
+            <section class="card">
+              <h3>Marca e apresentação do PDF</h3>
+              <div class="grid three">
+                <label
+                  >Modelo<select name="template">
+                    <option value="classic">Clássico</option>
+                    <option value="modern">Cabeçalho destacado</option>
+                    <option value="compact">Compacto</option>
+                  </select></label
+                ><label>Cor principal<input name="accent" type="color" /></label
+                ><label
+                  >Fonte do documento<input
+                    name="fontSize"
+                    type="number"
+                    min="9"
+                    max="13"
+                /></label>
+              </div>
+              <div id="estimate-layout-fields" class="grid"></div>
+              <label
+                >Logo própria (PNG/JPG até 2 MB)<input
+                  id="estimate-logo"
+                  type="file"
+                  accept="image/png,image/jpeg" /></label
+              ><button
+                type="button"
+                class="secondary"
+                id="estimate-default-logo"
+              >
+                Restaurar logo Papeled Maker</button
+              ><label class="check"
+                ><input type="checkbox" name="showTechnical" /> Mostrar tempo,
+                medidas e consumo dos itens</label
+              ><label class="check"
+                ><input type="checkbox" name="showPayment" /> Mostrar condições
+                de pagamento</label
+              >
+              <p class="muted">
+                Custos internos, lucro, impostos calculados e anotações internas
+                não aparecem no PDF do cliente.
+              </p>
+            </section>
+
+            <button type="submit" id="estimate-save-profile">
+              Salvar configurações para novos orçamentos
+            </button>
+          </form>
+          <p id="estimate-settings-status" role="status"></p>
+        </section>
         <section data-section="estimates" hidden>
           <div class="heading">
-            <h2>Orçamentos do estúdio</h2>
+            <p class="eyebrow">COMERCIAL · NOVA PROPOSTA</p>
+            <h2>Criar orçamento</h2>
             <div class="actions">
               <button id="new-laser-estimate">Orçar laser</button
               ><button id="new-print-estimate">Orçar impressão 3D</button
               ><button id="show-estimate-board" class="secondary">
-                Acompanhar orçamentos (Kanban)
+                Abrir produção
               </button>
             </div>
           </div>
           <p id="estimate-storage" class="muted"></p>
-          <p>
-            Os parâmetros iniciais seguem as planilhas fornecidas. Revise
-            tarifas e custos da sua operação antes de emitir. Tempos e gramas da
-            impressão devem vir do fatiador; não são estimados a partir do STL.
+          <p class="muted">
+            Escolha laser ou impressão 3D, informe o cliente e os itens.
+            Materiais, custos e marca são configurados nas áreas próprias.
           </p>
-          <p>
-            <a href="./database-update.sql" target="_blank" rel="noopener"
-              >Instalar sincronização no Supabase (SQL adicional, uma vez)</a
-            >
-          </p>
-          <label
-            >Importar orçamento editável (.orcamento.json)<input
-              id="estimate-import-json"
-              type="file"
-              accept=".json,application/json"
-          /></label>
-          <details>
-            <summary>Histórico de orçamentos · acompanhamento Kanban</summary>
-            <p>
-              Arraste os cartões ou use o seletor de etapa. Pagamento e data
-              podem ser atualizados no próprio cartão.
-            </p>
-            <div id="estimate-history"></div>
+          <details class="card">
+            <summary>Importar proposta editável</summary>
+            <label
+              >Arquivo .orcamento.json<input
+                id="estimate-import-json"
+                type="file"
+                accept=".json,application/json"
+            /></label>
           </details>
           <div id="estimate-editor" hidden>
             <h2 id="estimate-editor-title"></h2>
             <form id="estimate-form" onsubmit="return false;">
               <div class="card">
-                <h3>Documento e cliente</h3>
-                <div class="grid three">
-                  <label
-                    >Número<input
-                      name="number"
-                      maxlength="60"
-                      required /></label
-                  ><label>Emissão<input name="issuedOn" type="date" /></label
-                  ><label
-                    >Validade (dias)<input
-                      name="validityDays"
-                      type="number"
-                      min="0"
-                      max="3650"
-                  /></label>
-                </div>
+                <h3>1. Cliente e projeto</h3>
                 <div class="grid">
                   <label
                     >Nome do cliente<input
                       name="customer"
                       maxlength="180" /></label
                   ><label
-                    >Contato do cliente<input
-                      name="contact"
-                      maxlength="180" /></label
-                  ><label
-                    >CPF / CNPJ do cliente (opcional)<input
-                      name="customerId"
-                      maxlength="40" /></label
-                  ><label
-                    >Título / referência do projeto<input
-                      name="title"
-                      maxlength="180"
+                    >Telefone ou e-mail<input name="contact" maxlength="180"
                   /></label>
                 </div>
                 <label
-                  >Situação<select name="status">
-                    <option value="draft">Rascunho</option>
-                    <option value="sent">Enviado ao cliente</option>
-                    <option value="approved">Aprovado</option>
-                    <option value="in_progress">Em execução</option>
-                    <option value="completed">Concluído</option>
-                    <option value="delivered">Entregue</option>
-                    <option value="rejected">Não aprovado</option>
-                  </select></label
-                >
-              </div>
-              <div class="card grid">
-                <label
-                  >Pagamento<select name="paymentStatus">
-                    <option value="pending">Pendente</option>
-                    <option value="paid">Realizado</option>
-                  </select></label
-                ><label
-                  >Data do pagamento<input name="paymentDate" type="date"
+                  >Projeto / referência<input name="title" maxlength="180"
                 /></label>
+                <details class="item-extra">
+                  <summary>Número, validade e dados adicionais</summary>
+                  <div class="grid three">
+                    <label
+                      >Número do orçamento<input
+                        name="number"
+                        maxlength="60"
+                        required /></label
+                    ><label>Emissão<input name="issuedOn" type="date" /></label
+                    ><label
+                      >Validade (dias)<input
+                        name="validityDays"
+                        type="number"
+                        min="0"
+                        max="3650" /></label
+                    ><label
+                      >CPF / CNPJ (opcional)<input
+                        name="customerId"
+                        maxlength="40" /></label
+                    ><label
+                      >Situação<select name="status">
+                        <option value="draft">Rascunho</option>
+                        <option value="sent">Enviado ao cliente</option>
+                        <option value="approved">Aprovado</option>
+                        <option value="in_progress">Em execução</option>
+                        <option value="completed">Concluído</option>
+                        <option value="delivered">Entregue</option>
+                        <option value="rejected">Não aprovado</option>
+                      </select></label
+                    >
+                  </div>
+                </details>
               </div>
-              <details class="card">
-                <summary>Custos, tarifas e regras de cálculo</summary>
-                <p class="muted">
-                  <span data-laser-help
-                    >Tarifa laser = minutos × preço/hora ÷ 60; material,
-                    acabamento e extras recebem o acréscimo. A mão de obra da
-                    máquina laser já está no custo operacional.</span
-                  >
-                  Em “Custo + acréscimo”, 150% significa custo × 2,5; “Margem”
-                  considera a margem e os impostos embutidos. O trabalho manual
-                  é separado. Material fornecido pelo cliente zera somente seu
-                  custo.
-                </p>
-                <div id="estimate-pricing"></div>
-                <button
-                  class="secondary"
-                  type="button"
-                  id="estimate-save-profile"
-                >
-                  Salvar custos e layout como padrão
-                </button>
-              </details>
+              <input type="hidden" name="paymentStatus" /><input
+                type="hidden"
+                name="paymentDate"
+              />
               <div id="estimate-items"></div>
               <div class="actions">
                 <button type="button" class="secondary" id="add-laser-item">
@@ -495,8 +598,8 @@
                   Adicionar item impressão 3D
                 </button>
               </div>
-              <div class="card">
-                <h3>Ajustes comerciais</h3>
+              <details class="card" id="estimate-commercial">
+                <summary>Desconto, frete e preparação (opcional)</summary>
                 <div class="grid three">
                   <label
                     >Preparação interna (min, custo de mão de obra)<input
@@ -540,10 +643,10 @@
                   frete é somado depois. O preço manual de cada item substitui o
                   sugerido. Vendas abaixo do custo são permitidas, com aviso.
                 </p>
-              </div>
+              </details>
               <div id="estimate-summary"></div>
-              <div class="card">
-                <h3>Condições do orçamento</h3>
+              <details class="card">
+                <summary>Prazo, pagamento e observações</summary>
                 <label
                   >Prazo de produção / entrega<textarea
                     name="delivery"
@@ -569,49 +672,6 @@
                     maxlength="6000"
                   ></textarea>
                 </label>
-              </div>
-              <details class="card">
-                <summary>Editar layout, marca e logo do PDF</summary>
-                <div class="grid three">
-                  <label
-                    >Modelo<select name="template">
-                      <option value="classic">Clássico</option>
-                      <option value="modern">Cabeçalho destacado</option>
-                      <option value="compact">Compacto</option>
-                    </select></label
-                  ><label
-                    >Cor principal<input name="accent" type="color" /></label
-                  ><label
-                    >Fonte do documento<input
-                      name="fontSize"
-                      type="number"
-                      min="9"
-                      max="13"
-                  /></label>
-                </div>
-                <div id="estimate-layout-fields" class="grid"></div>
-                <label
-                  >Logo própria (PNG/JPG até 2 MB)<input
-                    id="estimate-logo"
-                    type="file"
-                    accept="image/png,image/jpeg" /></label
-                ><button
-                  type="button"
-                  class="secondary"
-                  id="estimate-default-logo"
-                >
-                  Restaurar logo Papeled Maker</button
-                ><label class="check"
-                  ><input type="checkbox" name="showTechnical" /> Mostrar tempo,
-                  medidas e consumo dos itens</label
-                ><label class="check"
-                  ><input type="checkbox" name="showPayment" /> Mostrar
-                  condições de pagamento</label
-                >
-                <p class="muted">
-                  Custos internos, lucro, impostos calculados e anotações
-                  internas não aparecem no PDF do cliente.
-                </p>
               </details>
               <div class="actions">
                 <button type="button" id="estimate-save">

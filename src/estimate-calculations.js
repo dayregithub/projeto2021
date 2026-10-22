@@ -126,6 +126,10 @@ export function laserOperating(pricing) {
     depreciation = p.laserInvestment / p.depreciationMonths / productiveHours,
     overhead = p.overheadMonthly / productiveHours,
     maintenance = p.laserMaintenanceHour;
+  const computed =
+    tube + energy + labor + depreciation + overhead + maintenance;
+  const hour = p.laserCostHour ?? computed;
+  number(hour, "Custo interno laser por hora");
   return {
     tube,
     energy,
@@ -133,9 +137,8 @@ export function laserOperating(pricing) {
     depreciation,
     overhead,
     maintenance,
-    hour: tube + energy + labor + depreciation + overhead + maintenance,
-    minute:
-      (tube + energy + labor + depreciation + overhead + maintenance) / 60,
+    hour,
+    minute: hour / 60,
   };
 }
 export function calculateEstimate(quote) {
@@ -155,6 +158,10 @@ export function calculateEstimate(quote) {
   number(p.taxPercent, "Impostos", { max: 99.99 });
   number(p.markupPercent, "Acréscimo", { max: 10000 });
   number(p.marginPercent, "Margem", { max: 99.99 });
+  if (p.laserMaterialMarkup !== undefined)
+    number(p.laserMaterialMarkup, "Acréscimo material laser", { max: 10000 });
+  if (p.printMarkup !== undefined)
+    number(p.printMarkup, "Acréscimo impressão 3D", { max: 10000 });
   const sheetM2 = (p.sheetWidth * p.sheetLength) / 10000,
     materialM2 = p.sheetPrice / sheetM2;
   const items = quote.items.map((item, index) => {
@@ -245,13 +252,17 @@ export function calculateEstimate(quote) {
         item.extras +
         serviceCost;
     let suggested;
+    const markup =
+      item.process === "laser"
+        ? (p.laserMaterialMarkup ?? p.markupPercent)
+        : (p.printMarkup ?? p.markupPercent);
     if (item.method === "rate")
       suggested =
         (item.minutes / 60) * p.laserSaleHour +
         (material + handling + item.paintingCost + item.extras) *
-          (1 + p.markupPercent / 100);
+          (1 + markup / 100);
     else if (item.method === "markup")
-      suggested = (unitCost - serviceCost) * (1 + p.markupPercent / 100);
+      suggested = (unitCost - serviceCost) * (1 + markup / 100);
     else {
       if (p.marginPercent + p.taxPercent >= 100)
         throw Error("Margem + impostos devem ser menores que 100%.");

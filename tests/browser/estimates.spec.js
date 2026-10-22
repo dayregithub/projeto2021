@@ -11,12 +11,7 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.locator("#local-preview").click();
   await page.locator('[data-tab="estimates"]').click();
   await page.locator("#new-laser-estimate").click();
-  await page
-    .getByText("Custos, tarifas e regras de cálculo", { exact: true })
-    .click();
-  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeVisible();
-  await expect(page.locator('[data-pricing="filamentKg"]')).toBeHidden();
-  await expect(page.locator('[data-pricing="markupPercent"]')).toBeVisible();
+  await expect(page.locator("#estimate-form [data-pricing]")).toHaveCount(0);
   await page.locator('[data-item="description"]').fill("Caixa personalizada");
   await page.locator('[data-item="minutes"]').fill("60");
   await page.locator('[data-item="quantity"]').fill("2");
@@ -24,6 +19,7 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
     .locator('#estimate-form [name="customer"]')
     .fill("Cliente de teste");
   await expect(page.locator("#estimate-summary")).toContainText("140,00");
+  await page.locator("#estimate-commercial summary").click();
   await page
     .locator('#estimate-form [name="discountType"]')
     .selectOption("percent");
@@ -49,25 +45,19 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.reload();
   await expect(page.locator("#workspace")).toBeVisible();
   await page.locator('[data-tab="estimates"]').click();
-  await page
-    .locator("#estimate-history")
-    .locator("..")
-    .locator("summary")
-    .click();
-  await expect(page.locator("#estimate-history")).toContainText(
+  await page.locator('[data-tab="estimate-history"]').click();
+  await expect(page.locator("#estimate-history-list")).toContainText(
     "Cliente de teste",
   );
-  await page.locator("[data-open-estimate]").first().click();
+  await page
+    .locator("#estimate-history-list [data-open-estimate]")
+    .first()
+    .click();
   await expect(page.locator('#estimate-form [name="customer"]')).toHaveValue(
     "Cliente de teste",
   );
   await page.locator("#new-print-estimate").click();
-  await page
-    .getByText("Custos, tarifas e regras de cálculo", { exact: true })
-    .click();
-  await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
-  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeHidden();
-  await expect(page.locator("#estimate-summary")).not.toContainText("MDF");
+  await expect(page.locator("#estimate-form [data-pricing]")).toHaveCount(0);
   await page.locator('[data-item="grams"]').fill("110");
   await page.locator('[data-item="hours"]').fill("5");
   await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
@@ -90,10 +80,7 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
     "Prévia atualizada",
   );
   await page.locator("#add-laser-item").click();
-  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeVisible();
-  await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
+  await expect(page.locator(".estimate-item")).toHaveCount(2);
   await page.locator('[data-remove="1"]').click();
-  await expect(page.locator('[data-pricing="sheetPrice"]')).toBeHidden();
-  await expect(page.locator('[data-pricing="filamentKg"]')).toBeVisible();
   expect(errors).toEqual([]);
 });

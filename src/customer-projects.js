@@ -112,7 +112,10 @@ export function initCustomerProjectsPanel({ getState, onQuote, onOpen }) {
         info.textContent = `${row.phone || "Telefone não informado"} · ${row.email || "E-mail não informado"} · ${{ save: "Salvar", export: "Exportar", quote: "Pedir orçamento" }[row.action]} · ${new Date(row.created_at).toLocaleString("pt-BR")}`;
         card.append(info);
         const project = document.createElement("p");
-        project.textContent = `${row.project.name || row.project.model} · ${row.project.width} × ${row.project.depth} × ${row.project.height} mm`;
+        project.textContent =
+          row.project.model === "external"
+            ? `${row.project.name} · ${row.project.files?.length || 0} arquivo(s) externo(s)`
+            : `${row.project.name || row.project.model} · ${row.project.width} × ${row.project.depth} × ${row.project.height} mm`;
         card.append(project);
         const details = document.createElement("details"),
           summary = document.createElement("summary"),
@@ -166,6 +169,10 @@ export function initCustomerProjectsPanel({ getState, onQuote, onOpen }) {
           const b = document.createElement("button");
           b.textContent = label;
           b.className = "secondary";
+          if (row.project.model === "external" && label === "Abrir projeto") {
+            b.disabled = true;
+            b.textContent = "Veja arquivos e especificações acima";
+          }
           b.onclick = () => {
             try {
               handler();

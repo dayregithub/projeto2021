@@ -5,7 +5,7 @@ import {
 } from "./file-delivery.js";
 // Files stay in browser memory. Delivery happens only in the visitor's chosen
 // application; wa.me and mailto links carry text, never attachments.
-export function initExternalFiles() {
+export function initExternalFiles({ captureCustomer = async () => true } = {}) {
   const $ = (id) => document.getElementById(id),
     dialog = $("external-files-dialog"),
     input = $("external-files"),
@@ -121,14 +121,25 @@ export function initExternalFiles() {
           "Não foi possível preparar os anexos. Selecione os arquivos novamente.";
     }
   }
-  $("external-download").onclick = () => {
-    if (!archive) return;
+  const captureExternal = () =>
+    captureCustomer("export", {
+      model: "external",
+      name: name.value.trim() || "Criação própria",
+      files: files.map((file) => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      })),
+      details: details.value.trim(),
+    });
+  $("external-download").onclick = async () => {
+    if (!archive || !(await captureExternal())) return;
     downloadDelivery(archive);
     status.textContent =
       "ZIP baixado com os arquivos. No WhatsApp ou e-mail, use o clipe para anexar o pacote antes de enviar.";
   };
-  $("external-email-file").onclick = () => {
-    if (!archive) return;
+  $("external-email-file").onclick = async () => {
+    if (!archive || !(await captureExternal())) return;
     downloadDelivery(
       deliveryEmail(files, contents, {
         name: name.value.trim(),

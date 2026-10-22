@@ -1220,7 +1220,7 @@ for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
     (key === "dividerJoint"
       ? '<option value="cross">Meio encaixe (projeto anterior)</option>'
       : "");
-initExternalFiles();
+initExternalFiles({ captureCustomer });
 mountIcons();
 $('[data-filter="all"] span').textContent = CATALOG_GROUPS.length;
 try {

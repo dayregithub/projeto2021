@@ -419,3 +419,187 @@ button[aria-busy="true"] {
   width: 100%;
   box-sizing: border-box;
 }
+
+/* Separate commercial work from setup and production. */
+main {
+  max-width: 1550px;
+}
+#workspace:not([hidden]) {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+#workspace > .heading {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+#workspace > .heading h1 {
+  font-size: 26px;
+}
+#workspace > nav {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  position: sticky;
+  top: 16px;
+  padding: 16px 10px;
+  background: #fff;
+  border: 1px solid #e5dcd5;
+  border-radius: 14px;
+}
+#workspace > section {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+}
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-group > span {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 750;
+  color: #8c766a;
+  letter-spacing: 0.1em;
+}
+.nav-group button {
+  text-align: left;
+  border: 0;
+  margin: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #49372f;
+  padding: 10px 12px;
+}
+.nav-group button[aria-selected="true"] {
+  background: #684b43;
+  color: #fff;
+}
+.nav-group .production-nav {
+  border-left: 3px solid #bd935c;
+}
+.item-extra {
+  border-top: 1px solid #e6ded8;
+  margin: 16px 0;
+  padding: 12px 0;
+}
+.item-extra summary {
+  font-size: 14px;
+  color: #684b43;
+}
+.item-total {
+  background: #f5efe9;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 750;
+  text-align: right;
+}
+.estimate-material {
+  background: #fbf8f5;
+  padding: 14px;
+  border-radius: 10px;
+  margin: 16px 0;
+}
+.text-action {
+  background: transparent;
+  color: #684b43;
+  border: 0;
+  padding: 0;
+  text-decoration: underline;
+  font-size: 13px;
+}
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 20px;
+  align-items: center;
+}
+.history-row h3 {
+  margin: 4px 0;
+}
+.history-row p {
+  margin: 0;
+}
+.history-row .actions {
+  flex-wrap: wrap;
+}
+#estimate-settings-form > .card {
+  margin-bottom: 20px;
+}
+#estimate-items .heading button {
+  padding: 6px 9px;
+  font-size: 13px;
+}
+@media (max-width: 850px) {
+  #workspace:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  #workspace > nav {
+    grid-column: 1;
+    grid-row: 2;
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    max-width: 100%;
+    gap: 8px;
+    padding: 8px;
+  }
+  #workspace > .heading {
+    grid-row: 1;
+  }
+  #workspace > section {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .nav-group {
+    display: contents;
+  }
+  .nav-group > span {
+    display: none;
+  }
+  .nav-group button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .history-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  main {
+    padding: 0 14px;
+    margin: 18px auto;
+  }
+}
+
+@media (max-width: 850px) {
+  #workspace > nav {
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+  .nav-group button {
+    font-size: 13px;
+  }
+}
+
+#estimate-form > .actions {
+  position: static;
+  backdrop-filter: none;
+  background: transparent;
+  padding: 8px 0;
+}
+#estimate-form > details.card {
+  margin: 18px 0;
+}
+#estimate-form > details.card > summary {
+  padding: 4px 0;
+}
+#estimate-form > details.card[open] > summary {
+  margin-bottom: 16px;
+}

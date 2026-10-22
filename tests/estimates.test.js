@@ -267,7 +267,7 @@ test("combined database update is repeatable, customer writes are private, backu
       ),
     );
     await db.query(
-      "select public.register_customer_project('11111111-1111-4111-8111-111111111111','Maria','','','save','{\"model\":\"grid\"}')",
+      "select public.register_customer_project('11111111-1111-4111-8111-111111111111','Maria','','maria@example.com','save','{\"model\":\"grid\"}')",
     );
     await assert.rejects(
       db.query("update public.customer_projects set customer_name='x'"),
@@ -334,4 +334,31 @@ test("workspace restore merges without losing local quotes and rolls back storag
     /Quota/,
   );
   assert.equal(JSON.stringify([...values]), before);
+});
+
+test("consolidated laser cost changes only internal cost, never double-charges the hourly sale", () => {
+  const q = newEstimate();
+  q.items[0].minutes = 60;
+  q.pricing.laserCostHour = 30;
+  const result = calculateEstimate(q);
+  assert.equal(result.cost, 30);
+  assert.equal(result.total, 70);
+  const legacy = newEstimate();
+  legacy.items[0].minutes = 60;
+  assert.equal(calculateEstimate(legacy).cost, 6.86);
+});
+
+test("new laser and 3D markups are independent while legacy markup stays supported", () => {
+  const q = newEstimate();
+  q.pricing.laserMaterialMarkup = 100;
+  q.pricing.printMarkup = 300;
+  q.pricing.markupPercent = 999;
+  q.items[0].minutes = 60;
+  q.items[0].boards = 1;
+  q.items[0].material = { name: "Chapa", price: 100, width: 100, length: 100 };
+  assert.equal(calculateEstimate(q).total, 118);
+  q.items = [newEstimateItem("print")];
+  q.items[0].grams = 100;
+  q.items[0].material = { name: "PETG", price: 200 };
+  assert.equal(calculateEstimate(q).total, 80);
 });

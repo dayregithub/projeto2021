@@ -25,8 +25,11 @@ test("material and service registry feeds quotes with independent prices and sna
   await page
     .locator("[data-material-name]")
     .selectOption({ label: "MDF 6 mm" });
-  await expect(page.locator('[data-material="price"]')).toHaveValue("200");
+  await expect(page.locator("[data-material-summary]")).toContainText("200,00");
   await page.locator('[data-item="boards"]').fill("1");
+  await page
+    .getByText("Adicionar serviços e recursos", { exact: true })
+    .click();
   await page.locator("[data-service-pick]").selectOption("0");
   await page.locator("[data-service-add]").click();
   await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
@@ -36,14 +39,14 @@ test("material and service registry feeds quotes with independent prices and sna
   await page.locator("#estimate-save").click();
   await page.reload();
   await page.locator('[data-tab="estimates"]').click();
-  await expect(page.locator('[data-material="price"]')).toHaveValue("200");
+  await expect(page.locator("[data-material-summary]")).toContainText("200,00");
   await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
   await page.locator('[data-tab="resources"]').click();
   await page.locator("[data-material-edit]").click();
   await f.locator('[name="price"]').fill("250");
   await f.locator('[type="submit"]').click();
   await page.locator('[data-tab="estimates"]').click();
-  await expect(page.locator('[data-material="price"]')).toHaveValue("200");
+  await expect(page.locator("[data-material-summary]")).toContainText("200,00");
 });
 
 test("customer name is required and action is blocked until linked project registration succeeds", async ({
@@ -86,6 +89,12 @@ test("customer name is required and action is blocked until linked project regis
   await dialog.locator('[type="submit"]').click();
   expect(captured).toHaveLength(0);
   await dialog.locator('[name="name"]').fill("Maria Cliente");
+  await dialog.locator('[type="submit"]').click();
+  expect(captured).toHaveLength(0);
+  await expect(dialog.locator('[name="email"]')).toHaveAttribute(
+    "required",
+    "",
+  );
   await dialog.locator('[name="email"]').fill("maria@example.com");
   await dialog.locator('[type="submit"]').click();
   await expect(dialog.locator('[role="status"]')).toContainText(
@@ -103,6 +112,15 @@ test("customer name is required and action is blocked until linked project regis
   expect(captured[0].p_name).toBe("Maria Cliente");
   expect(captured[0].p_project.model).toBeTruthy();
   expect(captured[0].p_action).toBe("save");
+  await page.locator("#export-project").click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  expect(captured[1].p_action).toBe("export");
+  expect(captured[1].p_email).toBe("maria@example.com");
+  const download = page.waitForEvent("download");
+  await page.locator('[data-export="json"]').click();
+  await download;
 });
 
 test("kanban moves issued quotes through delivery and preserves paid date", async ({
@@ -115,11 +133,7 @@ test("kanban moves issued quotes through delivery and preserves paid date", asyn
   await page.locator("#new-laser-estimate").click();
   await page.locator('[data-item="minutes"]').fill("60");
   await page.locator("#estimate-save").click();
-  await page
-    .locator("#estimate-history")
-    .locator("..")
-    .locator("summary")
-    .click();
+  await page.locator('[data-tab="production"]').click();
   await page.locator("[data-stage-change]").selectOption("approved");
   await expect(
     page.locator('[data-stage="approved"] [data-estimate-card]'),
@@ -132,11 +146,7 @@ test("kanban moves issued quotes through delivery and preserves paid date", asyn
   await page.locator("[data-stage-change]").selectOption("delivered");
   await page.reload();
   await page.locator('[data-tab="estimates"]').click();
-  await page
-    .locator("#estimate-history")
-    .locator("..")
-    .locator("summary")
-    .click();
+  await page.locator('[data-tab="production"]').click();
   await expect(
     page.locator('[data-stage="delivered"] [data-estimate-card]'),
   ).toHaveCount(1);
@@ -153,4 +163,57 @@ test("kanban moves issued quotes through delivery and preserves paid date", asyn
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBeTruthy();
+});
+
+test("separate settings affect new quotes only and history reopens original pricing", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="estimates"]').click();
+  await page.locator("#new-laser-estimate").click();
+  await page
+    .locator('#estimate-form [name="customer"]')
+    .fill("Cliente histórico");
+  await page.locator('[data-item="minutes"]').fill("60");
+  await page.locator("#estimate-save").click();
+  await page.locator('[data-tab="estimate-settings"]').click();
+  await page.locator('[data-pricing="laserSaleHour"]').fill("120");
+  await page.locator('[data-pricing="laserCostHour"]').fill("30");
+  await page.locator('[data-layout="businessName"]').fill("Marca renovada");
+  await page.locator("#estimate-save-profile").click();
+  await expect(page.locator("#estimate-settings-status")).toContainText(
+    "Configurações salvas",
+  );
+  await page.locator('[data-tab="estimates"]').click();
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "70,00",
+  );
+  await expect(page.locator("#estimate-form [data-pricing]")).toHaveCount(0);
+  await expect(page.locator("#estimate-form [data-layout]")).toHaveCount(0);
+  await page.locator("#new-laser-estimate").click();
+  await page.locator('[data-item="minutes"]').fill("60");
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "120,00",
+  );
+  await page.locator('[data-tab="estimate-history"]').click();
+  await page.locator("#estimate-history-search").fill("Cliente histórico");
+  await page.locator("#estimate-history-list [data-open-estimate]").click();
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "70,00",
+  );
+  await page.screenshot({
+    path: "/tmp/papeled-admin-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+  await page.screenshot({
+    path: "/tmp/papeled-admin-mobile.png",
+    fullPage: true,
+  });
 });
