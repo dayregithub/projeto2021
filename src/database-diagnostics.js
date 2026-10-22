@@ -1,6 +1,6 @@
 export const DATABASE_CHECKS = [
-  ["products", "Produtos do site", ""],
-  ["quotes", "Solicitações de clientes", ""],
+  ["catalog_products", "Produtos do site", ""],
+  ["quote_requests", "Solicitações de clientes", ""],
   ["site_events", "Estatísticas", ""],
   ["download_files", "Registros dos arquivos baixados", ""],
   ["issued_quotes", "Orçamentos e pagamentos", "database-update.sql"],

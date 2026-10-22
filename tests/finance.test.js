@@ -178,3 +178,22 @@ test("database diagnostics distinguish missing schema, permission and network fa
   );
   assert.equal(operations.length, DATABASE_CHECKS.length);
 });
+
+test("database diagnostics query the actual tables defined by the installation scripts", async () => {
+  const { DATABASE_CHECKS } = await import("../src/database-diagnostics.js");
+  const { readFile } = await import("node:fs/promises");
+  const scripts = await Promise.all(
+    [
+      "../supabase/migrations/001_platform.sql",
+      "../supabase/migrations/002_download_archive.sql",
+      "../public/database-update.sql",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  const schema = scripts.join("\n");
+  for (const [table] of DATABASE_CHECKS)
+    assert.match(
+      schema,
+      new RegExp(`create table (?:if not exists )?public\\.${table}\\b`, "i"),
+      `Diagnostic references unknown table ${table}`,
+    );
+});
