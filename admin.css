@@ -626,10 +626,46 @@ main {
   border: 1px solid #e4d9cf;
   border-radius: 10px;
 }
-.estimate-item [data-service-pick] {
-  min-width: 0;
-  flex: 1;
+.estimate-services .service-entry,
+.estimate-services .service-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 115px;
+  align-items: end;
+  gap: 12px;
+  margin: 14px 0;
 }
-.estimate-item fieldset .actions label {
-  max-width: 130px;
+.estimate-services label {
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+}
+.estimate-services input,
+.estimate-services select {
+  height: 42px;
+  margin-top: 5px;
+}
+.estimate-services button {
+  height: 42px;
+  width: auto;
+  justify-self: end;
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.estimate-services .service-line > span {
+  align-self: center;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .estimate-services .service-entry,
+  .estimate-services .service-line {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .estimate-services .service-entry > label:first-child,
+  .estimate-services .service-line > span {
+    grid-column: 1 / -1;
+  }
+  .estimate-services input {
+    max-width: 130px;
+  }
 }
