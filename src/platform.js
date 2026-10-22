@@ -89,7 +89,7 @@ export async function initPlatform({ openProject }) {
       const q = {
         id: crypto.randomUUID(),
         customer_name: form.elements.customer.value.trim(),
-        contact: form.elements.contact.value.trim(),
+        contact: form.elements.contact.value.trim() || "Não informado",
         message: form.elements.message.value.trim(),
         project: JSON.parse(form.dataset.project || "{}"),
         status: "new",

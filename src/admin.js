@@ -1,3 +1,6 @@
+import { initCustomerProjectsPanel } from "./customer-projects.js";
+import { initResourceCatalog } from "./resource-catalog.js";
+import { initWorkspaceCloud } from "./workspace-cloud.js";
 import { initEstimates } from "./estimate-ui.js";
 import { initAdminAssistant } from "./admin-assistant.js";
 import { openAdminEditor, takeEditorReturn } from "./admin-editor.js";
@@ -35,7 +38,8 @@ let client = null,
   quotes = [],
   stats = null,
   settings = null,
-  downloadFiles = [];
+  downloadFiles = [],
+  workspaceCloud = null;
 const notice = (text) => {
   $("notice").textContent = text;
 };
@@ -373,6 +377,15 @@ async function enter() {
   tab("overview");
   await load();
   await estimates.refresh();
+  await resources.refresh();
+  await customerProjects.refresh();
+  workspaceCloud?.stop();
+  workspaceCloud = await initWorkspaceCloud({
+    client,
+    local,
+    status: (text) => ($("database-status").textContent = text),
+  });
+  await refreshBackups();
   try {
     const returned = takeEditorReturn();
     if (returned) {
@@ -418,6 +431,7 @@ $("login").onsubmit = async (e) => {
   }
 };
 $("logout").onclick = async () => {
+  workspaceCloud?.stop();
   localStorage.removeItem("papeled-console-preview");
   if (client) await client.auth.signOut();
   location.reload();
@@ -446,6 +460,15 @@ $("export-stats").onclick = () => {
 const estimates = initEstimates({
   getState: () => ({ client, local }),
   navigate: tab,
+});
+const resources = initResourceCatalog({
+  getState: () => ({ client, local }),
+  onSaved: () => estimates.refreshCatalog(),
+});
+const customerProjects = initCustomerProjectsPanel({
+  getState: () => ({ client, local }),
+  onQuote: (source) => estimates.fromRequest(source),
+  onOpen: (project) => openAdminEditor(project),
 });
 const refreshAssistant = initAdminAssistant({
   getState: () => ({ client, local, products, quotes, readLocal, writeLocal }),
@@ -561,4 +584,43 @@ $("configure-product").onclick = () => {
   } catch (error) {
     notice(error.message);
   }
+};
+
+async function refreshBackups() {
+  const list = $("database-backups");
+  list.replaceChildren();
+  if (!workspaceCloud) return;
+  try {
+    for (const backup of await workspaceCloud.list()) {
+      const row = document.createElement("p"),
+        button = document.createElement("button");
+      row.append(
+        `${backup.device_name} · ${new Date(backup.updated_at).toLocaleString("pt-BR")} `,
+      );
+      button.textContent = "Restaurar cópia neste dispositivo";
+      button.className = "secondary";
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          await workspaceCloud.restore(backup.id);
+          $("database-status").textContent =
+            "Cópia recuperada. Recarregue o painel e o site para abrir os projetos e rascunhos.";
+        } catch {
+          $("database-status").textContent =
+            "Não foi possível recuperar a cópia. Os dados locais foram preservados.";
+        } finally {
+          button.disabled = false;
+        }
+      };
+      row.append(button);
+      list.append(row);
+    }
+  } catch {
+    $("database-status").textContent =
+      "Atualização do banco pendente. Execute workspace-schema.sql no Supabase.";
+  }
+}
+$("database-sync").onclick = async () => {
+  await workspaceCloud?.sync();
+  await refreshBackups();
 };

@@ -18,7 +18,14 @@ export function readLocal() {
 export function writeLocal(data) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
 }
-export async function connection() {
+let connectionPromise;
+export function connection() {
+  return (connectionPromise ||= createConnection().catch((error) => {
+    connectionPromise = null;
+    throw error;
+  }));
+}
+async function createConnection() {
   const response = await fetch(
     new URL("./platform-config.json", document.baseURI).href,
     { cache: "no-store" },

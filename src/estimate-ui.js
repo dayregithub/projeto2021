@@ -1,3 +1,9 @@
+import { renderEstimateKanban } from "./estimate-kanban.js";
+import {
+  MATERIAL_NAMES,
+  materialFor,
+  validateMaterial,
+} from "./estimate-materials.js";
 import {
   DEFAULT_PRICING,
   DEFAULT_LAYOUT,
@@ -113,6 +119,8 @@ export function initEstimates({ getState, navigate }) {
     )
     .join("");
   function sync() {
+    quote.paymentStatus ??= "pending";
+    quote.paymentDate ??= "";
     if (quote.layout.footer === "Obrigado por criar com o Papeled Maker.")
       quote.layout.footer = DEFAULT_LAYOUT.footer;
     for (const key of [
@@ -124,6 +132,8 @@ export function initEstimates({ getState, navigate }) {
       "customerId",
       "title",
       "status",
+      "paymentStatus",
+      "paymentDate",
       "delivery",
       "payment",
       "notes",
@@ -160,6 +170,8 @@ export function initEstimates({ getState, navigate }) {
       "customerId",
       "title",
       "status",
+      "paymentStatus",
+      "paymentDate",
       "delivery",
       "payment",
       "notes",
@@ -196,13 +208,95 @@ export function initEstimates({ getState, navigate }) {
     quote.layout.showTechnical = form.elements.showTechnical.checked;
     quote.layout.showPayment = form.elements.showPayment.checked;
   }
+  function materialFields(item) {
+    const m = materialFor(item, quote.pricing);
+    const choices = [
+      ...new Set([
+        ...MATERIAL_NAMES[item.process],
+        m.name,
+        ...(profile.materials || [])
+          .filter((x) => x.process === item.process)
+          .map((x) => x.material.name),
+      ]),
+    ];
+    return `<fieldset><legend>Material deste item</legend><div class="grid three"><label>Tipo de material<select data-material-name>${choices.map((n) => `<option ${n === m.name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label><label>Nome / especificação<input data-material="name" value="${esc(m.name)}" maxlength="100"></label><label>${item.process === "laser" ? "Preço da chapa (R$)" : "Preço por kg (R$)"}<input data-material="price" type="number" min="0" step="0.01" value="${m.price}"></label>${item.process === "laser" ? `<label>Largura da chapa (cm)<input data-material="width" type="number" min="0.1" step="0.1" value="${m.width}"></label><label>Comprimento da chapa (cm)<input data-material="length" type="number" min="0.1" step="0.1" value="${m.length}"></label>` : ""}</div><p class="muted">O preço pertence somente a este material. Confirme o valor de compra; materiais novos não têm preço presumido.</p></fieldset>`;
+  }
+  function serviceFields(item) {
+    return `<fieldset><legend>Serviços e recursos por unidade deste item</legend><div class="actions"><select data-service-pick aria-label="Adicionar serviço ou recurso"><option value="">Selecione um cadastro</option>${(profile.services || []).map((s, i) => `<option value="${i}">${esc(s.name)} · ${brl(s.price)}/${s.unit}</option>`).join("")}</select><button type="button" data-service-add>Adicionar serviço/recurso</button></div>${(item.services || []).map((s, i) => `<div class="grid three"><span>${esc(s.name)} · ${brl(s.price)}/${s.unit}</span><label>Quantidade (${s.unit})<input data-service-quantity="${i}" type="number" min="0" step="any" value="${s.quantity}"></label><button type="button" data-service-remove="${i}">Remover</button></div>`).join("")}<p class="muted">Os serviços são multiplicados pela quantidade do produto. Ajuste o tempo ou a quantidade de cada serviço.</p></fieldset>`;
+  }
   function renderItems() {
     $("estimate-items").innerHTML = quote.items
       .map(
         (item, i) =>
-          `<article class="card estimate-item" data-row="${item.id}"><div class="heading"><h3>Item ${i + 1} · ${item.process === "laser" ? "Laser" : "Impressão 3D"}</h3><div><button type="button" class="secondary" data-copy="${i}">Duplicar</button><button type="button" class="secondary" data-remove="${i}">Remover</button></div></div><label>Descrição para o cliente<textarea data-item="description" rows="2" maxlength="1200">${esc(item.description)}</textarea></label><div class="grid three">${itemField("quantity", "Quantidade", item.quantity)}<label>Precificação<select data-item="method">${[...(item.process === "laser" ? [["rate", "Tarifa de máquina + material"]] : []), ["markup", "Custo + acréscimo (%)"], ["margin", "Margem sobre venda (%)"]].map(([v, label]) => `<option value="${v}" ${item.method === v ? "selected" : ""}>${label}</option>`).join("")}</select></label>${itemField("manualUnitPrice", "Preço unitário manual (R$; vazio = automático)", item.manualUnitPrice ?? "")}</div><div class="grid three">${item.process === "laser" ? itemField("minutes", "Máquina: minutos por unidade", item.minutes) + itemField("boardWidth", "Largura do recorte MDF (cm)", item.boardWidth) + itemField("boardLength", "Comprimento do recorte MDF (cm)", item.boardLength) + itemField("boards", "Placas por unidade (0 = só serviço)", item.boards) + itemField("wastePercent", "Perda de material MDF (%)", item.wastePercent) : itemField("grams", "Material do fatiador (g por unidade)", item.grams) + itemField("hours", "Impressão (horas por unidade; 2,5 = 2h30)", item.hours) + itemField("lossPercent", "Perda de filamento (%)", item.lossPercent)}${itemField("handlingMinutes", "Trabalho manual (min por unidade)", item.handlingMinutes)}${itemField("paintingCost", "Tinta / pintura (R$ por unidade)", item.paintingCost)}${itemField("extras", "Embalagem e outros custos (R$ por unidade)", item.extras)}</div><label class="check"><input type="checkbox" data-item="materialProvided" ${item.materialProvided ? "checked" : ""}> Material fornecido pelo cliente (não cobrar material)</label><p class="muted" data-item-result></p></article>`,
+          `<article class="card estimate-item" data-row="${item.id}"><div class="heading"><h3>Item ${i + 1} · ${item.process === "laser" ? "Laser" : "Impressão 3D"}</h3><div><button type="button" class="secondary" data-copy="${i}">Duplicar</button><button type="button" class="secondary" data-remove="${i}">Remover</button></div></div>${materialFields(item)}${serviceFields(item)}<label>Descrição para o cliente<textarea data-item="description" rows="2" maxlength="1200">${esc(item.description)}</textarea></label><div class="grid three">${itemField("quantity", "Quantidade", item.quantity)}<label>Precificação<select data-item="method">${[...(item.process === "laser" ? [["rate", "Tarifa de máquina + material"]] : []), ["markup", "Custo + acréscimo (%)"], ["margin", "Margem sobre venda (%)"]].map(([v, label]) => `<option value="${v}" ${item.method === v ? "selected" : ""}>${label}</option>`).join("")}</select></label>${itemField("manualUnitPrice", "Preço unitário manual (R$; vazio = automático)", item.manualUnitPrice ?? "")}</div><div class="grid three">${item.process === "laser" ? itemField("minutes", "Máquina: minutos por unidade", item.minutes) + itemField("boardWidth", "Largura do recorte MDF (cm)", item.boardWidth) + itemField("boardLength", "Comprimento do recorte MDF (cm)", item.boardLength) + itemField("boards", "Placas por unidade (0 = só serviço)", item.boards) + itemField("wastePercent", "Perda de material MDF (%)", item.wastePercent) : itemField("grams", "Material do fatiador (g por unidade)", item.grams) + itemField("hours", "Impressão (horas por unidade; 2,5 = 2h30)", item.hours) + itemField("lossPercent", "Perda de filamento (%)", item.lossPercent)}${itemField("handlingMinutes", "Trabalho manual (min por unidade)", item.handlingMinutes)}${itemField("paintingCost", "Tinta / pintura (R$ por unidade)", item.paintingCost)}${itemField("extras", "Embalagem e outros custos (R$ por unidade)", item.extras)}</div><label class="check"><input type="checkbox" data-item="materialProvided" ${item.materialProvided ? "checked" : ""}> Material fornecido pelo cliente (não cobrar material)</label><p class="muted" data-item-result></p></article>`,
       )
       .join("");
+    $("estimate-items")
+      .querySelectorAll("[data-row]")
+      .forEach((row, index) => {
+        row.querySelector("[data-service-add]").onclick = () => {
+          const value = row.querySelector("[data-service-pick]").value;
+          if (value === "") return;
+          quote.items[index].services ||= [];
+          quote.items[index].services.push({
+            ...structuredClone(profile.services[Number(value)]),
+            quantity: 1,
+          });
+          renderItems();
+          invalidate();
+          renderSummary();
+        };
+        row.querySelectorAll("[data-service-quantity]").forEach(
+          (input) =>
+            (input.oninput = () => {
+              quote.items[index].services[
+                Number(input.dataset.serviceQuantity)
+              ].quantity = input.value === "" ? NaN : Number(input.value);
+              invalidate();
+              renderSummary();
+            }),
+        );
+        row.querySelectorAll("[data-service-remove]").forEach(
+          (button) =>
+            (button.onclick = () => {
+              quote.items[index].services.splice(
+                Number(button.dataset.serviceRemove),
+                1,
+              );
+              renderItems();
+              invalidate();
+              renderSummary();
+            }),
+        );
+        row.querySelector("[data-material-name]").onchange = (e) => {
+          const item = quote.items[index],
+            name = e.target.value;
+          const saved = (profile.materials || []).find(
+            (x) => x.process === item.process && x.material.name === name,
+          );
+          item.material = saved
+            ? structuredClone(saved.material)
+            : { ...materialFor(item, quote.pricing), name, price: 0 };
+          renderItems();
+          invalidate();
+          renderSummary();
+        };
+        row.querySelectorAll("[data-material]").forEach(
+          (input) =>
+            (input.oninput = () => {
+              const item = quote.items[index];
+              item.material = { ...materialFor(item, quote.pricing) };
+              item.material[input.dataset.material] =
+                input.dataset.material === "name"
+                  ? input.value
+                  : input.value === ""
+                    ? NaN
+                    : Number(input.value);
+              invalidate();
+              renderSummary();
+            }),
+        );
+      });
     $("estimate-items")
       .querySelectorAll("[data-row]")
       .forEach((row, index) =>
@@ -289,6 +383,10 @@ export function initEstimates({ getState, navigate }) {
       const result = calculateEstimate(quote);
       $("estimate-summary").innerHTML =
         `<div class="metrics"><div class="metric">Custo interno<strong>${brl(result.cost)}</strong></div><div class="metric">Subtotal<strong>${brl(result.subtotal)}</strong></div><div class="metric">Total ao cliente<strong>${brl(result.total)}</strong></div><div class="metric">Resultado após impostos<strong>${brl(result.profit)}</strong></div></div><p class="muted">${processes.has("laser") ? `Laser: custo operacional ${brl(result.laser.hour)}/h (${brl(result.laser.minute)}/min) · MDF: ${brl(result.materialM2)}/m² · ` : ""}${processes.has("print") ? `3D: filamento ${brl(quote.pricing.filamentKg)}/kg · energia ${brl(quote.pricing.printEnergy)}/kWh · ` : ""}Impostos inclusos estimados: ${brl(result.tax)}. Frete é repasse e não integra a base de impostos.</p>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`;
+      try {
+        validateEstimate(quote);
+        store("papeled-estimate-draft-v1", quote);
+      } catch {}
       result.items.forEach((item, i) => {
         const row =
           $("estimate-items").querySelectorAll("[data-item-result]")[i];
@@ -329,6 +427,8 @@ export function initEstimates({ getState, navigate }) {
       quote.contact = source.contact || "";
       quote.notes = source.message || "";
       const p = source.project || source.settings;
+      quote.customerProjectId =
+        source.customerProjectId || p?.customerProjectId || null;
       if (p) {
         quote.title = p.name || source.title || quote.title;
         quote.items[0].description = `${p.name || source.title || "Projeto"}${p.width ? ` — ${p.width} × ${p.depth} × ${p.height} mm` : ""}`;
@@ -339,6 +439,11 @@ export function initEstimates({ getState, navigate }) {
     navigate("estimates");
     $("estimate-editor").scrollIntoView({ behavior: "smooth" });
   }
+  $("show-estimate-board").onclick = () => {
+    const board = $("estimate-history").closest("details");
+    board.open = true;
+    board.scrollIntoView({ behavior: "smooth" });
+  };
   $("new-laser-estimate").onclick = () => start("laser");
   $("new-print-estimate").onclick = () => start("print");
   for (const [id, process] of [
@@ -519,6 +624,26 @@ export function initEstimates({ getState, navigate }) {
       profile = {
         pricing: structuredClone(quote.pricing),
         layout: structuredClone(quote.layout),
+        services: structuredClone(profile.services || []),
+        materials: [
+          ...new Map(
+            [
+              ...(profile.materials || []),
+              ...quote.items.map((item) => ({
+                process: item.process,
+                material: structuredClone(
+                  validateMaterial(
+                    materialFor(item, quote.pricing),
+                    item.process,
+                  ),
+                ),
+              })),
+            ].map((entry) => [
+              entry.process + ":" + entry.material.name,
+              entry,
+            ]),
+          ).values(),
+        ],
       };
       store(PROFILE, profile);
       if (cloud) {
@@ -602,19 +727,46 @@ export function initEstimates({ getState, navigate }) {
     $("estimate-storage").textContent = cloud
       ? "Orçamentos conectados ao Supabase. Histórico: 250 mais recentes."
       : "Armazenamento local neste navegador. Para sincronizar, instale a área de orçamentos no Supabase. Use JSON para backup.";
-    $("estimate-history").innerHTML = records.length
-      ? records
-          .map((q) => {
-            let total;
-            try {
-              total = brl(calculateEstimate(q).total);
-            } catch {
-              total = "Revisar cálculos";
-            }
-            return `<article class="card"><h3>${esc(q.number)} · ${esc(q.customer || "Cliente não informado")}</h3><p>${esc(q.title)} · ${esc(q.status)} · ${total}</p><div class="actions"><button class="secondary" data-open-estimate="${esc(q.id)}">Abrir</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button></div></article>`;
-          })
-          .join("")
-      : "<p>Nenhum orçamento emitido. Comece com Laser ou Impressão 3D.</p>";
+    renderEstimateKanban(
+      $("estimate-history"),
+      records,
+      async (id, changes) => {
+        const previous = records.find((row) => row.id === id),
+          next = {
+            ...structuredClone(previous),
+            ...changes,
+            updatedAt: new Date().toISOString(),
+          };
+        validateEstimate(next);
+        if (cloud) {
+          const result = await getState()
+            .client.from("issued_quotes")
+            .update({ data: next, updated_at: next.updatedAt })
+            .eq("id", id)
+            .select("id")
+            .single();
+          if (result.error)
+            throw Error(
+              "Não foi possível atualizar no banco. Tente novamente.",
+            );
+        } else {
+          const rows = read(KEY, []);
+          const index = rows.findIndex((row) => row.id === id);
+          if (index < 0) throw Error("Orçamento não encontrado.");
+          rows[index] = next;
+          store(KEY, rows);
+        }
+        if (quote.id === id) {
+          Object.assign(quote, changes);
+          for (const key of ["status", "paymentStatus", "paymentDate"])
+            form.elements[key].value = quote[key] ?? "";
+          store("papeled-estimate-draft-v1", quote);
+        }
+        await refresh();
+        message("Etapa e pagamento atualizados.");
+      },
+      message,
+    );
     $("estimate-history")
       .querySelectorAll("[data-open-estimate],[data-clone-estimate]")
       .forEach(
@@ -634,6 +786,8 @@ export function initEstimates({ getState, navigate }) {
                 quote.issuedOn = fresh.issuedOn;
                 quote.createdAt = fresh.createdAt;
                 quote.status = "draft";
+                quote.paymentStatus = "pending";
+                quote.paymentDate = "";
               }
               sync();
               invalidate();
@@ -646,12 +800,24 @@ export function initEstimates({ getState, navigate }) {
       );
     if (!active) {
       active = true;
-      quote = newEstimate(profile);
+      const draft = read("papeled-estimate-draft-v1", null);
+      try {
+        validateEstimate(draft);
+        quote = draft;
+        $("estimate-editor").hidden = false;
+      } catch {
+        quote = newEstimate(profile);
+      }
       sync();
     }
   }
   return {
     refresh,
+    refreshCatalog: async () => {
+      await refresh();
+      renderItems();
+      renderSummary();
+    },
     fromRequest: (source) =>
       start(
         modelById(source.project?.model || source.settings?.model)?.category ===

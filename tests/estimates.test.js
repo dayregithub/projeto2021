@@ -195,3 +195,143 @@ test("issued quotes and pricing defaults are private and only administrators can
     await db.close();
   }
 });
+
+test("material snapshots and services keep independent purchase and sale prices", () => {
+  const q = newEstimate();
+  q.items[0].material = {
+    name: "MDF 6 mm",
+    price: 200,
+    width: 100,
+    length: 200,
+  };
+  q.items[0].boards = 1;
+  q.pricing.markupPercent = 100;
+  q.items[0].services = [
+    {
+      type: "service",
+      name: "Pintura",
+      unit: "unidade",
+      cost: 5,
+      price: 20,
+      quantity: 1,
+    },
+  ];
+  let result = calculateEstimate(q);
+  assert.equal(result.total, 68);
+  assert.equal(result.items[0].costs.material, 24);
+  assert.equal(result.cost, 29);
+  q.items = [newEstimateItem("print")];
+  q.items[0].grams = 100;
+  q.items[0].material = { name: "PETG", price: 200 };
+  q.pricing.markupPercent = 150;
+  assert.equal(calculateEstimate(q).total, 50);
+  q.items[0].material.price = 0;
+  assert.throws(() => calculateEstimate(q), /preço do material/);
+  q.items[0].material.price = 200;
+  q.paymentStatus = "paid";
+  q.paymentDate = "";
+  assert.throws(() => validateEstimate(q), /data do pagamento/);
+  q.paymentDate = "2026-10-21";
+  q.status = "in_progress";
+  assert.equal(validateEstimate(q).paymentStatus, "paid");
+});
+
+test("combined database update is repeatable, customer writes are private, backups isolated by owner", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(
+      `create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid; $$;grant usage on schema auth to authenticated;`,
+    );
+    await db.exec(
+      await readFile(
+        new URL("../supabase/migrations/001_platform.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    const update = await readFile(
+      new URL("../public/database-update.sql", import.meta.url),
+      "utf8",
+    );
+    await db.exec(update);
+    await db.exec(update);
+    await db.exec(`set role anon`);
+    assert.equal(
+      (await db.query("select public.customer_capture_enabled() as enabled"))
+        .rows[0].enabled,
+      true,
+    );
+    await assert.rejects(db.query("select * from public.customer_projects"));
+    await assert.rejects(
+      db.query(
+        "select public.register_customer_project('11111111-1111-4111-8111-111111111111','','','','save','{\"model\":\"grid\"}')",
+      ),
+    );
+    await db.query(
+      "select public.register_customer_project('11111111-1111-4111-8111-111111111111','Maria','','','save','{\"model\":\"grid\"}')",
+    );
+    await assert.rejects(
+      db.query("update public.customer_projects set customer_name='x'"),
+    );
+    await db.exec(
+      `reset role;insert into auth.users values('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');insert into public.admin_users values('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');set role authenticated;set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';`,
+    );
+    assert.equal(
+      (await db.query("select * from public.customer_projects")).rows.length,
+      1,
+    );
+    await db.query(
+      "insert into public.workspace_backups(device_id,device_name,data) values('33333333-3333-4333-8333-333333333333','PC','{\"version\":1}')",
+    );
+    await db.exec(
+      `set request.jwt.claim.sub='22222222-2222-4222-8222-222222222222'`,
+    );
+    assert.equal(
+      (await db.query("select * from public.workspace_backups")).rows.length,
+      0,
+    );
+  } finally {
+    await db.close();
+  }
+});
+
+test("workspace restore merges without losing local quotes and rolls back storage failures", async () => {
+  const { restoreWorkspace, readWorkspace } =
+    await import("../src/workspace-cloud.js");
+  const original = newEstimate(),
+    remote = newEstimate();
+  const values = new Map([
+    ["papeled-issued-estimates-v1", JSON.stringify([original])],
+  ]);
+  let fail = false;
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem(key, value) {
+      if (fail && key === "papeled-estimate-profile-v1") {
+        fail = false;
+        throw Error("Quota");
+      }
+      values.set(key, value);
+    },
+  };
+  restoreWorkspace(
+    { version: 1, "papeled-issued-estimates-v1": [remote] },
+    storage,
+  );
+  assert.equal(readWorkspace(storage)["papeled-issued-estimates-v1"].length, 2);
+  const before = JSON.stringify([...values]);
+  fail = true;
+  assert.throws(
+    () =>
+      restoreWorkspace(
+        {
+          version: 1,
+          "papeled-issued-estimates-v1": [newEstimate()],
+          "papeled-estimate-profile-v1": { pricing: {} },
+        },
+        storage,
+      ),
+    /Quota/,
+  );
+  assert.equal(JSON.stringify([...values]), before);
+});

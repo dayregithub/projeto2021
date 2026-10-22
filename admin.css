@@ -387,3 +387,35 @@ button[aria-busy="true"] {
     transition: none !important;
   }
 }
+
+.estimate-kanban {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(250px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 8px 2px;
+}
+.estimate-column {
+  min-width: 0;
+  background: #f2ebe5;
+  padding: 12px;
+  border-radius: 12px;
+}
+.estimate-column > h3 {
+  border-bottom: 3px solid #916b4b;
+  padding-bottom: 10px;
+}
+.estimate-column .card {
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+.estimate-column .actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+.estimate-column input,
+.estimate-column select {
+  width: 100%;
+  box-sizing: border-box;
+}

@@ -3211,3 +3211,26 @@ button[aria-busy="true"] {
     transition: none !important;
   }
 }
+
+#customer-project-dialog label {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+  font-weight: 600;
+}
+#customer-project-dialog input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 16px;
+  color: #332721;
+  border: 1px solid #bca99b;
+  border-radius: 8px;
+  background: white;
+}
+#customer-project-dialog .dialog-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}

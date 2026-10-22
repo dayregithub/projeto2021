@@ -1,3 +1,9 @@
+import { initCustomerCapture } from "./src/customer-projects.js";
+import { initWorkspaceCloud } from "./src/workspace-cloud.js";
+import {
+  connection as workspaceConnection,
+  localMode as workspaceLocalMode,
+} from "./src/platform-data.js";
 import { editingProject, returnToAdmin } from "./src/admin-editor.js";
 import { archiveDownload } from "./src/download-archive.js";
 import { initPlatform, trackEvent } from "./src/platform.js";
@@ -836,8 +842,23 @@ $("#quote-share").onclick = async () => {
       toast("Não foi possível compartilhar. Baixe o ZIP e anexe na conversa.");
   }
 };
+const captureCustomer = initCustomerCapture();
 $("#quote-project").onclick = async () => {
-  $("#platform-quote").dataset.project = JSON.stringify(state);
+  const customer = await captureCustomer("quote", state);
+  if (!customer) return;
+  $("#platform-quote").dataset.project = JSON.stringify({
+    ...state,
+    customerProjectId: customer.id,
+  });
+  if (customer.name)
+    $("#platform-quote").elements.customer.value = customer.name;
+  if (customer.phone || customer.email)
+    $("#platform-quote").elements.contact.value = [
+      customer.phone,
+      customer.email,
+    ]
+      .filter(Boolean)
+      .join(" · ");
   const m = modelById(state.model);
   $("#quote-message").value =
     `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${m.category === "laser" ? `Encaixes: ${state.slotWidth ?? state.thickness} mm\n` : ""}${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}${extraProductQuote(state)}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
@@ -1082,8 +1103,12 @@ $("#reset-project").onclick = () =>
       toast("Medidas restauradas.");
     },
   );
-$("#save-project").onclick = saveProject;
-$("#export-project").onclick = exportDialog;
+$("#save-project").onclick = async () => {
+  if (await captureCustomer("save", state)) saveProject();
+};
+$("#export-project").onclick = async () => {
+  if (await captureCustomer("export", state)) exportDialog();
+};
 $("#back-models").onclick = () => (location.hash = "modelos");
 $("#new-project").onclick = () => (location.hash = "modelos");
 $("#start-project").onclick = () => openModel("grid");
@@ -1238,3 +1263,15 @@ $("#return-admin").onclick = () => {
     toast(error.message);
   }
 };
+
+void (async () => {
+  const client = await workspaceConnection();
+  await initWorkspaceCloud({
+    client,
+    local: workspaceLocalMode(),
+    status: (message) => {
+      const element = document.getElementById("workspace-cloud-status");
+      if (element) element.textContent = message;
+    },
+  });
+})().catch(() => {});

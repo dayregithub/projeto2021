@@ -6,12 +6,12 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-Cr_riUjQ.js"></script>
+    <script type="module" crossorigin src="./assets/admin-hrRWK0tq.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
     <link rel="modulepreload" crossorigin href="./assets/geometry-BvhQWFpt.js">
-    <link rel="modulepreload" crossorigin href="./assets/platform-data-5Dg0wUu7.js">
-    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-B26bidXY.js">
-    <link rel="stylesheet" crossorigin href="./assets/admin-BweLg3cY.css">
+    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-VsrnCb6O.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-ClZ1-V0M.js">
+    <link rel="stylesheet" crossorigin href="./assets/admin-DX8utyCA.css">
   </head>
   <body>
     <header>
@@ -65,8 +65,160 @@
           ><button data-tab="products">Produtos</button
           ><button data-tab="quotes">Solicitações</button
           ><button data-tab="estimates">Emitir orçamento</button
+          ><button data-tab="customer-projects">Projetos de clientes</button
+          ><button data-tab="resources">Materiais e serviços</button
+          ><button data-tab="database">Banco de dados</button
           ><button data-tab="assistant">Assistente de IA</button>
         </nav>
+        <section data-section="customer-projects" hidden>
+          <h2>Projetos de clientes</h2>
+          <p>
+            Nome, contatos e configuração completa registrada antes de salvar,
+            exportar ou pedir orçamento. O registro indica a ação solicitada;
+            não confirma conclusão do download ou envio no WhatsApp.
+          </p>
+          <button id="customer-project-refresh">Atualizar projetos</button>
+          <p id="customer-project-status" role="status"></p>
+          <div id="customer-project-list"></div>
+        </section>
+        <section data-section="resources" hidden>
+          <h2>Materiais, recursos e serviços</h2>
+          <p>
+            Cadastre cada especificação separadamente: MDF 3 mm, MDF 6 mm, PLA,
+            PETG, pintura, montagem ou uso de uma máquina. Preços são internos;
+            o PDF usa os valores do orçamento.
+          </p>
+          <p id="resource-status" role="status"></p>
+          <button id="resource-new" type="button">Novo cadastro</button>
+          <form id="resource-form" class="card">
+            <div class="grid three">
+              <label
+                >Tipo<select name="kind">
+                  <option value="material">Material</option>
+                  <option value="service">Serviço</option>
+                  <option value="resource">Recurso / máquina</option>
+                </select></label
+              >
+              <label
+                >Nome<input
+                  name="name"
+                  required
+                  maxlength="100"
+                  placeholder="MDF 3 mm / PLA / Pintura"
+              /></label>
+              <label
+                >Processo<select name="process">
+                  <option value="laser">Laser</option>
+                  <option value="print">Impressão 3D</option>
+                </select></label
+              >
+              <label
+                ><span data-material-price-label>Preço da chapa (R$)</span
+                ><input
+                  name="price"
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value="0"
+              /></label>
+            </div>
+            <div data-material-fields>
+              <div class="grid three" data-sheet-fields>
+                <label
+                  >Largura da chapa (cm)<input
+                    name="width"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value="180" /></label
+                ><label
+                  >Comprimento da chapa (cm)<input
+                    name="length"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value="275" /></label
+                ><label
+                  >Espessura (mm)<input
+                    name="thickness"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value="3"
+                /></label>
+              </div>
+              <label
+                >Especificações<textarea
+                  name="specification"
+                  maxlength="1000"
+                  placeholder="Marca, acabamento, cor, diâmetro do filamento e outras observações"
+                ></textarea>
+              </label>
+            </div>
+            <div data-service-fields hidden>
+              <div class="grid">
+                <label
+                  >Custo interno por unidade (R$)<input
+                    name="cost"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value="0" /></label
+                ><label
+                  >Unidade<select name="unit">
+                    <option value="unidade">Unidade</option>
+                    <option value="hora">Hora</option>
+                    <option value="minuto">Minuto</option>
+                  </select></label
+                >
+              </div>
+              <p>
+                O campo de preço acima é o preço de venda por unidade. Ao
+                adicionar um recurso, evite cobrar duas vezes uma máquina já
+                inclusa na tarifa do item.
+              </p>
+            </div>
+            <button type="submit">Salvar cadastro</button>
+          </form>
+          <div id="resource-list"></div>
+        </section>
+        <section data-section="database" hidden>
+          <h2>Banco de dados e cópias de trabalho</h2>
+          <p>
+            Produtos, solicitações, estatísticas e arquivos de downloads usam as
+            tabelas e o armazenamento do Supabase. Os orçamentos e padrões de
+            custos também são salvos no banco quando a atualização de orçamentos
+            estiver instalada.
+          </p>
+          <p>
+            Enquanto você estiver conectado como administrador, projetos salvos,
+            rascunhos, orçamentos locais e configurações deste navegador recebem
+            uma cópia automática no banco a cada 5 segundos. As cópias são
+            separadas por dispositivo para não sobrescrever seu trabalho.
+          </p>
+          <p id="database-status" role="status"></p>
+          <p>
+            Instalação recomendada: execute
+            <a href="./database-update.sql">database-update.sql</a> uma vez no
+            SQL Editor do Supabase. Ele preserva os dados anteriores e ativa
+            orçamentos, cópias e cadastros de clientes. Alternativas
+            individuais: execute
+            <a href="./pricing-schema.sql">pricing-schema.sql</a> se ainda não
+            instalou orçamentos, e
+            <a href="./workspace-schema.sql">workspace-schema.sql</a> para as
+            cópias de trabalho. Não repita o script inicial do painel.
+          </p>
+          <button id="database-sync">Salvar agora e atualizar cópias</button>
+          <p>
+            Restaurar combina projetos e orçamentos sem substituir registros
+            locais de mesmo ID. Rascunhos e padrões são substituídos pelos da
+            cópia escolhida. A prévia local não envia dados para o banco.
+            Arquivos selecionados para enviar ao WhatsApp/e-mail continuam
+            dependendo do envio pelo usuário.
+          </p>
+          <div id="database-backups"></div>
+        </section>
         <section data-section="overview">
           <div class="heading">
             <h2>Visitas e downloads</h2>
@@ -226,7 +378,10 @@
             <h2>Orçamentos do estúdio</h2>
             <div class="actions">
               <button id="new-laser-estimate">Orçar laser</button
-              ><button id="new-print-estimate">Orçar impressão 3D</button>
+              ><button id="new-print-estimate">Orçar impressão 3D</button
+              ><button id="show-estimate-board" class="secondary">
+                Acompanhar orçamentos (Kanban)
+              </button>
             </div>
           </div>
           <p id="estimate-storage" class="muted"></p>
@@ -236,7 +391,7 @@
             impressão devem vir do fatiador; não são estimados a partir do STL.
           </p>
           <p>
-            <a href="./pricing-schema.sql" target="_blank" rel="noopener"
+            <a href="./database-update.sql" target="_blank" rel="noopener"
               >Instalar sincronização no Supabase (SQL adicional, uma vez)</a
             >
           </p>
@@ -247,7 +402,11 @@
               accept=".json,application/json"
           /></label>
           <details>
-            <summary>Histórico de orçamentos</summary>
+            <summary>Histórico de orçamentos · acompanhamento Kanban</summary>
+            <p>
+              Arraste os cartões ou use o seletor de etapa. Pagamento e data
+              podem ser atualizados no próprio cartão.
+            </p>
             <div id="estimate-history"></div>
           </details>
           <div id="estimate-editor" hidden>
@@ -294,9 +453,22 @@
                     <option value="draft">Rascunho</option>
                     <option value="sent">Enviado ao cliente</option>
                     <option value="approved">Aprovado</option>
+                    <option value="in_progress">Em execução</option>
+                    <option value="completed">Concluído</option>
+                    <option value="delivered">Entregue</option>
                     <option value="rejected">Não aprovado</option>
                   </select></label
                 >
+              </div>
+              <div class="card grid">
+                <label
+                  >Pagamento<select name="paymentStatus">
+                    <option value="pending">Pendente</option>
+                    <option value="paid">Realizado</option>
+                  </select></label
+                ><label
+                  >Data do pagamento<input name="paymentDate" type="date"
+                /></label>
               </div>
               <details class="card">
                 <summary>Custos, tarifas e regras de cálculo</summary>

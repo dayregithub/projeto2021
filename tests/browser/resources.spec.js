@@ -1,0 +1,156 @@
+import { test, expect } from "./fixtures.js";
+test("material and service registry feeds quotes with independent prices and snapshots", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="resources"]').click();
+  const f = page.locator("#resource-form");
+  await f.locator('[name="name"]').fill("MDF 6 mm");
+  await f.locator('[name="thickness"]').fill("6");
+  await f.locator('[name="price"]').fill("200");
+  await f.locator('[name="width"]').fill("100");
+  await f.locator('[name="length"]').fill("200");
+  await f.locator('[type="submit"]').click();
+  await expect(page.locator("#resource-status")).toContainText("salvo");
+  await f.locator('[name="kind"]').selectOption("service");
+  await f.locator('[name="name"]').fill("Pintura");
+  await f.locator('[name="price"]').fill("20");
+  await f.locator('[name="cost"]').fill("5");
+  await f.locator('[type="submit"]').click();
+  await expect(page.locator("#resource-list")).toContainText("Pintura");
+  await page.locator('[data-tab="estimates"]').click();
+  await page.locator("#new-laser-estimate").click();
+  await page
+    .locator("[data-material-name]")
+    .selectOption({ label: "MDF 6 mm" });
+  await expect(page.locator('[data-material="price"]')).toHaveValue("200");
+  await page.locator('[data-item="boards"]').fill("1");
+  await page.locator("[data-service-pick]").selectOption("0");
+  await page.locator("[data-service-add]").click();
+  await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
+  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+    "68,00",
+  );
+  await page.locator("#estimate-save").click();
+  await page.reload();
+  await page.locator('[data-tab="estimates"]').click();
+  await expect(page.locator('[data-material="price"]')).toHaveValue("200");
+  await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
+  await page.locator('[data-tab="resources"]').click();
+  await page.locator("[data-material-edit]").click();
+  await f.locator('[name="price"]').fill("250");
+  await f.locator('[type="submit"]').click();
+  await page.locator('[data-tab="estimates"]').click();
+  await expect(page.locator('[data-material="price"]')).toHaveValue("200");
+});
+
+test("customer name is required and action is blocked until linked project registration succeeds", async ({
+  page,
+}) => {
+  await page.route("**/platform-config.json", (r) =>
+    r.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        supabaseUrl: "https://testproject.supabase.co",
+        supabaseAnonKey: "sb_publishable_test",
+      }),
+    }),
+  );
+  const captured = [];
+  let failRegistration = true;
+  await page.route("https://testproject.supabase.co/**", async (route) => {
+    const url = route.request().url();
+    if (url.includes("customer_capture_enabled"))
+      return route.fulfill({ contentType: "application/json", body: "true" });
+    if (url.includes("register_customer_project")) {
+      if (failRegistration) {
+        failRegistration = false;
+        return route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ message: "Temporary failure" }),
+        });
+      }
+      captured.push(route.request().postDataJSON());
+      return route.fulfill({ status: 204, body: "" });
+    }
+    return route.fulfill({ contentType: "application/json", body: "[]" });
+  });
+  await page.goto("/");
+  await page.locator('[data-group="laser-boxes"]').click();
+  await page.locator("#save-project").click();
+  const dialog = page.locator("#customer-project-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.locator('[type="submit"]').click();
+  expect(captured).toHaveLength(0);
+  await dialog.locator('[name="name"]').fill("Maria Cliente");
+  await dialog.locator('[name="email"]').fill("maria@example.com");
+  await dialog.locator('[type="submit"]').click();
+  await expect(dialog.locator('[role="status"]')).toContainText(
+    "Não foi possível registrar",
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("papeled-projects-v1") || "[]").length,
+    ),
+  ).toBe(0);
+  await dialog.locator('[type="submit"]').click();
+  await expect(dialog).toBeHidden();
+  expect(captured).toHaveLength(1);
+  expect(captured[0].p_name).toBe("Maria Cliente");
+  expect(captured[0].p_project.model).toBeTruthy();
+  expect(captured[0].p_action).toBe("save");
+});
+
+test("kanban moves issued quotes through delivery and preserves paid date", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="estimates"]').click();
+  await page.locator("#new-laser-estimate").click();
+  await page.locator('[data-item="minutes"]').fill("60");
+  await page.locator("#estimate-save").click();
+  await page
+    .locator("#estimate-history")
+    .locator("..")
+    .locator("summary")
+    .click();
+  await page.locator("[data-stage-change]").selectOption("approved");
+  await expect(
+    page.locator('[data-stage="approved"] [data-estimate-card]'),
+  ).toHaveCount(1);
+  await page.locator("[data-stage-change]").selectOption("in_progress");
+  await page.locator("[data-payment-change]").selectOption("paid");
+  await expect(page.locator("[data-payment-date]")).not.toHaveValue("");
+  const date = await page.locator("[data-payment-date]").inputValue();
+  await page.locator("[data-stage-change]").selectOption("completed");
+  await page.locator("[data-stage-change]").selectOption("delivered");
+  await page.reload();
+  await page.locator('[data-tab="estimates"]').click();
+  await page
+    .locator("#estimate-history")
+    .locator("..")
+    .locator("summary")
+    .click();
+  await expect(
+    page.locator('[data-stage="delivered"] [data-estimate-card]'),
+  ).toHaveCount(1);
+  await expect(page.locator("[data-payment-change]")).toHaveValue("paid");
+  await expect(page.locator("[data-payment-date]")).toHaveValue(date);
+  await expect(page.locator('#estimate-form [name="status"]')).toHaveValue(
+    "delivered",
+  );
+  await expect(
+    page.locator('#estimate-form [name="paymentStatus"]'),
+  ).toHaveValue("paid");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+});

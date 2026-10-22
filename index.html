@@ -837,6 +837,7 @@
             <span data-icon="plus"></span> Criar projeto
           </button>
         </div>
+        <p id="workspace-cloud-status" role="status" class="field-hint"></p>
         <div id="saved-grid" class="model-grid"></div>
       </section>
     </main>
@@ -874,6 +875,49 @@
       accept=".json,application/json"
       hidden
     />
+    <dialog
+      id="customer-project-dialog"
+      aria-labelledby="customer-project-title"
+    >
+      <h2 id="customer-project-title">Identifique seu projeto</h2>
+      <p>
+        Informe seu nome para salvar, exportar ou enviar este projeto. Os dados
+        ficam vinculados à configuração para atendimento pela Papeled Maker.
+      </p>
+      <form>
+        <label
+          >Nome (obrigatório)<input
+            name="name"
+            required
+            maxlength="180"
+            autocomplete="name" /></label
+        ><label
+          >Telefone (opcional)<input
+            name="phone"
+            type="tel"
+            maxlength="40"
+            autocomplete="tel" /></label
+        ><label
+          >E-mail (opcional)<input
+            name="email"
+            type="email"
+            maxlength="180"
+            autocomplete="email"
+        /></label>
+        <p role="status"></p>
+        <div class="dialog-actions">
+          <button type="submit" class="button primary">
+            Salvar dados e continuar</button
+          ><button
+            type="button"
+            onclick="this.closest('dialog').close()"
+            class="button secondary"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="export-dialog" aria-labelledby="export-title">
       <button class="dialog-close icon-button" data-close aria-label="Fechar">
         <span data-icon="x"></span>
@@ -1002,12 +1046,10 @@
             autocomplete="name"
         /></label>
         <label class="field-label"
-          >WhatsApp ou e-mail<input
+          >WhatsApp ou e-mail (opcional)<input
             class="text-input"
             name="contact"
-            minlength="3"
             maxlength="180"
-            required
         /></label>
         <label class="field-label"
           >Quantidade e detalhes<textarea

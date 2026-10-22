@@ -1,3 +1,5 @@
+import { validateService } from "./resource-catalog.js";
+import { materialFor, validateMaterial } from "./estimate-materials.js";
 export const money = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 export const brl = (n) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -70,6 +72,7 @@ export function newEstimateItem(process = "laser") {
     extras: 0,
     materialProvided: false,
     manualUnitPrice: null,
+    material: null,
   };
 }
 export function newEstimate(profile = {}) {
@@ -82,8 +85,11 @@ export function newEstimate(profile = {}) {
     customer: "",
     contact: "",
     customerId: "",
+    customerProjectId: null,
     title: "Projeto personalizado",
     status: "draft",
+    paymentStatus: "pending",
+    paymentDate: "",
     delivery: "Prazo a combinar após aprovação.",
     payment: "Condições de pagamento a combinar.",
     notes: "",
@@ -183,14 +189,32 @@ export function calculateEstimate(quote) {
     number(item.lossPercent, `${label}, perda filamento`, { max: 1000 });
     if (item.process === "print" && item.method === "rate")
       throw Error(`${label}: impressão 3D usa acréscimo ou margem.`);
+    const selectedMaterial = validateMaterial(
+      materialFor(item, p),
+      item.process,
+    );
+    if (
+      item.material &&
+      !item.materialProvided &&
+      selectedMaterial.price === 0 &&
+      (item.process === "laser" ? item.boards > 0 : item.grams > 0)
+    )
+      throw Error(`${label}: informe o preço do material selecionado.`);
+    const itemMaterialM2 =
+      item.process === "laser"
+        ? selectedMaterial.price /
+          ((selectedMaterial.width * selectedMaterial.length) / 10000)
+        : 0;
     const material = item.materialProvided
       ? 0
       : item.process === "laser"
         ? ((item.boardWidth * item.boardLength) / 10000) *
           item.boards *
           (1 + item.wastePercent / 100) *
-          materialM2
-        : (item.grams / 1000) * p.filamentKg * (1 + item.lossPercent / 100);
+          itemMaterialM2
+        : (item.grams / 1000) *
+          selectedMaterial.price *
+          (1 + item.lossPercent / 100);
     const machine =
       item.process === "laser"
         ? (item.minutes / 60) * laser.hour
@@ -200,6 +224,17 @@ export function calculateEstimate(quote) {
       item.process === "print"
         ? ((item.hours * p.printerWatts) / 1000) * p.printEnergy
         : 0;
+    const services = item.services || [];
+    if (!Array.isArray(services) || services.length > 30)
+      throw Error(`${label}: lista de serviços inválida.`);
+    let serviceCost = 0,
+      servicePrice = 0;
+    for (const entry of services) {
+      validateService(entry);
+      number(entry.quantity, "Quantidade de serviço", { max: 100000 });
+      serviceCost += entry.cost * entry.quantity;
+      servicePrice += entry.price * entry.quantity;
+    }
     const handling = (item.handlingMinutes / 60) * p.laborHour,
       unitCost =
         material +
@@ -207,7 +242,8 @@ export function calculateEstimate(quote) {
         energy +
         handling +
         item.paintingCost +
-        item.extras;
+        item.extras +
+        serviceCost;
     let suggested;
     if (item.method === "rate")
       suggested =
@@ -215,12 +251,14 @@ export function calculateEstimate(quote) {
         (material + handling + item.paintingCost + item.extras) *
           (1 + p.markupPercent / 100);
     else if (item.method === "markup")
-      suggested = unitCost * (1 + p.markupPercent / 100);
+      suggested = (unitCost - serviceCost) * (1 + p.markupPercent / 100);
     else {
       if (p.marginPercent + p.taxPercent >= 100)
         throw Error("Margem + impostos devem ser menores que 100%.");
-      suggested = unitCost / (1 - (p.marginPercent + p.taxPercent) / 100);
+      suggested =
+        (unitCost - serviceCost) / (1 - (p.marginPercent + p.taxPercent) / 100);
     }
+    suggested += servicePrice;
     if (item.manualUnitPrice !== null && item.manualUnitPrice !== undefined)
       number(item.manualUnitPrice, `${label}, preço manual`);
     const unitPrice = money(item.manualUnitPrice ?? suggested),
@@ -241,10 +279,19 @@ export function calculateEstimate(quote) {
         painting: item.paintingCost,
         extras: item.extras,
       },
+      materialName: selectedMaterial.name,
       technical:
-        item.process === "laser"
-          ? `${item.minutes} min/un. · MDF ${item.boardWidth} × ${item.boardLength} cm × ${item.boards} placa(s)/un.`
-          : `${item.grams} g/un. · ${item.hours} h/un.`,
+        selectedMaterial.name +
+        " · " +
+        (item.process === "laser"
+          ? `${item.minutes} min/un. · Recorte ${item.boardWidth} × ${item.boardLength} cm × ${item.boards} placa(s)/un.`
+          : `${item.grams} g/un. · ${item.hours} h/un.`) +
+        (services.length
+          ? " · " +
+            services
+              .map((s) => `${s.name}: ${s.quantity} ${s.unit}/un.`)
+              .join("; ")
+          : ""),
     };
   });
   for (const key of ["setupMinutes", "setupPrice", "shipping", "discount"])
@@ -331,8 +378,31 @@ export function validateEstimate(q) {
   number(q.validityDays, "Validade", { max: 3650 });
   if (!Number.isInteger(q.validityDays))
     throw Error("Validade deve ser um número inteiro de dias.");
-  if (!["draft", "sent", "approved", "rejected"].includes(q.status))
+  if (
+    ![
+      "draft",
+      "sent",
+      "approved",
+      "rejected",
+      "in_progress",
+      "completed",
+      "delivered",
+    ].includes(q.status)
+  )
     throw Error("Situação inválida.");
+  if (!["pending", "paid"].includes(q.paymentStatus ?? "pending"))
+    throw Error("Situação do pagamento inválida.");
+  if (q.paymentDate) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(q.paymentDate) ||
+      Number.isNaN(Date.parse(q.paymentDate + "T12:00:00Z")) ||
+      new Date(q.paymentDate + "T12:00:00Z").toISOString().slice(0, 10) !==
+        q.paymentDate
+    )
+      throw Error("Data do pagamento inválida.");
+  }
+  if (q.paymentStatus === "paid" && !q.paymentDate)
+    throw Error("Informe a data do pagamento realizado.");
   const l = q.layout;
   if (
     !l ||
