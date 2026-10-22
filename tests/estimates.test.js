@@ -145,6 +145,18 @@ test("branded PDF wraps long budgets over pages without exposing internal costs 
     { encoding: "utf8" },
   );
   assert.match(text, /Papeled Maker/);
+  assert.match(text, /Instagram: @papeledmaker/);
+  assert.match(text, /WhatsApp: 61992430051/);
+  assert.match(text, /www.papeled.com.br/);
+  assert.match(text, /papeledmaker.vercel.app/);
+  const pdfSource = Buffer.from(file.bytes).toString("latin1");
+  for (const url of [
+    "https://www.instagram.com/papeledmaker/",
+    "https://wa.me/5561992430051",
+    "https://www.papeled.com.br/",
+    "https://papeledmaker.vercel.app/",
+  ])
+    assert.ok(pdfSource.includes(url), `Missing clickable URL: ${url}`);
   assert.ok(
     text.indexOf("papeledmaker@gmail.com") < text.indexOf("Cliente de teste"),
   );

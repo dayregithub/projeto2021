@@ -919,3 +919,76 @@ main {
     padding: 10px 12px;
   }
 }
+
+/* Keep navigation in one readable column at every viewport width. */
+#workspace > nav {
+  min-width: 0;
+  overflow-x: hidden;
+  display: block;
+}
+#admin-menu-items,
+.nav-links,
+.nav-subgroup {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
+}
+#admin-menu-items {
+  gap: 14px;
+}
+.nav-group,
+.nav-materials {
+  min-width: 0;
+  max-width: 100%;
+}
+.nav-group button,
+.nav-materials > summary {
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  box-sizing: border-box;
+}
+.nav-group > summary {
+  margin-left: 0;
+  list-style-position: inside;
+}
+#admin-menu-toggle {
+  display: none;
+}
+@media (max-width: 850px) {
+  #workspace > nav {
+    padding: 10px;
+    overflow: visible;
+  }
+  #admin-menu-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    font-weight: 700;
+  }
+  #admin-menu-current {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  #admin-menu-state {
+    font-size: 20px;
+    line-height: 1;
+  }
+  #admin-menu-items {
+    margin-top: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  #workspace > nav.menu-collapsed #admin-menu-items {
+    display: none;
+  }
+  .nav-subgroup {
+    margin-left: 12px;
+  }
+}

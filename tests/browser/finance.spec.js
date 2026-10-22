@@ -159,6 +159,21 @@ test("global floating actions and collapsible navigation work on desktop and mob
   await page.locator("#admin-scroll-top").click();
   await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#admin-menu-toggle")).toBeVisible();
+  await page.locator("#admin-menu-toggle").click();
+  await expect(page.locator("#admin-menu-items")).toBeHidden();
+  await page.locator("#admin-menu-toggle").click();
+  await expect(page.locator("#admin-menu-items")).toBeVisible();
+  expect(
+    await page
+      .locator("#admin-menu-items")
+      .evaluate((menu) => menu.scrollWidth <= menu.clientWidth),
+  ).toBeTruthy();
+  await page.locator("#admin-menu-toggle").click();
+  await page.screenshot({
+    path: "/tmp/papeled-navigation-mobile.png",
+    fullPage: true,
+  });
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   for (const id of ["estimate-new", "estimate-close", "admin-scroll-top"]) {
     const rect = await page.locator("#" + id).boundingBox();

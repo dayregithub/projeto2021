@@ -182,6 +182,18 @@ test("separate settings affect new quotes only and history reopens original pric
   await page.locator('[name="laserCostMode"]').selectOption("manual");
   await page.locator('[data-pricing="laserCostHour"]').fill("30");
   await page.locator('[data-tab="brand"]').click();
+  await expect(page.locator('[data-layout="instagram"]')).toHaveValue(
+    "@papeledmaker",
+  );
+  await expect(page.locator('[data-layout="whatsapp"]')).toHaveValue(
+    "61992430051",
+  );
+  await expect(
+    page.locator('[data-layout="institutionalWebsite"]'),
+  ).toHaveValue("https://www.papeled.com.br/");
+  await expect(page.locator('[data-layout="makerWebsite"]')).toHaveValue(
+    "https://papeledmaker.vercel.app",
+  );
   await page.locator('[data-layout="businessName"]').fill("Marca renovada");
   await page.locator("#estimate-save-profile").click();
   await expect(page.locator("#estimate-settings-status")).toContainText(

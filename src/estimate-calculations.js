@@ -1,3 +1,4 @@
+import { companyLinks } from "./company-links.js";
 import { calculateSimpleItem } from "./simple-estimate.js";
 import { validateService } from "./resource-catalog.js";
 import { materialFor, validateMaterial } from "./estimate-materials.js";
@@ -54,6 +55,10 @@ export const DEFAULT_LAYOUT = {
   tagline: "Espaço maker online",
   phone: "(61) 99243-0051",
   email: "papeledmaker@gmail.com",
+  instagram: "@papeledmaker",
+  whatsapp: "61992430051",
+  institutionalWebsite: "https://www.papeled.com.br/",
+  makerWebsite: "https://papeledmaker.vercel.app",
   businessId: "",
   address: "",
   footer: "Obrigado por criar com a Papeled Maker.",
@@ -578,6 +583,7 @@ export function validateEstimate(q) {
   ])
     if (typeof l[key] !== "string" || l[key].length > max)
       throw Error(`Layout: ${key} inválido.`);
+  companyLinks(l);
   if (
     l.logoData !== null &&
     (!/^data:image\/(png|jpeg);base64,/.test(l.logoData) ||

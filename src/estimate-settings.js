@@ -91,8 +91,12 @@ export function initEstimateSettings({ getState, onSaved }) {
     ["businessName", "Nome da empresa"],
     ["tagline", "Subtítulo"],
     ["title", "Título do documento"],
-    ["phone", "Telefone / WhatsApp"],
+    ["phone", "Telefone"],
     ["email", "E-mail"],
+    ["instagram", "Instagram (@usuário ou link)"],
+    ["whatsapp", "WhatsApp (com DDD)"],
+    ["institutionalWebsite", "Site institucional"],
+    ["makerWebsite", "Site de criação e orçamento"],
     ["businessId", "CPF / CNPJ"],
     ["address", "Endereço"],
     ["footer", "Rodapé"],
@@ -100,7 +104,7 @@ export function initEstimateSettings({ getState, onSaved }) {
   $("estimate-layout-fields").innerHTML = layoutFields
     .map(
       ([key, label]) =>
-        `<label>${label}<input data-layout="${key}" maxlength="${key === "footer" ? 500 : 150}"></label>`,
+        `<label>${label}<input data-layout="${key}" type="${key.endsWith("Website") ? "url" : "text"}" maxlength="${key === "footer" ? 500 : key.endsWith("Website") ? 300 : 150}"></label>`,
     )
     .join("");
   function readPricing() {

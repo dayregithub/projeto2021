@@ -70,6 +70,8 @@ function tab(name) {
   if (name === "brand" || name === "estimate-settings")
     estimateSettings.show(name === "brand" ? "brand" : "laser");
   const selectedButton = document.querySelector(`[data-tab="${name}"]`);
+  if (selectedButton)
+    $("admin-menu-current").textContent = selectedButton.textContent.trim();
   for (
     let group = selectedButton?.closest("details");
     group;
@@ -92,6 +94,20 @@ $("admin-scroll-top").onclick = () =>
       ? "instant"
       : "smooth",
   });
+const menuMedia = window.matchMedia("(max-width: 850px)");
+const menuRoot = $("admin-menu-toggle").closest("nav");
+function syncMenuToggle() {
+  const expanded =
+    !menuMedia.matches || !menuRoot.classList.contains("menu-collapsed");
+  $("admin-menu-toggle").setAttribute("aria-expanded", String(expanded));
+  $("admin-menu-state").textContent = expanded ? "−" : "+";
+}
+$("admin-menu-toggle").onclick = () => {
+  menuRoot.classList.toggle("menu-collapsed");
+  syncMenuToggle();
+};
+menuMedia.addEventListener("change", syncMenuToggle);
+syncMenuToggle();
 $("product-model").innerHTML = MODELS.map(
   (m) => `<option value="${escape(m.id)}">${escape(m.name)}</option>`,
 ).join("");

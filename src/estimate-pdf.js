@@ -1,5 +1,7 @@
+import { companyLinks } from "./company-links.js";
 import { jsPDF } from "jspdf";
 import {
+  DEFAULT_LAYOUT,
   calculateEstimate,
   validateEstimate,
   brl,
@@ -8,7 +10,7 @@ const dateBR = (s) => s.split("-").reverse().join("/");
 export async function estimatePDF(quote, { logoData } = {}) {
   validateEstimate(quote);
   const result = calculateEstimate(quote),
-    l = quote.layout,
+    l = { ...DEFAULT_LAYOUT, ...quote.layout },
     doc = new jsPDF({ unit: "mm", format: "a4" }),
     margin = 16,
     bottom = 275,
@@ -50,7 +52,17 @@ export async function estimatePDF(quote, { logoData } = {}) {
       l.address,
     ]
       .filter(Boolean)
-      .flatMap((value) => doc.splitTextToSize(clean(value), width));
+      .flatMap((value) =>
+        doc
+          .splitTextToSize(clean(value), width)
+          .map((label) => ({ label, url: null })),
+      );
+    for (const link of companyLinks(l))
+      company.push(
+        ...doc
+          .splitTextToSize(clean(link.label), width)
+          .map((label) => ({ label, url: link.url })),
+      );
     doc.setFontSize(9);
     const reference = doc.splitTextToSize(clean(quote.number), 42);
     const topEnd = Math.max(
@@ -94,9 +106,14 @@ export async function estimatePDF(quote, { logoData } = {}) {
       "normal",
       color,
     );
-    company.forEach((entry, i) =>
-      text(entry, margin, topEnd + i * 4, 8, "normal", color),
-    );
+    company.forEach((entry, i) => {
+      const yy = topEnd + i * 4;
+      text(entry.label, margin, yy, 8, "normal", color);
+      if (entry.url)
+        doc.link(margin, yy - 3, doc.getTextWidth(clean(entry.label)), 4, {
+          url: entry.url,
+        });
+    });
     if (!modern) {
       doc.setDrawColor(...accent);
       doc.line(margin, headerEnd, 194, headerEnd);
