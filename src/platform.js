@@ -1,3 +1,7 @@
+import {
+  isMetricsExcluded,
+  METRICS_EXCLUSION_KEY,
+} from "./metrics-preferences.js";
 import { setArchiveBackend } from "./download-archive.js";
 import {
   connection,
@@ -12,6 +16,7 @@ export function trackEvent(kind, model = "", format = "", product = null) {
   try {
     if (
       !enabled ||
+      isMetricsExcluded() ||
       localStorage.getItem("papeled-metrics-consent") !== "yes" ||
       navigator.doNotTrack === "1"
     )
@@ -57,10 +62,15 @@ export async function initPlatform({ openProject }) {
   setArchiveBackend(client, local);
   const consent = document.getElementById("metrics-consent");
   if (
+    !isMetricsExcluded() &&
     !localStorage.getItem("papeled-metrics-consent") &&
     navigator.doNotTrack !== "1"
   )
     consent.hidden = false;
+  window.addEventListener("storage", (event) => {
+    if (event.key === METRICS_EXCLUSION_KEY && isMetricsExcluded())
+      consent.hidden = true;
+  });
   document.getElementById("metrics-accept").onclick = () => {
     localStorage.setItem("papeled-metrics-consent", "yes");
     consent.hidden = true;

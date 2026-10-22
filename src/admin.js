@@ -1,3 +1,8 @@
+import {
+  isMetricsExcluded,
+  setMetricsExcluded,
+  METRICS_EXCLUSION_KEY,
+} from "./metrics-preferences.js";
 import { initDatabaseDiagnostics } from "./database-diagnostics.js";
 import { initEstimateSettings } from "./estimate-settings.js";
 import { initCustomerProjectsPanel } from "./customer-projects.js";
@@ -118,6 +123,32 @@ $("admin-menu-toggle").onclick = () => {
 };
 menuMedia.addEventListener("change", syncMenuToggle);
 syncMenuToggle();
+function refreshBrowserMetricsPreference() {
+  try {
+    const excluded = isMetricsExcluded();
+    $("metrics-exclude-browser").checked = excluded;
+    $("metrics-exclusion-status").textContent = excluded
+      ? "Exclusão ativada: este navegador não enviará acessos, visualizações ou eventos de download para as estatísticas."
+      : "Exclusão desativada: os eventos deste navegador podem ser contabilizados se você autorizar as estatísticas no site.";
+  } catch {
+    $("metrics-exclusion-status").textContent =
+      "Não foi possível ler a preferência deste navegador.";
+  }
+}
+$("metrics-exclude-browser").onchange = () => {
+  try {
+    setMetricsExcluded($("metrics-exclude-browser").checked);
+    refreshBrowserMetricsPreference();
+  } catch {
+    $("metrics-exclude-browser").checked = false;
+    $("metrics-exclusion-status").textContent =
+      "Não foi possível salvar a preferência. Verifique se o navegador permite armazenamento local.";
+  }
+};
+window.addEventListener("storage", (event) => {
+  if (event.key === METRICS_EXCLUSION_KEY) refreshBrowserMetricsPreference();
+});
+refreshBrowserMetricsPreference();
 $("product-model").innerHTML = MODELS.map(
   (m) => `<option value="${escape(m.id)}">${escape(m.name)}</option>`,
 ).join("");

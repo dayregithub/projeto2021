@@ -224,7 +224,9 @@ test("60 days and all-time update totals and CSV using the complete local histor
   await page.goto("/admin.html");
   await page.locator("#local-preview").click();
   await page.locator("#period").selectOption("0");
-  await expect(page.locator("#statistics-range")).toContainText("nenhum registro encontrado");
+  await expect(page.locator("#statistics-range")).toContainText(
+    "nenhum registro encontrado",
+  );
   await expect(page.locator("#chart .bar")).toHaveCount(0);
   const now = new Date().toISOString(),
     old = new Date(Date.now() - 120 * 86400000).toISOString();
@@ -315,4 +317,50 @@ test("assistant local proposal previews changes, creates only a draft after clic
   await expect(page.locator("#assistant-audit-result")).toContainText(
     "Sem foto",
   );
+});
+
+test("owner can exclude this browser from future metrics even with consent enabled", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.evaluate(() =>
+    localStorage.setItem("papeled-metrics-consent", "yes"),
+  );
+  await page.locator("#metrics-exclude-browser").check();
+  await expect(page.locator("#metrics-exclusion-status")).toContainText(
+    "Exclusão ativada",
+  );
+  const site = await context.newPage();
+  await site.goto("/");
+  await expect(site.locator("#metrics-consent")).toBeHidden();
+  await site.locator('[data-group="laser-boxes"]').click();
+  await site.evaluate(() =>
+    window.dispatchEvent(
+      new CustomEvent("papeled-file-download", { detail: "svg" }),
+    ),
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(
+          localStorage.getItem("papeled-console-local-v1") || '{"events":[]}',
+        ).events,
+    ),
+  ).toEqual([]);
+  await page.reload();
+  await expect(page.locator("#metrics-exclude-browser")).toBeChecked();
+  await page.locator("#metrics-exclude-browser").uncheck();
+  await site.reload();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          JSON.parse(
+            localStorage.getItem("papeled-console-local-v1") || '{"events":[]}',
+          ).events.filter((e) => e.kind === "page_view").length,
+      ),
+    )
+    .toBe(1);
 });
