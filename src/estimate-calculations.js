@@ -497,6 +497,7 @@ export function validateEstimate(q) {
       "sent",
       "approved",
       "rejected",
+      "cancelled",
       "in_progress",
       "completed",
       "delivered",

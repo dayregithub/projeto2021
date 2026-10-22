@@ -7,7 +7,7 @@
     "build": "vite build --base=./",
     "preview": "vite preview --host 0.0.0.0",
     "build:pages": "npm run build:assistant && npm run build && node scripts/build-pages.mjs",
-    "test": "node --test tests/geometry.test.js tests/platform.test.js tests/assistant.test.js tests/estimates.test.js",
+    "test": "node --test tests/geometry.test.js tests/platform.test.js tests/assistant.test.js tests/estimates.test.js tests/finance.test.js",
     "test:e2e": "playwright test",
     "build:fonts": "node scripts/build-letter-fonts.mjs",
     "build:assistant": "node scripts/build-assistant-function.mjs"

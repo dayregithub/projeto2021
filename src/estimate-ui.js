@@ -1,3 +1,6 @@
+import { initWorkReports } from "./work-reports.js";
+import { initFinance } from "./finance-ui.js";
+import { loadAllRows } from "./finance-data.js";
 import { durationLabel } from "./simple-estimate.js";
 import { renderEstimateKanban } from "./estimate-kanban.js";
 import { materialFor } from "./estimate-materials.js";
@@ -32,7 +35,21 @@ export function initEstimates({ getState, navigate }) {
     previewURL = null,
     previewVersion = 0,
     disposePreview = null,
-    pdfBusy = false;
+    pdfBusy = false,
+    cleanSnapshot = "",
+    pendingTransition = null;
+  const finance = initFinance({
+    getState,
+    getQuotes: () => records,
+    isQuoteSourceReady: () => getState().local || cloud,
+    openQuote: (id) => requestTransition(() => openQuote(id)),
+  });
+  $("finance-refresh").onclick = () => refresh();
+  const workReports = initWorkReports({
+    getQuotes: () => records,
+    isQuoteSourceReady: () => getState().local || cloud,
+    openQuote: (id) => requestTransition(() => openQuote(id)),
+  });
   const message = (text) => {
     for (const id of [
       "estimate-status",
@@ -390,14 +407,79 @@ export function initEstimates({ getState, navigate }) {
         quote.items[0].description = `${p.name || source.title || "Projeto"}${p.width ? ` — ${p.width} × ${p.depth} × ${p.height} mm` : ""}`;
       }
     }
+    invalidate();
     sync();
+    cleanSnapshot = JSON.stringify(quote);
     $("estimate-editor").hidden = false;
     navigate("estimates");
     $("estimate-editor").scrollIntoView({ behavior: "smooth" });
   }
   $("show-estimate-board").onclick = () => navigate("production");
-  $("new-laser-estimate").onclick = () => start("laser");
-  $("new-print-estimate").onclick = () => start("print");
+  function closeEditor() {
+    invalidate();
+    $("estimate-editor").hidden = true;
+    localStorage.removeItem("papeled-estimate-draft-v1");
+    cleanSnapshot = "";
+    message("Edição fechada. Orçamentos salvos continuam no histórico.");
+    $("new-laser-estimate").focus();
+  }
+  function requestTransition(action) {
+    if (pdfBusy) {
+      message("Aguarde a geração do PDF antes de sair.");
+      return;
+    }
+    readForm();
+    if (
+      !$("estimate-editor").hidden &&
+      JSON.stringify(quote) !== cleanSnapshot
+    ) {
+      pendingTransition = action;
+      $("estimate-leave-status").textContent = "";
+      $("estimate-leave-dialog").showModal();
+    } else action();
+  }
+  $("estimate-close").onclick = () => requestTransition(closeEditor);
+  $("estimate-new").onclick = () =>
+    requestTransition(() => {
+      closeEditor();
+      $("estimate-new-dialog").showModal();
+    });
+  $("estimate-new-back").onclick = () => $("estimate-new-dialog").close();
+  $("estimate-leave-back").onclick = () => {
+    pendingTransition = null;
+    $("estimate-leave-dialog").close();
+  };
+  $("estimate-leave-discard").onclick = () => {
+    const action = pendingTransition;
+    pendingTransition = null;
+    $("estimate-leave-dialog").close();
+    action?.();
+  };
+  $("estimate-leave-save").onclick = async () => {
+    const button = $("estimate-leave-save");
+    button.disabled = true;
+    try {
+      await save();
+      const action = pendingTransition;
+      pendingTransition = null;
+      $("estimate-leave-dialog").close();
+      action?.();
+    } catch (error) {
+      $("estimate-leave-status").textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  for (const [id, process] of [
+    ["new-laser-estimate", "laser"],
+    ["new-print-estimate", "print"],
+    ["estimate-new-laser", "laser"],
+    ["estimate-new-print", "print"],
+  ])
+    $(id).onclick = () => {
+      $("estimate-new-dialog").close();
+      requestTransition(() => start(process));
+    };
   for (const [id, process] of [
     ["add-laser-item", "laser"],
     ["add-print-item", "print"],
@@ -445,6 +527,7 @@ export function initEstimates({ getState, navigate }) {
       store(KEY, all);
     }
     await refresh();
+    cleanSnapshot = JSON.stringify(quote);
     message(
       cloud
         ? "Orçamento salvo no Supabase."
@@ -523,7 +606,17 @@ export function initEstimates({ getState, navigate }) {
     } catch (e) {
       message(e.message);
     } finally {
-      pdfBusy = false;
+      ((pdfBusy = false), (cleanSnapshot = ""), (pendingTransition = null));
+      const finance = initFinance({
+        getState,
+        getQuotes: () => records,
+        openQuote: (id) => requestTransition(() => openQuote(id)),
+      });
+      $("finance-refresh").onclick = () => refresh();
+      const workReports = initWorkReports({
+        getQuotes: () => records,
+        openQuote: (id) => requestTransition(() => openQuote(id)),
+      });
       button.textContent = label;
       button.removeAttribute("aria-busy");
       renderSummary();
@@ -576,12 +669,20 @@ export function initEstimates({ getState, navigate }) {
   };
   function renderHistory() {
     const term = $("estimate-history-search").value.toLocaleLowerCase("pt-BR");
-    const visible = records.filter((q) =>
-      [q.number, q.customer, q.title]
-        .join(" ")
-        .toLocaleLowerCase("pt-BR")
-        .includes(term),
-    );
+    const visible = records
+      .filter(
+        (q) =>
+          $("estimate-history-filter").value === "all" ||
+          ($("estimate-history-filter").value === "archived"
+            ? !!q.archivedAt
+            : !q.archivedAt),
+      )
+      .filter((q) =>
+        [q.number, q.customer, q.title]
+          .join(" ")
+          .toLocaleLowerCase("pt-BR")
+          .includes(term),
+      );
     $("estimate-history-list").innerHTML =
       visible
         .map((q) => {
@@ -591,12 +692,65 @@ export function initEstimates({ getState, navigate }) {
           } catch {
             total = "Revisar";
           }
-          return `<article class="card history-row"><div><strong>${esc(q.number)}</strong><h3>${esc(q.customer || "Cliente não informado")}</h3><p class="muted">${esc(q.title)} · ${esc(q.issuedOn || "")}</p></div><strong>${total}</strong><div class="actions"><button data-open-estimate="${esc(q.id)}">Abrir proposta</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button></div></article>`;
+          return `<article class="card history-row"><div><strong>${esc(q.number)}</strong><h3>${esc(q.customer || "Cliente não informado")}</h3><p class="muted">${esc(q.title)} · ${esc(q.issuedOn || "")}${q.archivedAt ? ` · Arquivado: ${q.status === "cancelled" ? "cancelado" : "concluído"}` : ""}</p></div><strong>${total}</strong><div class="actions"><button data-open-estimate="${esc(q.id)}">Abrir proposta</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button>${q.archivedAt ? `<button class="secondary" data-restore-estimate="${esc(q.id)}">Restaurar no Kanban</button>` : ""}</div></article>`;
         })
         .join("") || '<div class="card">Nenhum orçamento encontrado.</div>';
     bindOpen();
+    $("estimate-history-list")
+      .querySelectorAll("[data-restore-estimate]")
+      .forEach(
+        (button) =>
+          (button.onclick = async () => {
+            try {
+              await updateRecord(button.dataset.restoreEstimate, {
+                archivedAt: null,
+                archiveReason: null,
+                status:
+                  records.find((q) => q.id === button.dataset.restoreEstimate)
+                    ?.archiveReason === "completed"
+                    ? "completed"
+                    : "draft",
+              });
+              message(
+                "Orçamento restaurado no Kanban. Pagamentos preservados.",
+              );
+            } catch (e) {
+              message(e.message);
+            }
+          }),
+      );
   }
   $("estimate-history-search").oninput = renderHistory;
+  $("estimate-history-filter").onchange = renderHistory;
+  function openQuote(id, clone = false) {
+    try {
+      const source = records.find((q) => q.id === id);
+      validateEstimate(source);
+      quote = structuredClone(source);
+      if (clone) {
+        const fresh = newEstimate(profile);
+        Object.assign(quote, {
+          id: fresh.id,
+          number: fresh.number,
+          issuedOn: fresh.issuedOn,
+          createdAt: fresh.createdAt,
+          status: "draft",
+          paymentStatus: "pending",
+          paymentDate: "",
+          archivedAt: null,
+          archiveReason: null,
+        });
+      }
+      invalidate();
+      sync();
+      cleanSnapshot = JSON.stringify(quote);
+      $("estimate-editor").hidden = false;
+      navigate("estimates");
+      $("estimate-editor").scrollIntoView({ behavior: "smooth" });
+    } catch (error) {
+      message(error.message);
+    }
+  }
   function bindOpen() {
     document
       .querySelectorAll(
@@ -604,37 +758,50 @@ export function initEstimates({ getState, navigate }) {
       )
       .forEach(
         (button) =>
-          (button.onclick = () => {
-            try {
-              const source = records.find(
-                (q) =>
-                  q.id ===
-                  (button.dataset.openEstimate || button.dataset.cloneEstimate),
-              );
-              validateEstimate(source);
-              quote = structuredClone(source);
-              if (button.dataset.cloneEstimate) {
-                const fresh = newEstimate(profile);
-                Object.assign(quote, {
-                  id: fresh.id,
-                  number: fresh.number,
-                  issuedOn: fresh.issuedOn,
-                  createdAt: fresh.createdAt,
-                  status: "draft",
-                  paymentStatus: "pending",
-                  paymentDate: "",
-                });
-              }
-              sync();
-              invalidate();
-              $("estimate-editor").hidden = false;
-              navigate("estimates");
-              $("estimate-editor").scrollIntoView({ behavior: "smooth" });
-            } catch (error) {
-              message(error.message);
-            }
-          }),
+          (button.onclick = () =>
+            requestTransition(() =>
+              openQuote(
+                button.dataset.openEstimate || button.dataset.cloneEstimate,
+                !!button.dataset.cloneEstimate,
+              ),
+            )),
       );
+  }
+  async function updateRecord(id, changes) {
+    const previous = records.find((row) => row.id === id),
+      next = {
+        ...structuredClone(previous),
+        ...changes,
+        updatedAt: new Date().toISOString(),
+      };
+    validateEstimate(next);
+    if (cloud) {
+      const result = await getState()
+        .client.from("issued_quotes")
+        .update({ data: next, updated_at: next.updatedAt })
+        .eq("id", id)
+        .select("id")
+        .single();
+      if (result.error)
+        throw Error("Não foi possível atualizar no banco. Tente novamente.");
+    } else {
+      const rows = read(KEY, []);
+      const index = rows.findIndex((row) => row.id === id);
+      if (index < 0) throw Error("Orçamento não encontrado.");
+      rows[index] = next;
+      store(KEY, rows);
+    }
+    if (quote.id === id) {
+      const wasClean = JSON.stringify(quote) === cleanSnapshot;
+      Object.assign(quote, changes);
+      for (const key of ["status", "paymentStatus", "paymentDate"])
+        form.elements[key].value = quote[key] ?? "";
+      if (wasClean) cleanSnapshot = JSON.stringify(quote);
+      if (!$("estimate-editor").hidden)
+        store("papeled-estimate-draft-v1", quote);
+    }
+    await refresh();
+    message("Etapa e pagamento atualizados.");
   }
   async function refresh() {
     profile = read(PROFILE, {});
@@ -642,13 +809,18 @@ export function initEstimates({ getState, navigate }) {
     cloud = false;
     if (!state.local && state.client) {
       try {
-        const result = await state.client
-          .from("issued_quotes")
-          .select("data")
-          .order("updated_at", { ascending: false })
-          .limit(250);
-        if (result.error) throw result.error;
-        records = result.data.map((r) => r.data);
+        const rows = await loadAllRows(
+          state.client,
+          "issued_quotes",
+          "id,data",
+        );
+        records = rows
+          .map((r) => r.data)
+          .sort((a, b) =>
+            (b.updatedAt || b.createdAt || "").localeCompare(
+              a.updatedAt || a.createdAt || "",
+            ),
+          );
         cloud = true;
         const presets = await state.client
           .from("pricing_profiles")
@@ -661,58 +833,26 @@ export function initEstimates({ getState, navigate }) {
       }
     } else records = read(KEY, []);
     $("estimate-storage").textContent = cloud
-      ? "Orçamentos conectados ao Supabase. Histórico: 250 mais recentes."
+      ? "Orçamentos conectados ao Supabase. Histórico completo."
       : "Armazenamento local neste navegador. Para sincronizar, instale a área de orçamentos no Supabase. Use JSON para backup.";
-    renderEstimateKanban(
-      $("estimate-history"),
-      records,
-      async (id, changes) => {
-        const previous = records.find((row) => row.id === id),
-          next = {
-            ...structuredClone(previous),
-            ...changes,
-            updatedAt: new Date().toISOString(),
-          };
-        validateEstimate(next);
-        if (cloud) {
-          const result = await getState()
-            .client.from("issued_quotes")
-            .update({ data: next, updated_at: next.updatedAt })
-            .eq("id", id)
-            .select("id")
-            .single();
-          if (result.error)
-            throw Error(
-              "Não foi possível atualizar no banco. Tente novamente.",
-            );
-        } else {
-          const rows = read(KEY, []);
-          const index = rows.findIndex((row) => row.id === id);
-          if (index < 0) throw Error("Orçamento não encontrado.");
-          rows[index] = next;
-          store(KEY, rows);
-        }
-        if (quote.id === id) {
-          Object.assign(quote, changes);
-          for (const key of ["status", "paymentStatus", "paymentDate"])
-            form.elements[key].value = quote[key] ?? "";
-          store("papeled-estimate-draft-v1", quote);
-        }
-        await refresh();
-        message("Etapa e pagamento atualizados.");
-      },
-      message,
-    );
+    renderEstimateKanban($("estimate-history"), records, updateRecord, message);
     renderHistory();
+    await finance.refresh();
+    workReports.render();
     $("production-summary").innerHTML = [
-      ["Em execução", records.filter((q) => q.status === "in_progress").length],
+      [
+        "Em execução",
+        records.filter((q) => !q.archivedAt && q.status === "in_progress")
+          .length,
+      ],
       [
         "Aguardando entrega",
-        records.filter((q) => q.status === "completed").length,
+        records.filter((q) => !q.archivedAt && q.status === "completed").length,
       ],
       [
         "Pagamento pendente",
-        records.filter((q) => q.paymentStatus !== "paid").length,
+        records.filter((q) => !q.archivedAt && q.paymentStatus !== "paid")
+          .length,
       ],
     ]
       .map(
@@ -731,6 +871,8 @@ export function initEstimates({ getState, navigate }) {
         quote = newEstimate(profile);
       }
       sync();
+      const saved = records.find((r) => r.id === quote.id);
+      if (saved) cleanSnapshot = JSON.stringify(saved);
     }
   }
   return {
@@ -741,12 +883,14 @@ export function initEstimates({ getState, navigate }) {
       renderSummary();
     },
     fromRequest: (source) =>
-      start(
-        modelById(source.project?.model || source.settings?.model)?.category ===
-          "print"
-          ? "print"
-          : "laser",
-        source,
+      requestTransition(() =>
+        start(
+          modelById(source.project?.model || source.settings?.model)
+            ?.category === "print"
+            ? "print"
+            : "laser",
+          source,
+        ),
       ),
   };
 }

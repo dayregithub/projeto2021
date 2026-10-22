@@ -56,6 +56,7 @@ document.addEventListener("click", (event) => {
   }
 });
 function tab(name) {
+  if (["finance", "work-reports"].includes(name)) void estimates.refresh();
   document
     .querySelectorAll("[data-section]")
     .forEach((e) => (e.hidden = e.dataset.section !== name));

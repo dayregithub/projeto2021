@@ -38,9 +38,30 @@ export async function estimatePDF(quote, { logoData } = {}) {
   }
   function header() {
     const modern = l.template === "modern";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    const name = doc.splitTextToSize(clean(l.businessName), 100);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const tagline = doc.splitTextToSize(clean(l.tagline), 100);
+    const company = [
+      [l.phone, l.email].filter(Boolean).join(" | "),
+      l.businessId ? `CPF / CNPJ: ${l.businessId}` : "",
+      l.address,
+    ]
+      .filter(Boolean)
+      .flatMap((value) => doc.splitTextToSize(clean(value), width));
+    doc.setFontSize(9);
+    const reference = doc.splitTextToSize(clean(quote.number), 42);
+    const topEnd = Math.max(
+      37,
+      18 + name.length * 6 + tagline.length * 4,
+      20 + reference.length * 4 + 8,
+    );
+    const headerEnd = topEnd + company.length * 4 + 5;
     if (modern) {
       doc.setFillColor(...accent);
-      doc.rect(0, 0, 210, 43, "F");
+      doc.rect(0, 0, 210, headerEnd, "F");
     }
     doc.saveGraphicsState();
     doc.circle(27, 24, 11, null);
@@ -58,32 +79,29 @@ export async function estimatePDF(quote, { logoData } = {}) {
     );
     doc.restoreGraphicsState();
     const color = modern ? [255, 255, 255] : accent;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    text(
-      doc.splitTextToSize(clean(l.businessName), 105).slice(0, 2),
-      43,
-      18,
-      13,
-      "bold",
-      color,
+    name.forEach((entry, i) => text(entry, 43, 18 + i * 6, 13, "bold", color));
+    tagline.forEach((entry, i) =>
+      text(entry, 43, 18 + name.length * 6 + i * 4, 8, "normal", color),
     );
-    doc.setFontSize(8);
+    reference.forEach((entry, i) =>
+      text(entry, 152, 20 + i * 4, 9, "bold", color),
+    );
     text(
-      doc.splitTextToSize(clean(l.tagline), 105).slice(0, 1),
-      43,
-      33,
-      8,
+      dateBR(quote.issuedOn),
+      152,
+      24 + reference.length * 4,
+      9,
       "normal",
       color,
     );
-    text(quote.number, 156, 20, 9, "bold", color);
-    text(dateBR(quote.issuedOn), 156, 27, 9, "normal", color);
-    y = modern ? 52 : 45;
+    company.forEach((entry, i) =>
+      text(entry, margin, topEnd + i * 4, 8, "normal", color),
+    );
     if (!modern) {
       doc.setDrawColor(...accent);
-      doc.line(margin, 40, 194, 40);
+      doc.line(margin, headerEnd, 194, headerEnd);
     }
+    y = headerEnd + 10;
   }
   function page() {
     doc.addPage();
@@ -116,23 +134,15 @@ export async function estimatePDF(quote, { logoData } = {}) {
     y += 10;
   }
   header();
-  block(l.title, quote.title);
+  text("DADOS DO CLIENTE", margin, y, 9, "bold", accent);
+  y += 6;
   block("Cliente", quote.customer || "Não informado");
   if (quote.contact) block("Contato do cliente", quote.contact);
   if (quote.customerId) block("CPF / CNPJ do cliente", quote.customerId);
-  const contact = [l.phone, l.email, l.businessId, l.address]
-    .filter(Boolean)
-    .join(" | ");
-  if (contact) {
-    doc.setFontSize(8);
-    const lines = doc.splitTextToSize(clean(contact), width);
-    for (const entry of lines) {
-      space(5);
-      text(entry, margin, y, 8);
-      y += 4;
-    }
-    y += 5;
-  }
+  doc.setDrawColor(228, 217, 207);
+  doc.line(margin, y, 194, y);
+  y += 8;
+  block(l.title, quote.title);
   tableHeader();
   (result.invoiceRows || result.items).forEach((item, index) => {
     const description = [

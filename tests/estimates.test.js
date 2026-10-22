@@ -145,6 +145,10 @@ test("branded PDF wraps long budgets over pages without exposing internal costs 
     { encoding: "utf8" },
   );
   assert.match(text, /Papeled Maker/);
+  assert.ok(
+    text.indexOf("papeledmaker@gmail.com") < text.indexOf("Cliente de teste"),
+  );
+  assert.match(text, /DADOS DO CLIENTE/);
   assert.match(text, /Produto 45/);
   assert.match(text, /TOTAL/);
   assert.doesNotMatch(
@@ -262,6 +266,7 @@ test("combined database update is repeatable, customer writes are private, backu
       true,
     );
     await assert.rejects(db.query("select * from public.customer_projects"));
+    await assert.rejects(db.query("select * from public.finance_expenses"));
     await assert.rejects(
       db.query(
         "select public.register_customer_project('11111111-1111-4111-8111-111111111111','','','','save','{\"model\":\"grid\"}')",
@@ -279,6 +284,28 @@ test("combined database update is repeatable, customer writes are private, backu
     assert.equal(
       (await db.query("select * from public.customer_projects")).rows.length,
       1,
+    );
+    await db.query(
+      "insert into public.finance_expenses(description,category,amount,due_on,status) values('Energia','Energia',15,'2026-01-01','pending')",
+    );
+    assert.equal(
+      (await db.query("select * from public.finance_expenses")).rows.length,
+      1,
+    );
+    await db.exec(
+      "reset role;insert into auth.users values('44444444-4444-4444-8444-444444444444');set role authenticated;set request.jwt.claim.sub='44444444-4444-4444-8444-444444444444';",
+    );
+    assert.equal(
+      (await db.query("select * from public.finance_expenses")).rows.length,
+      0,
+    );
+    await assert.rejects(
+      db.query(
+        "insert into public.finance_expenses(description,category,amount,due_on,status) values('Teste','Outros',1,'2026-01-01','pending')",
+      ),
+    );
+    await db.exec(
+      "set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';",
     );
     await db.query(
       "insert into public.workspace_backups(device_id,device_name,data) values('33333333-3333-4333-8333-333333333333','PC','{\"version\":1}')",

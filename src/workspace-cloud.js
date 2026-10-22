@@ -1,7 +1,9 @@
+import { validateExpense } from "./finance-data.js";
 import { readProject } from "./geometry.js";
 import { validateEstimate } from "./estimate-calculations.js";
 export const WORKSPACE_KEYS = [
   "papeled-projects-v1",
+  "papeled-finance-expenses-v1",
   "papeled-draft-v1",
   "papeled-issued-estimates-v1",
   "papeled-estimate-profile-v1",
@@ -27,6 +29,8 @@ export function validateWorkspace(data) {
     readProject(p.project);
   }
   if (data["papeled-draft-v1"]) readProject(data["papeled-draft-v1"]);
+  for (const expense of data["papeled-finance-expenses-v1"] || [])
+    validateExpense(expense);
   for (const q of data["papeled-issued-estimates-v1"] || [])
     validateEstimate(q);
   if (data["papeled-estimate-draft-v1"])
@@ -48,6 +52,7 @@ export function restoreWorkspace(input, storage = localStorage) {
       if (!(key in data)) continue;
       let value = data[key];
       if (
+        key === "papeled-finance-expenses-v1" ||
         key === "papeled-projects-v1" ||
         key === "papeled-issued-estimates-v1"
       )

@@ -694,3 +694,113 @@ main {
 #estimate-settings-form input[readonly] {
   background: #f0e9e3;
 }
+
+.estimate-floating-actions {
+  position: fixed;
+  bottom: 18px;
+  right: 24px;
+  z-index: 25;
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #d9c8bb;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px #33272126;
+}
+.estimate-floating-actions button {
+  padding: 10px 14px;
+  font-size: 14px;
+}
+[data-section="estimates"] {
+  padding-bottom: 90px;
+}
+#estimate-leave-dialog,
+#estimate-new-dialog {
+  max-width: 550px;
+  width: calc(100% - 32px);
+  border: 1px solid #bfa99b;
+  border-radius: 14px;
+  padding: 24px;
+  color: #332721;
+}
+#estimate-leave-dialog::backdrop,
+#estimate-new-dialog::backdrop {
+  background: #20171380;
+}
+.finance-table-wrap {
+  overflow-x: auto;
+}
+.finance-table-wrap table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.finance-table-wrap th,
+.finance-table-wrap td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e4d9cf;
+  vertical-align: top;
+}
+.finance-table-wrap td button {
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+.finance-table-wrap th,
+.finance-table-wrap td {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+.kanban-archive-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.kanban-archive-actions button {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.finance-chart-row {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+.finance-bar {
+  min-height: 10px;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+.finance-bar.received {
+  background: #45745a;
+}
+.finance-bar.paid {
+  background: #9b6150;
+}
+.finance-chart-row span {
+  font-size: 13px;
+}
+#finance-chart {
+  max-height: 450px;
+  overflow: auto;
+}
+@media (max-width: 600px) {
+  .estimate-floating-actions {
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+    justify-content: center;
+  }
+  .estimate-floating-actions button {
+    font-size: 13px;
+    padding: 10px;
+  }
+  .finance-chart-row {
+    grid-template-columns: 80px minmax(0, 1fr);
+    gap: 10px;
+  }
+}

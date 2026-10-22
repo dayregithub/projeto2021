@@ -16,7 +16,7 @@ const esc = (s) =>
   );
 export function renderEstimateKanban(root, records, onChange, message) {
   const stage = (q) =>
-    ["sent", "rejected"].includes(q.status) ? "draft" : q.status;
+    ["sent", "rejected", "cancelled"].includes(q.status) ? "draft" : q.status;
   const expanded = new Set(
     [...root.querySelectorAll("[data-estimate-card]")]
       .filter((card) => card.querySelector("details")?.open)
@@ -24,7 +24,7 @@ export function renderEstimateKanban(root, records, onChange, message) {
   );
   root.innerHTML = `<div class="estimate-kanban">${ESTIMATE_STAGES.map(
     ([value, label]) => {
-      const group = records.filter((q) => stage(q) === value);
+      const group = records.filter((q) => !q.archivedAt && stage(q) === value);
       return `<section class="estimate-column" data-stage="${value}" aria-label="${label}"><h3>${label} (${group.length})</h3>${
         group
           .map((q) => {
@@ -34,7 +34,7 @@ export function renderEstimateKanban(root, records, onChange, message) {
             } catch {
               total = "Revisar cálculos";
             }
-            return `<article class="card" draggable="true" data-estimate-card="${esc(q.id)}"><h4>${esc(q.customer || "Cliente não informado")}</h4><p class="kanban-project-name">${esc(q.title || q.items?.[0]?.description || "Projeto sem nome")}</p><details ${expanded.has(q.id) ? "open" : ""}><summary>Detalhes e acompanhamento</summary><p>${esc(q.number)} · ${total}${q.status === "rejected" ? " · Não aprovado" : ""}</p><label>Etapa<select data-stage-change="${esc(q.id)}">${ESTIMATE_STAGES.map(([v, l]) => `<option value="${v}" ${v === stage(q) ? "selected" : ""}>${l}</option>`).join("")}</select></label><label>Pagamento<select data-payment-change="${esc(q.id)}"><option value="pending" ${q.paymentStatus !== "paid" ? "selected" : ""}>Pendente</option><option value="paid" ${q.paymentStatus === "paid" ? "selected" : ""}>Realizado</option></select></label><label>Data do pagamento<input data-payment-date="${esc(q.id)}" type="date" value="${esc(q.paymentDate || "")}"></label><div class="actions"><button class="secondary" data-open-estimate="${esc(q.id)}">Abrir</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button></div></details></article>`;
+            return `<article class="card" draggable="true" data-estimate-card="${esc(q.id)}"><h4>${esc(q.customer || "Cliente não informado")}</h4><p class="kanban-project-name">${esc(q.title || q.items?.[0]?.description || "Projeto sem nome")}</p><details ${expanded.has(q.id) ? "open" : ""}><summary>Detalhes e acompanhamento</summary><p>${esc(q.number)} · ${total}${q.status === "rejected" ? " · Não aprovado" : q.status === "cancelled" ? " · Cancelado" : ""}</p><label>Etapa<select data-stage-change="${esc(q.id)}">${ESTIMATE_STAGES.map(([v, l]) => `<option value="${v}" ${v === stage(q) ? "selected" : ""}>${l}</option>`).join("")}</select></label><label>Pagamento<select data-payment-change="${esc(q.id)}"><option value="pending" ${q.paymentStatus !== "paid" ? "selected" : ""}>Pendente</option><option value="paid" ${q.paymentStatus === "paid" ? "selected" : ""}>Realizado</option></select></label><label>Data do pagamento<input data-payment-date="${esc(q.id)}" type="date" value="${esc(q.paymentDate || "")}"></label><div class="kanban-archive-actions"><button class="secondary" data-archive-completed="${esc(q.id)}">Arquivar como concluído</button><button class="secondary" data-archive-cancelled="${esc(q.id)}">Arquivar como cancelado</button></div><div class="actions"><button class="secondary" data-open-estimate="${esc(q.id)}">Abrir</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button></div></details></article>`;
           })
           .join("") || '<p class="muted">Nenhum orçamento nesta etapa.</p>'
       }</section>`;
@@ -79,6 +79,24 @@ export function renderEstimateKanban(root, records, onChange, message) {
           paymentStatus: s.value ? "paid" : "pending",
         })),
   );
+  for (const [attribute, status] of [
+    ["archiveCompleted", "completed"],
+    ["archiveCancelled", "cancelled"],
+  ]) {
+    const selector =
+      attribute === "archiveCompleted"
+        ? "[data-archive-completed]"
+        : "[data-archive-cancelled]";
+    root.querySelectorAll(selector).forEach(
+      (button) =>
+        (button.onclick = () =>
+          apply(button.dataset[attribute], {
+            status,
+            archivedAt: new Date().toISOString(),
+            archiveReason: status,
+          })),
+    );
+  }
   root.querySelectorAll("[data-estimate-card]").forEach(
     (card) =>
       (card.ondragstart = (e) => {

@@ -200,6 +200,7 @@ test("separate settings affect new quotes only and history reopens original pric
   await page.locator('[data-tab="estimate-history"]').click();
   await page.locator("#estimate-history-search").fill("Cliente histórico");
   await page.locator("#estimate-history-list [data-open-estimate]").click();
+  await page.locator("#estimate-leave-discard").click();
   await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
     "70,00",
   );
