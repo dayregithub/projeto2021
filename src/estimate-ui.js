@@ -1,3 +1,12 @@
+import {
+  archiveFolder,
+  chooseArchiveFolder,
+  forgetArchiveFolder,
+  authorizeArchiveFolder,
+  archiveFiles,
+  writeArchive,
+  archiveZip,
+} from "./estimate-archive.js";
 import { customerContacts } from "./customer-contacts.js";
 import { quoteFingerprint } from "./quote-edit-state.js";
 import { costSummaryHTML } from "./estimate-cost-summary.js";
@@ -574,6 +583,75 @@ export function initEstimates({ getState, navigate }) {
     } else action();
   }
   $("estimate-close").onclick = () => requestTransition(closeEditor);
+  const folderStatus = $("archive-folder-status");
+  const foldersSupported = typeof window.showDirectoryPicker === "function";
+  async function showFolder() {
+    try {
+      const folder = await archiveFolder();
+      folderStatus.textContent = foldersSupported
+        ? folder
+          ? `Pasta selecionada: ${folder.name}. Você pode trocá-la aqui.`
+          : "Nenhuma pasta selecionada. Escolha uma para arquivar diretamente no computador."
+        : "Este navegador usa download ZIP. Para salvar diretamente em uma pasta, use Chrome ou Edge no computador.";
+    } catch {
+      folderStatus.textContent =
+        "Não foi possível recuperar a pasta. Escolha-a novamente; se o navegador bloquear o armazenamento, use outro perfil.";
+    }
+  }
+  $("archive-folder-choose").disabled = !foldersSupported;
+  $("archive-folder-choose").onclick = async () => {
+    try {
+      await chooseArchiveFolder();
+      await showFolder();
+    } catch (error) {
+      if (error.name !== "AbortError")
+        folderStatus.textContent = `Não foi possível selecionar a pasta: ${error.message}`;
+    }
+  };
+  $("archive-folder-forget").onclick = async () => {
+    try {
+      await forgetArchiveFolder();
+      await showFolder();
+    } catch (error) {
+      folderStatus.textContent = error.message;
+    }
+  };
+  showFolder();
+  $("estimate-archive").onclick = async () => {
+    if (pdfBusy) return;
+    const button = $("estimate-archive");
+    button.disabled = true;
+    pdfBusy = true;
+    try {
+      // Ask for permission before saving/generating, while the click is active.
+      const folder = foldersSupported ? await authorizeArchiveFolder() : null;
+      message("Salvando e preparando arquivos do orçamento…");
+      const snapshot = await save();
+      const { estimatePDF } = await import("./estimate-pdf.js");
+      const archive = archiveFiles(snapshot, await estimatePDF(snapshot));
+      if (folder) await writeArchive(folder, archive);
+      else
+        download(
+          new Blob([archiveZip(archive)], { type: "application/zip" }),
+          `${archive.folder}.zip`,
+        );
+      closeEditor();
+      message(
+        folder
+          ? `Orçamento salvo e arquivado em ${folder.name}/${archive.folder}. PDF e cópia editável atualizados.`
+          : "Orçamento salvo. Download ZIP solicitado; confirme o download e extraia a pasta para arquivar no computador.",
+      );
+    } catch (error) {
+      message(
+        `Arquivamento não concluído: ${error.message} O orçamento permanece aberto; se o salvamento já terminou, ele está no histórico. Tente novamente.`,
+      );
+    } finally {
+      pdfBusy = false;
+      button.disabled = false;
+      renderSummary();
+    }
+  };
+
   $("estimate-new").onclick = () => {
     const process =
       !$("estimate-editor").hidden &&

@@ -870,6 +870,27 @@
             </section>
             <section class="card" data-cost-panel="brand" hidden>
               <h3>Marca e apresentação do PDF</h3>
+              <details>
+                <summary>Arquivamento no computador</summary>
+                <p>
+                  Escolha a pasta principal. Ao usar “Salvar, arquivar e
+                  fechar”, será criada uma subpasta com o número do orçamento,
+                  PDF e JSON editável. A pasta vale para este navegador e
+                  computador; a autorização pode ser solicitada novamente.
+                  Arquivar não muda a etapa da produção.
+                </p>
+                <button type="button" id="archive-folder-choose">
+                  Escolher ou alterar pasta
+                </button>
+                <button
+                  type="button"
+                  id="archive-folder-forget"
+                  class="secondary"
+                >
+                  Desvincular pasta
+                </button>
+                <p id="archive-folder-status" role="status"></p>
+              </details>
               <div class="grid three">
                 <label
                   >Modelo<select name="template">
@@ -1099,7 +1120,9 @@
                 </label>
               </details>
               <div class="actions">
-                <button type="button" id="estimate-save">
+                <button type="button" id="estimate-archive">
+                  Salvar, arquivar e fechar</button
+                ><button type="button" id="estimate-save">
                   Salvar orçamento</button
                 ><button
                   type="button"
