@@ -5,6 +5,7 @@ import {
   windowsArchiveStatus,
   updateWindowsArchiveRoot,
   sendWindowsArchive,
+  openWindowsArchive,
 } from "./windows-archiver.js";
 import {
   archiveFolder,
@@ -1005,6 +1006,30 @@ export function initEstimates({ getState, navigate }) {
     $("estimate-record-dialog").showModal();
   }
   function bindRecordActions(root) {
+    root.querySelectorAll("[data-open-folder]").forEach((button) => {
+      button.onclick = async () => {
+        const record = records.find(
+          (row) => row.id === button.dataset.openFolder,
+        );
+        if (!record) return;
+        const label = button.textContent;
+        button.disabled = true;
+        button.textContent = "Abrindo…";
+        button.setAttribute("aria-busy", "true");
+        try {
+          const result = await openWindowsArchive(record.number);
+          message(
+            `Abertura solicitada no Explorador do Windows: ${result.path}`,
+          );
+        } catch (error) {
+          message(error.message);
+        } finally {
+          button.disabled = false;
+          button.textContent = label;
+          button.removeAttribute("aria-busy");
+        }
+      };
+    });
     root
       .querySelectorAll("[data-cancel-record]")
       .forEach(
@@ -1137,7 +1162,7 @@ export function initEstimates({ getState, navigate }) {
           } catch {
             total = "Revisar";
           }
-          return `<article class="card history-row"><div><strong>${esc(q.number)}</strong><h3>${esc(q.customer || "Cliente não informado")}</h3><p class="muted">${esc(q.title)} · ${esc(q.issuedOn || "")}${q.archivedAt ? ` · Arquivado: ${q.status === "cancelled" ? "cancelado" : "concluído"}` : ""}</p></div><strong>${total}</strong><div class="actions"><button data-open-estimate="${esc(q.id)}">Abrir proposta</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button><button class="secondary" data-cancel-record="${esc(q.id)}">Cancelar orçamento</button><button class="secondary danger" data-delete-record="${esc(q.id)}">Excluir orçamento</button>${q.archivedAt ? `<button class="secondary" data-restore-estimate="${esc(q.id)}">Restaurar no Kanban</button>` : ""}</div></article>`;
+          return `<article class="card history-row"><div><strong>${esc(q.number)}</strong><h3>${esc(q.customer || "Cliente não informado")}</h3><p class="muted">${esc(q.title)} · ${esc(q.issuedOn || "")}${q.archivedAt ? ` · Arquivado: ${q.status === "cancelled" ? "cancelado" : "concluído"}` : ""}</p></div><strong>${total}</strong><div class="actions"><button data-open-estimate="${esc(q.id)}">Abrir proposta</button><button class="secondary" data-open-folder="${esc(q.id)}">Abrir pasta</button><button class="secondary" data-clone-estimate="${esc(q.id)}">Duplicar</button><button class="secondary" data-cancel-record="${esc(q.id)}">Cancelar orçamento</button><button class="secondary danger" data-delete-record="${esc(q.id)}">Excluir orçamento</button>${q.archivedAt ? `<button class="secondary" data-restore-estimate="${esc(q.id)}">Restaurar no Kanban</button>` : ""}</div></article>`;
         })
         .join("") || '<div class="card">Nenhum orçamento encontrado.</div>';
     bindOpen();

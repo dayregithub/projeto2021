@@ -79,3 +79,18 @@ export function sendWindowsArchive(archive) {
     timeout: 30000,
   });
 }
+
+export async function openWindowsArchive(number) {
+  if (!windowsArchiveEnabled())
+    throw Error(
+      "Para abrir a pasta no Windows, vincule o aplicativo em Marca da empresa → Arquivamento no Windows.",
+    );
+  const status = await windowsArchiveStatus();
+  if (!status.capabilities?.includes("open-folder"))
+    throw Error(
+      "Atualize o aplicativo Windows: baixe e execute o instalador disponível em Marca da empresa. A vinculação e os arquivos serão preservados.",
+    );
+  return request("/open-folder", {
+    body: { number: String(number).replace(/[^a-zA-Z0-9_-]/g, "-") },
+  });
+}

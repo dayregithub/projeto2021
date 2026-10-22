@@ -33,6 +33,7 @@ type application struct {
 	cfg        config
 	configPath string
 	stop       func()
+	openFolder func(string) error
 }
 
 func loadConfig(path, root string) (config, error) {
@@ -131,7 +132,7 @@ func (a *application) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/status" && r.Method == "GET" {
-		respond(w, 200, map[string]any{"name": "Papeled Maker Arquivador", "version": 1, "root": a.cfg.Root})
+		respond(w, 200, map[string]any{"name": "Papeled Maker Arquivador", "version": 1, "root": a.cfg.Root, "capabilities": []string{"open-folder"}})
 		return
 	}
 	if r.Method != "POST" || !allowedOrigin(origin) || !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
@@ -175,6 +176,28 @@ func (a *application) handler(w http.ResponseWriter, r *http.Request) {
 		}
 		a.cfg = next
 		respond(w, 200, map[string]string{"root": a.cfg.Root})
+	case "/open-folder":
+		var data struct {
+			Number string `json:"number"`
+		}
+		if err := decode(r, &data); err != nil {
+			failure(w, 400, "Número do orçamento inválido.")
+			return
+		}
+		path, err := a.resolveArchive(data.Number)
+		if err != nil {
+			failure(w, 404, err.Error())
+			return
+		}
+		if a.openFolder == nil {
+			failure(w, 501, "Abrir pastas está disponível no aplicativo Windows.")
+			return
+		}
+		if err := a.openFolder(path); err != nil {
+			failure(w, 500, "Não foi possível iniciar o Explorador de Arquivos.")
+			return
+		}
+		respond(w, 200, map[string]string{"path": path})
 	case "/archive":
 		var data archiveRequest
 		if err := decode(r, &data); err != nil {
@@ -184,6 +207,10 @@ func (a *application) handler(w http.ResponseWriter, r *http.Request) {
 		path, err := storeArchive(a.cfg.Root, data)
 		if err != nil {
 			failure(w, 400, err.Error())
+			return
+		}
+		if err := a.rememberArchive(data.Number, path); err != nil {
+			failure(w, 500, "Arquivos gravados, mas não foi possível registrar o caminho da pasta. Tente arquivar novamente.")
 			return
 		}
 		respond(w, 200, map[string]string{"path": path})
@@ -252,4 +279,53 @@ func storeArchive(root string, data archiveRequest) (string, error) {
 }
 func httpServer(a *application) *http.Server {
 	return &http.Server{Addr: address, Handler: http.HandlerFunc(a.handler), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 8192}
+}
+
+// Local index preserves the actual folder when the default destination changes.
+func (a *application) archiveIndex() (map[string]string, error) {
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(a.configPath), "archives.json"))
+	index := map[string]string{}
+	if os.IsNotExist(err) {
+		return index, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(data, &index); err != nil || index == nil {
+		return nil, errors.New("O índice local de pastas não pôde ser lido.")
+	}
+	return index, nil
+}
+func (a *application) rememberArchive(number, path string) error {
+	index, err := a.archiveIndex()
+	if err != nil {
+		return err
+	}
+	index[number] = path
+	data, err := json.MarshalIndent(index, "", "  ")
+	if err != nil {
+		return err
+	}
+	return atomicWrite(filepath.Join(filepath.Dir(a.configPath), "archives.json"), data)
+}
+func (a *application) resolveArchive(number string) (string, error) {
+	if !safeNumber.MatchString(number) || reserved.MatchString(number) {
+		return "", errors.New("Número do orçamento inválido.")
+	}
+	index, err := a.archiveIndex()
+	if err != nil {
+		return "", err
+	}
+	path := index[number]
+	if path == "" {
+		path = filepath.Join(a.cfg.Root, number)
+	}
+	if !filepath.IsAbs(path) || filepath.Base(path) != number {
+		return "", errors.New("Caminho registrado inválido.")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return "", errors.New("A pasta deste orçamento não foi encontrada neste computador. Arquive-o primeiro ou verifique se a pasta foi movida ou excluída.")
+	}
+	return path, nil
 }

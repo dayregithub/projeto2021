@@ -129,3 +129,105 @@ test("app write failure leaves the saved quote open and does not silently downlo
     ),
   ).toBe("Cliente Windows");
 });
+
+test("history and Kanban open the matching folder and give feedback on missing folders", async ({
+  page,
+}) => {
+  await page.addInitScript(
+    (token) => localStorage.setItem("papeled-windows-archiver-token-v1", token),
+    token,
+  );
+  const opened = [];
+  let missing = false;
+  await page.route("http://127.0.0.1:47831/**", async (route) => {
+    const status = route.request().url().endsWith("/status");
+    let body;
+    if (status)
+      body = {
+        name: "Papeled Maker Arquivador",
+        version: 1,
+        capabilities: ["open-folder"],
+        root: "C:\\Orcamentos",
+      };
+    else {
+      opened.push(route.request().postDataJSON());
+      body = missing
+        ? {
+            error:
+              "A pasta deste orçamento não foi encontrada neste computador.",
+          }
+        : { path: "C:\\Orcamentos\\PM-EXEMPLO" };
+    }
+    await route.fulfill({
+      status: !status && missing ? 404 : 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  });
+  await brand(page);
+  await quote(page);
+  await page.locator("#estimate-save").click();
+  const number = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem("papeled-issued-estimates-v1"))[0].number,
+  );
+  await page.locator('[data-tab="estimate-history"]').click();
+  const historyButton = page
+    .locator("#estimate-history-list [data-open-folder]")
+    .first();
+  await historyButton.click();
+  await expect(page.locator("#estimate-history-status")).toContainText(
+    "Abertura solicitada",
+  );
+  expect(opened[0]).toEqual({ number });
+  await expect(historyButton).toBeEnabled();
+  await page.locator('[data-tab="production"]').click();
+  await page
+    .locator("#estimate-history [data-estimate-card] summary")
+    .first()
+    .click();
+  await page.locator("#estimate-history [data-open-folder]").first().click();
+  await expect(page.locator("#production-status")).toContainText(
+    "Abertura solicitada",
+  );
+  expect(opened[1]).toEqual({ number });
+  missing = true;
+  await page.locator('[data-tab="estimate-history"]').click();
+  await historyButton.click();
+  await expect(page.locator("#estimate-history-status")).toContainText(
+    "não foi encontrada",
+  );
+  await expect(historyButton).toHaveText("Abrir pasta");
+  await expect(historyButton).toBeEnabled();
+});
+test("opening a folder explains when the installed helper needs updating", async ({
+  page,
+}) => {
+  await page.addInitScript(
+    (token) => localStorage.setItem("papeled-windows-archiver-token-v1", token),
+    token,
+  );
+  await page.route("http://127.0.0.1:47831/**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        name: "Papeled Maker Arquivador",
+        version: 1,
+        root: "C:\\Orcamentos",
+      }),
+      headers: { "Access-Control-Allow-Origin": "*" },
+    }),
+  );
+  await brand(page);
+  await quote(page);
+  await page.locator("#estimate-save").click();
+  await page.locator('[data-tab="estimate-history"]').click();
+  await page
+    .locator("#estimate-history-list [data-open-folder]")
+    .first()
+    .click();
+  await expect(page.locator("#estimate-history-status")).toContainText(
+    "Atualize o aplicativo Windows",
+  );
+});

@@ -1,4 +1,4 @@
-PAPELED MAKER - ARQUIVADOR WINDOWS 1.0
+PAPELED MAKER - ARQUIVADOR WINDOWS 1.1
 Windows 10/11, 64 bits (x64). Nao precisa instalar Node, Python ou Go.
 
 INSTALACAO
@@ -21,6 +21,17 @@ Para reabrir o orcamento editavel, importe o JSON no painel.
 O JSON inclui custos internos e dados pessoais; envie ao cliente apenas o PDF.
 Repetir o arquivamento atualiza os tres arquivos; nao cria outra versao.
 O aplicativo nao recebe nem armazena senhas ou chaves do Supabase.
+
+ABRIR PASTAS NO HISTORICO
+No historico de orcamentos ou detalhes do Kanban, use Abrir pasta.
+O Explorador do Windows abre a pasta existente, inclusive seus arquivos extras.
+O aplicativo precisa estar aberto e vinculado neste computador. A acao nao cria
+pastas vazias nem altera arquivos. Se a pasta foi movida ou excluida, o painel avisa.
+O caminho de cada novo arquivamento fica registrado localmente, mesmo se voce
+alterar o destino padrao depois. Pastas feitas pela versao 1.0 sem esse registro
+sao procuradas no destino atual.
+Para atualizar da versao anterior, extraia o novo ZIP e execute novamente o
+instalador sem desinstalar antes: a vinculacao e as configuracoes sao mantidas.
 
 ALTERAR PASTA
 No painel, vincule o aplicativo, clique em Verificar conexao, edite Caminho

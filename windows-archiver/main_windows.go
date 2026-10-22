@@ -103,7 +103,7 @@ func run() error {
 		}
 		os.Remove(menu)
 		// Remove only our executable/config after this process exits. Never remove quote folders.
-		script := "Start-Sleep -Seconds 2;Remove-Item -LiteralPath " + psQuote(installed) + " -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath " + psQuote(configPath) + " -Force -ErrorAction SilentlyContinue"
+		script := "Start-Sleep -Seconds 2;Remove-Item -LiteralPath " + psQuote(installed) + " -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath " + psQuote(configPath) + " -Force -ErrorAction SilentlyContinue;Remove-Item -LiteralPath " + psQuote(filepath.Join(appdir, "archives.json")) + " -Force -ErrorAction SilentlyContinue"
 		notify("O arquivador será removido após fechar esta mensagem. As pastas dos orçamentos serão preservadas. Desvincule o aplicativo também no painel web.")
 		if err := quiet("powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script).Start(); err != nil {
 			return fmt.Errorf("A inicialização automática foi removida, mas não foi possível remover os arquivos do aplicativo: %w", err)
@@ -161,6 +161,13 @@ func run() error {
 	a := &application{cfg: cfg, configPath: configPath}
 	server := httpServer(a)
 	a.stop = func() { go server.Close() }
+	a.openFolder = func(path string) error {
+		command := exec.Command(filepath.Join(os.Getenv("WINDIR"), "explorer.exe"), path)
+		if err := command.Start(); err != nil {
+			return err
+		}
+		return command.Process.Release()
+	}
 	if mode == "--open" {
 		go func() { time.Sleep(250 * time.Millisecond); openSetup(cfg.Token) }()
 	}

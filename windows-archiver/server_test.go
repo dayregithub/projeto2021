@@ -144,3 +144,60 @@ func TestSymlinkCannotRedirectArchive(t *testing.T) {
 		t.Fatal("wrote outside destination")
 	}
 }
+
+func TestOpenFolderPreservesOriginalDestinationAndFiles(t *testing.T) {
+	a := testApp(t)
+	var opened string
+	a.openFolder = func(path string) error { opened = path; return nil }
+	data, _ := json.Marshal(payload("PM-20261022-OPEN01", "Cliente"))
+	w := call(a, "POST", "/archive", "https://papeledmaker.vercel.app", a.cfg.Token, data)
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	original := filepath.Join(a.cfg.Root, "PM-20261022-OPEN01")
+	custom := filepath.Join(original, "meu-projeto.txt")
+	os.WriteFile(custom, []byte("arquivo extra"), 0600)
+	newRoot := filepath.Join(t.TempDir(), "novos")
+	body, _ := json.Marshal(map[string]string{"root": newRoot})
+	if w = call(a, "POST", "/settings", "https://papeledmaker.vercel.app", a.cfg.Token, body); w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	// A fresh process still finds the old path after changing the default root.
+	reloaded, err := loadConfig(a.configPath, "unused")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.cfg = reloaded
+	w = call(a, "POST", "/open-folder", "https://papeledmaker.vercel.app", a.cfg.Token, []byte(`{"number":"PM-20261022-OPEN01"}`))
+	if w.Code != 200 || opened != original {
+		t.Fatalf("opened %q, response %d %s", opened, w.Code, w.Body.String())
+	}
+	if content, err := os.ReadFile(custom); err != nil || string(content) != "arquivo extra" {
+		t.Fatal("Opening changed extra files")
+	}
+}
+func TestOpenFolderDoesNotCreateMissingFoldersOrAcceptPaths(t *testing.T) {
+	a := testApp(t)
+	calls := 0
+	a.openFolder = func(path string) error { calls++; return nil }
+	for _, number := range []string{"PM-NOT-ARCHIVED", "../escape", `C:\\Users\\Maker`, "CON"} {
+		data, _ := json.Marshal(map[string]string{"number": number})
+		w := call(a, "POST", "/open-folder", "https://papeledmaker.vercel.app", a.cfg.Token, data)
+		if w.Code == 200 {
+			t.Fatalf("opened %s", number)
+		}
+	}
+	if calls != 0 {
+		t.Fatal("Launched explorer for invalid or missing folder")
+	}
+	if _, err := os.Stat(filepath.Join(a.cfg.Root, "PM-NOT-ARCHIVED")); !os.IsNotExist(err) {
+		t.Fatal("Created missing folder")
+	}
+	// Backward compatibility: folders archived by the initial application have no index.
+	path := filepath.Join(a.cfg.Root, "PM-LEGACY")
+	os.MkdirAll(path, 0700)
+	w := call(a, "POST", "/open-folder", "https://papeledmaker.vercel.app", a.cfg.Token, []byte(`{"number":"PM-LEGACY"}`))
+	if w.Code != 200 || calls != 1 {
+		t.Fatal(w.Body.String())
+	}
+}
