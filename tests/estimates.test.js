@@ -7,6 +7,7 @@ import {
   newEstimateItem,
   calculateEstimate,
   laserOperating,
+  printOperating,
   validateEstimate,
 } from "../src/estimate-calculations.js";
 import { estimatePDF } from "../src/estimate-pdf.js";
@@ -437,4 +438,66 @@ test("spreadsheet PDF separates the 400-minute service and 40 material units", a
   assert.match(content, /1\.066,67/);
   assert.match(content, /400/);
   assert.match(content, /MDF 3 mm/);
+});
+
+test("detailed laser cost allocates fixed expenses by productive hours and includes optical consumables", () => {
+  const pricing = {
+    laserInvestment: 9600,
+    depreciationMonths: 60,
+    workingDays: 20,
+    workingHours: 8,
+    laserUtilization: 50,
+    tubePrice: 1000,
+    tubeLifeHours: 1000,
+    lensPrice: 200,
+    lensLifeHours: 1000,
+    mirrorPrice: 100,
+    mirrorLifeHours: 1000,
+    machineKw: 2,
+    laserEnergy: 1,
+    operators: 1,
+    operatorMonthly: 1000,
+    overheadMonthly: 800,
+    laserMaintenanceHour: 1,
+    laserCostMode: "detailed",
+    laserCostHour: 999,
+  };
+  const costs = laserOperating(pricing);
+  near(costs.productiveHours, 80);
+  near(costs.computed, 28.8);
+  near(costs.hour, 28.8);
+  const q = newEstimate({ pricing });
+  q.calculationVersion = 2;
+  q.items[0].minutes = 60;
+  assert.equal(calculateEstimate(q).cost, 28.8);
+  assert.equal(calculateEstimate(q).total, 70);
+  assert.equal(
+    laserOperating({ ...pricing, laserCostMode: "manual" }).hour,
+    999,
+  );
+  assert.throws(() => laserOperating({ ...pricing, laserUtilization: 0 }));
+  assert.throws(() => laserOperating({ ...pricing, lensLifeHours: 0 }));
+});
+
+test("3D operating costs include consumables, supervision and allocated overhead in both quote versions", () => {
+  const pricing = {
+    printerWatts: 200,
+    printEnergy: 1,
+    printerInvestment: 2000,
+    printerLifeHours: 1000,
+    printMaintenanceHour: 1,
+    printConsumablesHour: 0.5,
+    printOperatorHour: 2,
+    printOverheadMonthly: 160,
+    printProductiveHours: 80,
+  };
+  near(printOperating(pricing).hour, 7.7);
+  for (const version of [undefined, 2]) {
+    const q = newEstimate({ pricing });
+    q.calculationVersion = version;
+    q.items = [{ ...newEstimateItem("print"), hours: 2, quantity: 3 }];
+    assert.equal(calculateEstimate(q).cost, 46.2);
+    assert.equal(calculateEstimate(q).total, 115.5);
+  }
+  assert.throws(() => printOperating({ ...pricing, printProductiveHours: 0 }));
 });

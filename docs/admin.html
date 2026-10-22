@@ -6,12 +6,12 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-YMQv9_z7.js"></script>
+    <script type="module" crossorigin src="./assets/admin-BUvFY1mT.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
     <link rel="modulepreload" crossorigin href="./assets/geometry-BvhQWFpt.js">
-    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-BCEqfr-k.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-VbGOHjqq.js">
-    <link rel="stylesheet" crossorigin href="./assets/admin-Di6b_rR_.css">
+    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-Bi9FYRKR.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-DtOnnc6A.js">
+    <link rel="stylesheet" crossorigin href="./assets/admin-B86vrnJv.css">
   </head>
   <body>
     <header>
@@ -462,16 +462,45 @@
                 operador, manutenção e depreciação; não some esses custos
                 novamente em cada item.
               </p>
+              <label
+                >Forma de calcular o custo interno
+                <select name="laserCostMode">
+                  <option value="detailed">
+                    Automático · composição detalhada abaixo
+                  </option>
+                  <option value="manual">
+                    Manual · informar custo consolidado por hora
+                  </option>
+                </select>
+              </label>
+              <p class="muted">
+                Distribua despesas e operadores entre as máquinas: informe
+                somente a parcela deste laser. A ocupação produtiva desconta o
+                tempo ocioso. Use a potência elétrica média do conjunto, não a
+                potência óptica do tubo. Não repita tubo, lentes e espelhos na
+                manutenção ou na depreciação.
+              </p>
               <div id="estimate-laser-settings" class="grid"></div>
+              <div id="laser-cost-breakdown" aria-live="polite"></div>
               <p id="laser-settings-example" class="muted"></p>
             </section>
             <section class="card">
-              <h3>Impressão 3D · máquina e energia</h3>
+              <h3>Impressão 3D · composição do custo por hora</h3>
               <p>
                 Preço e especificações do filamento ficam no cadastro de
                 materiais. Consumo em gramas e duração vêm do fatiador.
               </p>
               <div id="estimate-print-settings" class="grid three"></div>
+              <div id="print-cost-breakdown" aria-live="polite"></div>
+              <p class="muted">
+                O custo base não inclui filamento: ele é calculado pelos gramas
+                usados no orçamento. Informe somente a parcela das despesas
+                desta impressora. O operador por hora de máquina é opcional para
+                supervisão; preparação, acabamento e outros trabalhos manuais
+                entram como serviços adicionais, sem repetir custos. Manutenção
+                e consumíveis devem cobrir despesas distintas. O acréscimo da
+                impressão 3D é aplicado sobre o custo para formar a venda.
+              </p>
             </section>
             <section class="card">
               <h3>Regras comerciais</h3>

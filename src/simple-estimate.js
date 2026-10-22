@@ -13,7 +13,7 @@ export function calculateSimpleItem(
   item,
   p,
   laser,
-  { money, number, validateMaterial, materialFor, validateService },
+  { money, number, validateMaterial, materialFor, validateService, printer },
 ) {
   const qty = item.quantity,
     minutes = item.minutes * qty,
@@ -61,10 +61,7 @@ export function calculateSimpleItem(
     name = item.primaryService.name;
   }
   const machine =
-    item.process === "laser"
-      ? minutes * costRate
-      : hours *
-        (p.printerInvestment / p.printerLifeHours + p.printMaintenanceHour);
+    item.process === "laser" ? minutes * costRate : hours * printer.machine;
   const energy =
     item.process === "print"
       ? ((hours * p.printerWatts) / 1000) * p.printEnergy

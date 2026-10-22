@@ -12,6 +12,11 @@ export const DEFAULT_PRICING = {
   laserInvestment: 18000,
   tubePrice: 2800,
   tubeLifeHours: 6400,
+  lensPrice: 0,
+  lensLifeHours: 2000,
+  mirrorPrice: 0,
+  mirrorLifeHours: 2000,
+  laserUtilization: 100,
   machineKw: 1.5,
   laserEnergy: 0.95,
   operators: 1,
@@ -31,6 +36,10 @@ export const DEFAULT_PRICING = {
   printerInvestment: 0,
   printerLifeHours: 8000,
   printMaintenanceHour: 0,
+  printConsumablesHour: 0,
+  printOperatorHour: 0,
+  printOverheadMonthly: 0,
+  printProductiveHours: 160,
   laborHour: 20,
   markupPercent: 150,
   marginPercent: 30,
@@ -120,19 +129,40 @@ export function laserOperating(pricing) {
   number(p.workingHours, "Horas diárias", { min: 0.1, max: 24 });
   number(p.tubeLifeHours, "Vida útil do tubo", { min: 1 });
   number(p.depreciationMonths, "Meses de depreciação", { min: 1 });
-  const productiveHours = p.workingDays * p.workingHours;
+  number(p.laserUtilization, "Ocupação produtiva laser (%)", {
+    min: 0.1,
+    max: 100,
+  });
+  number(p.lensLifeHours, "Vida útil das lentes", { min: 1 });
+  number(p.mirrorLifeHours, "Vida útil dos espelhos", { min: 1 });
+  const productiveHours =
+    (p.workingDays * p.workingHours * p.laserUtilization) / 100;
   const tube = p.tubePrice / p.tubeLifeHours,
+    lenses = p.lensPrice / p.lensLifeHours,
+    mirrors = p.mirrorPrice / p.mirrorLifeHours,
     energy = p.machineKw * p.laserEnergy,
     labor = (p.operators * p.operatorMonthly) / productiveHours,
     depreciation = p.laserInvestment / p.depreciationMonths / productiveHours,
     overhead = p.overheadMonthly / productiveHours,
     maintenance = p.laserMaintenanceHour;
   const computed =
-    tube + energy + labor + depreciation + overhead + maintenance;
-  const hour = p.laserCostHour ?? computed;
+    tube +
+    lenses +
+    mirrors +
+    energy +
+    labor +
+    depreciation +
+    overhead +
+    maintenance;
+  const hour =
+    p.laserCostMode === "detailed" ? computed : (p.laserCostHour ?? computed);
   number(hour, "Custo interno laser por hora");
   return {
     tube,
+    lenses,
+    mirrors,
+    computed,
+    productiveHours,
     energy,
     labor,
     depreciation,
@@ -140,6 +170,40 @@ export function laserOperating(pricing) {
     maintenance,
     hour,
     minute: hour / 60,
+  };
+}
+export function printOperating(pricing) {
+  const p = { ...DEFAULT_PRICING, ...pricing };
+  for (const key of [
+    "printerWatts",
+    "printEnergy",
+    "printerInvestment",
+    "printerLifeHours",
+    "printMaintenanceHour",
+    "printConsumablesHour",
+    "printOperatorHour",
+    "printOverheadMonthly",
+    "printProductiveHours",
+  ])
+    number(p[key], key);
+  number(p.printerLifeHours, "Vida útil da impressora", { min: 1 });
+  number(p.printProductiveHours, "Horas produtivas 3D por mês", { min: 0.1 });
+  const energy = (p.printerWatts / 1000) * p.printEnergy;
+  const depreciation = p.printerInvestment / p.printerLifeHours;
+  const maintenance = p.printMaintenanceHour;
+  const consumables = p.printConsumablesHour;
+  const labor = p.printOperatorHour;
+  const overhead = p.printOverheadMonthly / p.printProductiveHours;
+  const machine = depreciation + maintenance + consumables + labor + overhead;
+  return {
+    energy,
+    depreciation,
+    maintenance,
+    consumables,
+    labor,
+    overhead,
+    machine,
+    hour: machine + energy,
   };
 }
 export function calculateEstimate(quote) {
@@ -152,7 +216,8 @@ export function calculateEstimate(quote) {
   )
     throw Error("Inclua de 1 a 150 itens.");
   const p = { ...DEFAULT_PRICING, ...quote.pricing },
-    laser = laserOperating(p);
+    laser = laserOperating(p),
+    printer = printOperating(p);
   number(p.sheetWidth, "Largura da chapa", { min: 0.1 });
   number(p.sheetLength, "Comprimento da chapa", { min: 0.1 });
   number(p.printerLifeHours, "Vida útil da impressora", { min: 1 });
@@ -204,6 +269,7 @@ export function calculateEstimate(quote) {
         validateMaterial,
         materialFor,
         validateService,
+        printer,
       });
     const selectedMaterial = validateMaterial(
       materialFor(item, p),
@@ -234,8 +300,7 @@ export function calculateEstimate(quote) {
     const machine =
       item.process === "laser"
         ? (item.minutes / 60) * laser.hour
-        : item.hours *
-          (p.printerInvestment / p.printerLifeHours + p.printMaintenanceHour);
+        : item.hours * printer.machine;
     const energy =
       item.process === "print"
         ? ((item.hours * p.printerWatts) / 1000) * p.printEnergy

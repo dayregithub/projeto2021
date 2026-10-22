@@ -669,3 +669,28 @@ main {
     max-width: 130px;
   }
 }
+
+.machine-cost-breakdown {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f8f4f0;
+  border: 1px solid #e4d9cf;
+  border-radius: 10px;
+}
+.machine-cost-breakdown > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+}
+.machine-cost-breakdown dd {
+  margin: 0;
+  white-space: nowrap;
+}
+.machine-cost-total {
+  border-top: 1px solid #bfa99b;
+  font-weight: 700;
+}
+#estimate-settings-form input[readonly] {
+  background: #f0e9e3;
+}

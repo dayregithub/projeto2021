@@ -2,6 +2,7 @@ import {
   DEFAULT_PRICING,
   DEFAULT_LAYOUT,
   laserOperating,
+  printOperating,
   newEstimate,
   validateEstimate,
   brl,
@@ -10,7 +11,24 @@ const KEY = "papeled-estimate-profile-v1";
 const fields = {
   laser: [
     ["laserSaleHour", "Preço de venda da máquina (R$/hora)"],
-    ["laserCostHour", "Custo interno consolidado (R$/hora)"],
+    ["laserCostHour", "Custo interno adotado (R$/hora)"],
+    ["laserInvestment", "Valor da máquina sem tubo (R$)"],
+    ["depreciationMonths", "Prazo de depreciação (meses)"],
+    ["workingDays", "Dias de trabalho por mês"],
+    ["workingHours", "Horas disponíveis por dia"],
+    ["laserUtilization", "Ocupação produtiva da máquina (%)"],
+    ["machineKw", "Potência média total: laser, chiller e exaustor (kW)"],
+    ["laserEnergy", "Tarifa de energia (R$/kWh)"],
+    ["tubePrice", "Custo de reposição do tubo (R$)"],
+    ["tubeLifeHours", "Vida útil estimada do tubo (horas)"],
+    ["lensPrice", "Custo de reposição das lentes (R$)"],
+    ["lensLifeHours", "Vida útil estimada das lentes (horas)"],
+    ["mirrorPrice", "Custo de reposição dos espelhos (R$)"],
+    ["mirrorLifeHours", "Vida útil estimada dos espelhos (horas)"],
+    ["operators", "Operadores equivalentes dedicados à máquina"],
+    ["operatorMonthly", "Custo mensal por operador, com encargos (R$)"],
+    ["overheadMonthly", "Despesas fixas mensais atribuídas ao laser (R$)"],
+    ["laserMaintenanceHour", "Outras manutenções e insumos (R$/hora)"],
   ],
   print: [
     ["printerWatts", "Consumo da impressora (W)"],
@@ -18,6 +36,16 @@ const fields = {
     ["printerInvestment", "Valor da impressora (R$; 0 = sem depreciação)"],
     ["printerLifeHours", "Vida útil estimada (horas)"],
     ["printMaintenanceHour", "Reserva de manutenção (R$/hora)"],
+    [
+      "printConsumablesHour",
+      "Bicos, mesa e outros consumíveis, sem filamento (R$/hora)",
+    ],
+    ["printOperatorHour", "Operador durante impressão (R$/hora de máquina)"],
+    [
+      "printOverheadMonthly",
+      "Despesas fixas mensais atribuídas à impressora (R$)",
+    ],
+    ["printProductiveHours", "Horas produtivas da impressora por mês"],
   ],
   commercial: [
     ["laborHour", "Trabalho manual / acabamento (R$/hora)"],
@@ -66,13 +94,59 @@ export function initEstimateSettings({ getState, onSaved }) {
         `<label>${label}<input data-layout="${key}" maxlength="${key === "footer" ? 500 : 150}"></label>`,
     )
     .join("");
+  function readPricing() {
+    const pricing = { ...current.pricing };
+    for (const entries of Object.values(fields))
+      for (const [key] of entries)
+        pricing[key] = Number(
+          form.querySelector(`[data-pricing="${key}"]`).value,
+        );
+    pricing.laserCostMode = form.elements.laserCostMode.value;
+    return pricing;
+  }
+  const breakdown = (entries, total) =>
+    `<dl class="machine-cost-breakdown">${entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${brl(value)}/h</dd></div>`).join("")}<div class="machine-cost-total"><dt>Custo base por hora</dt><dd>${brl(total)}</dd></div><div><dt>Custo por minuto</dt><dd>${brl(total / 60)}</dd></div></dl>`;
   function hint() {
-    const rate = Number(
-        form.querySelector('[data-pricing="laserSaleHour"]').value,
-      ),
-      cost = Number(form.querySelector('[data-pricing="laserCostHour"]').value);
-    $("laser-settings-example").textContent =
-      `Exemplo: 30 minutos de máquina = ${brl(rate / 2)} de venda e ${brl(cost / 2)} de custo interno, antes do material e serviços. A tarifa já deve remunerar sua operação; não há preço universal de mercado.`;
+    const input = form.querySelector('[data-pricing="laserCostHour"]');
+    input.readOnly = form.elements.laserCostMode.value === "detailed";
+    try {
+      const p = readPricing(),
+        laser = laserOperating(p),
+        printer = printOperating(p);
+      if (input.readOnly) input.value = String(laser.computed);
+      $("laser-cost-breakdown").innerHTML = breakdown(
+        [
+          ["Energia", laser.energy],
+          ["Tubo", laser.tube],
+          ["Lentes", laser.lenses],
+          ["Espelhos", laser.mirrors],
+          ["Depreciação", laser.depreciation],
+          ["Operador", laser.labor],
+          ["Despesas fixas", laser.overhead],
+          ["Outras manutenções e insumos", laser.maintenance],
+        ],
+        laser.computed,
+      );
+      $("print-cost-breakdown").innerHTML = breakdown(
+        [
+          ["Energia", printer.energy],
+          ["Depreciação", printer.depreciation],
+          ["Manutenção", printer.maintenance],
+          ["Consumíveis", printer.consumables],
+          ["Operador", printer.labor],
+          ["Despesas fixas", printer.overhead],
+        ],
+        printer.hour,
+      );
+      $("laser-settings-example").textContent =
+        `${laser.productiveHours.toLocaleString("pt-BR")} horas produtivas/mês. Custo adotado: ${brl(laser.hour)}/h. Venda: ${brl(p.laserSaleHour)}/h (${brl(p.laserSaleHour / 60)}/min). ${p.laserSaleHour < laser.hour ? "Atenção: a tarifa de venda está abaixo do custo interno." : "A tarifa de venda é definida por você e deve cobrir custos, impostos e lucro."}`;
+    } catch (error) {
+      $("laser-settings-example").textContent = error.message;
+      $("laser-cost-breakdown").textContent =
+        "Revise os valores e as vidas úteis para calcular.";
+      $("print-cost-breakdown").textContent =
+        "Revise os valores para calcular.";
+    }
   }
   form.oninput = hint;
   async function refresh() {
@@ -94,6 +168,9 @@ export function initEstimateSettings({ getState, onSaved }) {
         pricing: { ...DEFAULT_PRICING, ...stored.pricing },
         layout: { ...DEFAULT_LAYOUT, ...stored.layout },
       };
+      current.pricing.laserCostMode ??=
+        stored.pricing?.laserCostHour != null ? "manual" : "detailed";
+      form.elements.laserCostMode.value = current.pricing.laserCostMode;
       current.pricing.laserCostHour ??= laserOperating(current.pricing).hour;
       current.pricing.laserMaterialMarkup ??=
         stored.pricing?.markupPercent ?? 100;
@@ -127,11 +204,9 @@ export function initEstimateSettings({ getState, onSaved }) {
     button.disabled = true;
     try {
       const next = structuredClone(current);
-      for (const entries of Object.values(fields))
-        for (const [key] of entries)
-          next.pricing[key] = Number(
-            form.querySelector(`[data-pricing="${key}"]`).value,
-          );
+      next.pricing = readPricing();
+      if (next.pricing.laserCostMode === "detailed")
+        next.pricing.laserCostHour = laserOperating(next.pricing).computed;
       for (const [key] of layoutFields)
         next.layout[key] = form.querySelector(`[data-layout="${key}"]`).value;
       for (const key of ["template", "accent"])

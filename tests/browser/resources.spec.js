@@ -179,6 +179,7 @@ test("separate settings affect new quotes only and history reopens original pric
   await page.locator("#estimate-save").click();
   await page.locator('[data-tab="estimate-settings"]').click();
   await page.locator('[data-pricing="laserSaleHour"]').fill("120");
+  await page.locator('[name="laserCostMode"]').selectOption("manual");
   await page.locator('[data-pricing="laserCostHour"]').fill("30");
   await page.locator('[data-layout="businessName"]').fill("Marca renovada");
   await page.locator("#estimate-save-profile").click();
@@ -288,4 +289,38 @@ test("spreadsheet workflow bills laser, material and extras with independent qua
     "Caixa organizadora",
   );
   await expect(card.locator("[data-payment-change]")).toBeHidden();
+});
+
+test("machine settings calculate detailed costs and persist components for new quotes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="estimate-settings"]').click();
+  await page.locator('[name="laserCostMode"]').selectOption("detailed");
+  await page.locator('[data-pricing="lensPrice"]').fill("200");
+  await page.locator('[data-pricing="lensLifeHours"]').fill("1000");
+  await page.locator('[data-pricing="printConsumablesHour"]').fill("2");
+  await expect(page.locator("#laser-cost-breakdown")).toContainText("0,20");
+  await expect(page.locator("#print-cost-breakdown")).toContainText("2,00");
+  await expect(page.locator('[data-pricing="laserCostHour"]')).toHaveAttribute(
+    "readonly",
+    "",
+  );
+  await page.locator("#estimate-save-profile").click();
+  await expect(page.locator("#estimate-settings-status")).toContainText(
+    "Configurações salvas",
+  );
+  await page.reload();
+  await page.locator('[data-tab="estimate-settings"]').click();
+  await expect(page.locator('[data-pricing="lensPrice"]')).toHaveValue("200");
+  await expect(
+    page.locator('[data-pricing="printConsumablesHour"]'),
+  ).toHaveValue("2");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
 });
