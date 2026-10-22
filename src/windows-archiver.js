@@ -94,3 +94,64 @@ export async function openWindowsArchive(number) {
     body: { number: String(number).replace(/[^a-zA-Z0-9_-]/g, "-") },
   });
 }
+
+const PENDING = "papeled-windows-folder-pending-v1";
+let syncingFolders = false;
+function pendingFolders() {
+  const data = JSON.parse(localStorage.getItem(PENDING) || "[]");
+  if (!Array.isArray(data))
+    throw Error("Não foi possível ler as renomeações pendentes.");
+  return data;
+}
+export async function syncWindowsFolderStates() {
+  if (syncingFolders)
+    throw Error(
+      "Uma sincronização de pastas já está em andamento. Tente novamente em instantes.",
+    );
+  const pending = pendingFolders();
+  if (!pending.length)
+    return "Nenhuma renomeação de pasta pendente neste navegador.";
+  syncingFolders = true;
+  try {
+    const status = await windowsArchiveStatus();
+    if (!status.capabilities?.includes("rename-folder"))
+      throw Error(
+        "Atualize o aplicativo Windows pelo download em Marca da empresa para renomear as pastas. As renomeações continuam pendentes neste navegador.",
+      );
+    const notes = [];
+    for (const item of pending) {
+      const result = await request("/folder-state", {
+        body: { number: item.number, state: item.state },
+      });
+      localStorage.setItem(
+        PENDING,
+        JSON.stringify(pendingFolders().filter((row) => row.id !== item.id)),
+      );
+      notes.push(
+        result.skipped
+          ? `${item.number}: ${result.message}`
+          : `Pasta renomeada: ${result.path}`,
+      );
+    }
+    return notes.join(" ");
+  } finally {
+    syncingFolders = false;
+  }
+}
+export async function markWindowsFolder(number, state) {
+  if (!windowsArchiveEnabled())
+    return "A pasta do Windows não foi alterada: aplicativo não vinculado neste navegador.";
+  let queued = false;
+  try {
+    number = String(number).replace(/[^a-zA-Z0-9_-]/g, "-");
+    const pending = pendingFolders().filter((item) => item.number !== number);
+    pending.push({ id: crypto.randomUUID(), number, state });
+    localStorage.setItem(PENDING, JSON.stringify(pending));
+    queued = true;
+    return await syncWindowsFolderStates();
+  } catch (error) {
+    return queued
+      ? `A alteração do orçamento foi salva, mas a renomeação da pasta ficou pendente: ${error.message} Use ‘Sincronizar nomes das pastas’ em Marca da empresa.`
+      : `A alteração do orçamento foi salva, mas não foi possível registrar a renomeação da pasta: ${error.message} Verifique a pasta manualmente no Windows.`;
+  }
+}

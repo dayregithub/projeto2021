@@ -201,3 +201,95 @@ func TestOpenFolderDoesNotCreateMissingFoldersOrAcceptPaths(t *testing.T) {
 		t.Fatal(w.Body.String())
 	}
 }
+
+func TestCancelledThenDeletedFolderKeepsNumberAndContents(t *testing.T) {
+	a := testApp(t)
+	number := "PM-20261022-8A0699"
+	data, _ := json.Marshal(payload(number, "Cliente"))
+	if w := call(a, "POST", "/archive", "https://papeledmaker.vercel.app", a.cfg.Token, data); w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	original := filepath.Join(a.cfg.Root, number)
+	os.WriteFile(filepath.Join(original, "extra.txt"), []byte("preservado"), 0600)
+	for _, state := range []string{"cancelled", "cancelled", "deleted", "deleted"} {
+		body, _ := json.Marshal(map[string]string{"number": number, "state": state})
+		w := call(a, "POST", "/folder-state", "https://papeledmaker.vercel.app", a.cfg.Token, body)
+		if w.Code != 200 {
+			t.Fatal(w.Body.String())
+		}
+		suffix := " - CANCELADO"
+		if state == "deleted" {
+			suffix = " - DELETADO"
+		}
+		path := filepath.Join(a.cfg.Root, number+suffix)
+		if b, err := os.ReadFile(filepath.Join(path, "extra.txt")); err != nil || string(b) != "preservado" {
+			t.Fatal("extra file changed", err)
+		}
+		for _, name := range []string{"orcamento-" + number + ".pdf", "orcamento-editavel.json"} {
+			if _, err := os.Stat(filepath.Join(path, name)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if resolved, err := a.resolveArchive(number); err != nil || resolved != path {
+			t.Fatal("index not updated", resolved, err)
+		}
+	}
+	if _, err := os.Stat(original); !os.IsNotExist(err) {
+		t.Fatal("old folder still exists")
+	}
+	if _, err := a.renameArchive(number, "cancelled"); err == nil {
+		t.Fatal("downgraded deleted folder")
+	}
+}
+func TestRenameConflictAndMissingFolderNeverReplaceAnything(t *testing.T) {
+	a := testApp(t)
+	number := "PM-CONFLICT"
+	path, err := storeArchive(a.cfg.Root, payload(number, "Cliente"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.rememberArchive(number, path)
+	destination := path + " - CANCELADO"
+	os.MkdirAll(destination, 0700)
+	os.WriteFile(filepath.Join(destination, "keep.txt"), []byte("destino"), 0600)
+	if _, err := a.renameArchive(number, "cancelled"); err == nil {
+		t.Fatal("replaced existing destination")
+	}
+	if b, err := os.ReadFile(filepath.Join(destination, "keep.txt")); err != nil || string(b) != "destino" {
+		t.Fatal("destination changed")
+	}
+	if _, err := os.Stat(filepath.Join(path, "orcamento-editavel.json")); err != nil {
+		t.Fatal("source lost")
+	}
+	w := call(a, "POST", "/folder-state", "https://papeledmaker.vercel.app", a.cfg.Token, []byte(`{"number":"PM-MISSING","state":"deleted"}`))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"skipped":true`) {
+		t.Fatal(w.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(a.cfg.Root, "PM-MISSING - DELETADO")); !os.IsNotExist(err) {
+		t.Fatal("created missing folder")
+	}
+	if _, err := a.renameArchive("../escape", "deleted"); err == nil {
+		t.Fatal("accepted traversal")
+	}
+}
+func TestRearchiveCancelledFolderDoesNotCreateDuplicate(t *testing.T) {
+	a := testApp(t)
+	number := "PM-REARCHIVE"
+	data, _ := json.Marshal(payload(number, "Cliente"))
+	call(a, "POST", "/archive", "https://papeledmaker.vercel.app", a.cfg.Token, data)
+	path, err := a.renameArchive(number, "cancelled")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, _ = json.Marshal(payload(number, "Atualizado"))
+	w := call(a, "POST", "/archive", "https://papeledmaker.vercel.app", a.cfg.Token, data)
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	if b, err := os.ReadFile(filepath.Join(path, "orcamento-editavel.json")); err != nil || !strings.Contains(string(b), "Atualizado") {
+		t.Fatal("quote not updated")
+	}
+	if _, err := os.Stat(filepath.Join(a.cfg.Root, number)); !os.IsNotExist(err) {
+		t.Fatal("created duplicate unsuffixed folder")
+	}
+}

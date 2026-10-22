@@ -132,7 +132,7 @@ func (a *application) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/status" && r.Method == "GET" {
-		respond(w, 200, map[string]any{"name": "Papeled Maker Arquivador", "version": 1, "root": a.cfg.Root, "capabilities": []string{"open-folder"}})
+		respond(w, 200, map[string]any{"name": "Papeled Maker Arquivador", "version": 1, "root": a.cfg.Root, "capabilities": []string{"open-folder", "rename-folder"}})
 		return
 	}
 	if r.Method != "POST" || !allowedOrigin(origin) || !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
@@ -176,6 +176,25 @@ func (a *application) handler(w http.ResponseWriter, r *http.Request) {
 		}
 		a.cfg = next
 		respond(w, 200, map[string]string{"root": a.cfg.Root})
+	case "/folder-state":
+		var data struct {
+			Number string `json:"number"`
+			State  string `json:"state"`
+		}
+		if err := decode(r, &data); err != nil {
+			failure(w, 400, "Estado de pasta inválido.")
+			return
+		}
+		path, err := a.renameArchive(data.Number, data.State)
+		if errors.Is(err, errArchiveMissing) {
+			respond(w, 200, map[string]any{"skipped": true, "message": "Pasta não localizada neste computador; nenhum arquivo foi alterado."})
+			return
+		}
+		if err != nil {
+			failure(w, 409, err.Error())
+			return
+		}
+		respond(w, 200, map[string]string{"path": path})
 	case "/open-folder":
 		var data struct {
 			Number string `json:"number"`
@@ -204,7 +223,15 @@ func (a *application) handler(w http.ResponseWriter, r *http.Request) {
 			failure(w, 400, "Arquivos inválidos ou maiores que o limite de 30 MB.")
 			return
 		}
-		path, err := storeArchive(a.cfg.Root, data)
+		var existing string
+		if path, err := a.resolveArchive(data.Number); err == nil && filepath.Base(path) != data.Number {
+			if filepath.Base(path) == data.Number+" - DELETADO" {
+				failure(w, 409, "A pasta está marcada como DELETADO. Use um novo número para outro orçamento.")
+				return
+			}
+			existing = path
+		}
+		path, err := storeArchive(a.cfg.Root, data, existing)
 		if err != nil {
 			failure(w, 400, err.Error())
 			return
@@ -236,10 +263,12 @@ type archiveRequest struct {
 	Quote  json.RawMessage `json:"quote"`
 }
 
+var errArchiveMissing = errors.New("A pasta deste orçamento não foi encontrada neste computador. Arquive-o primeiro ou verifique se a pasta foi movida ou excluída.")
+
 var safeNumber = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,100}$`)
 var reserved = regexp.MustCompile(`(?i)^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$`)
 
-func storeArchive(root string, data archiveRequest) (string, error) {
+func storeArchive(root string, data archiveRequest, existing ...string) (string, error) {
 	if !safeNumber.MatchString(data.Number) || reserved.MatchString(data.Number) {
 		return "", errors.New("Número do orçamento inválido para criar uma pasta no Windows.")
 	}
@@ -256,6 +285,9 @@ func storeArchive(root string, data archiveRequest) (string, error) {
 		return "", errors.New("A cópia editável não corresponde ao orçamento.")
 	}
 	target := filepath.Join(root, data.Number)
+	if len(existing) > 0 && existing[0] != "" {
+		target = existing[0]
+	}
 	if err := os.MkdirAll(root, 0700); err != nil {
 		return "", errors.New("Não foi possível abrir a pasta principal.")
 	}
@@ -320,12 +352,49 @@ func (a *application) resolveArchive(number string) (string, error) {
 	if path == "" {
 		path = filepath.Join(a.cfg.Root, number)
 	}
-	if !filepath.IsAbs(path) || filepath.Base(path) != number {
+	if !filepath.IsAbs(path) || !validFolderName(filepath.Base(path), number) {
 		return "", errors.New("Caminho registrado inválido.")
 	}
 	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		return "", errArchiveMissing
+	}
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return "", errors.New("A pasta deste orçamento não foi encontrada neste computador. Arquive-o primeiro ou verifique se a pasta foi movida ou excluída.")
+		return "", errors.New("Não foi possível acessar a pasta do orçamento. Verifique as permissões e se ela é uma pasta válida.")
 	}
 	return path, nil
+}
+
+func validFolderName(name, number string) bool {
+	return name == number || name == number+" - CANCELADO" || name == number+" - DELETADO"
+}
+func (a *application) renameArchive(number, state string) (string, error) {
+	suffix, ok := map[string]string{"cancelled": " - CANCELADO", "deleted": " - DELETADO", "active": ""}[state]
+	if !ok {
+		return "", errors.New("Estado de pasta inválido.")
+	}
+	source, err := a.resolveArchive(number)
+	if err != nil {
+		return "", err
+	}
+	if filepath.Base(source) == number+" - DELETADO" && state != "deleted" {
+		return "", errors.New("Esta pasta já foi marcada como DELETADO e não será reclassificada.")
+	}
+	target := filepath.Join(filepath.Dir(source), number+suffix)
+	if target == source {
+		return target, nil
+	}
+	if _, err := os.Lstat(target); !os.IsNotExist(err) {
+		return "", errors.New("Já existe uma pasta com o nome de destino, ou não foi possível verificá-la. Nenhuma pasta foi substituída.")
+	}
+	if err := os.Rename(source, target); err != nil {
+		return "", errors.New("Não foi possível renomear a pasta. Feche arquivos em uso e verifique as permissões do Windows.")
+	}
+	if err := a.rememberArchive(number, target); err != nil {
+		if rollback := os.Rename(target, source); rollback != nil {
+			return "", fmt.Errorf("A pasta foi renomeada para %s, mas o índice não pôde ser atualizado. Verifique-a no Explorador.", target)
+		}
+		return "", errors.New("Não foi possível registrar o novo caminho. O nome anterior foi mantido.")
+	}
+	return target, nil
 }

@@ -191,6 +191,7 @@ test("history and Kanban open the matching folder and give feedback on missing f
   await expect(page.locator("#production-status")).toContainText(
     "Abertura solicitada",
   );
+  await expect.poll(() => opened.length).toBe(2);
   expect(opened[1]).toEqual({ number });
   missing = true;
   await page.locator('[data-tab="estimate-history"]').click();
@@ -230,4 +231,92 @@ test("opening a folder explains when the installed helper needs updating", async
   await expect(page.locator("#estimate-history-status")).toContainText(
     "Atualize o aplicativo Windows",
   );
+});
+
+test("confirmed cancellation and deletion rename by number, and offline rename can be retried after deletion", async ({
+  page,
+}) => {
+  await page.addInitScript(
+    (token) => localStorage.setItem("papeled-windows-archiver-token-v1", token),
+    token,
+  );
+  const states = [];
+  let offline = false;
+  await page.route("http://127.0.0.1:47831/**", async (route) => {
+    if (offline) {
+      await route.abort();
+      return;
+    }
+    const status = route.request().url().endsWith("/status");
+    let body;
+    if (status)
+      body = {
+        name: "Papeled Maker Arquivador",
+        version: 1,
+        capabilities: ["open-folder", "rename-folder"],
+        root: "C:\\Orcamentos",
+      };
+    else {
+      const request = route.request().postDataJSON();
+      states.push(request);
+      body = {
+        path: `C:\\Orcamentos\\${request.number} - ${request.state === "deleted" ? "DELETADO" : "CANCELADO"}`,
+      };
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify(body),
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  });
+  await brand(page);
+  await quote(page);
+  await page.locator("#estimate-save").click();
+  const number = await page.evaluate(
+    () =>
+      JSON.parse(localStorage.getItem("papeled-issued-estimates-v1"))[0].number,
+  );
+  await page.locator('[data-tab="estimate-history"]').click();
+  await page
+    .locator("#estimate-history-list [data-cancel-record]")
+    .first()
+    .click();
+  expect(states).toHaveLength(0);
+  await page.locator("#estimate-record-confirm").click();
+  await expect(page.locator("#estimate-history-status")).toContainText(
+    "CANCELADO",
+  );
+  expect(states).toEqual([{ number, state: "cancelled" }]);
+  offline = true;
+  await page
+    .locator("#estimate-history-list [data-delete-record]")
+    .first()
+    .click();
+  await page.locator("#estimate-record-confirm").click();
+  await expect(page.locator("#estimate-history-status")).toContainText(
+    "ficou pendente",
+  );
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("papeled-issued-estimates-v1")),
+    ),
+  ).toEqual([]);
+  const pending = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("papeled-windows-folder-pending-v1")),
+  );
+  expect(pending[0]).toMatchObject({ number, state: "deleted" });
+  offline = false;
+  await page.reload();
+  await page.locator('[data-tab="brand"]').click();
+  await page.locator('[data-cost-panel="brand"] details summary').click();
+  await page.locator("#windows-archive-sync").click();
+  await expect(page.locator("#windows-archive-status")).toContainText(
+    "DELETADO",
+  );
+  expect(states[1]).toEqual({ number, state: "deleted" });
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("papeled-windows-folder-pending-v1")),
+    ),
+  ).toEqual([]);
 });

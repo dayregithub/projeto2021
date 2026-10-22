@@ -1,4 +1,4 @@
-PAPELED MAKER - ARQUIVADOR WINDOWS 1.1
+PAPELED MAKER - ARQUIVADOR WINDOWS 1.2
 Windows 10/11, 64 bits (x64). Nao precisa instalar Node, Python ou Go.
 
 INSTALACAO
@@ -32,6 +32,21 @@ alterar o destino padrao depois. Pastas feitas pela versao 1.0 sem esse registro
 sao procuradas no destino atual.
 Para atualizar da versao anterior, extraia o novo ZIP e execute novamente o
 instalador sem desinstalar antes: a vinculacao e as configuracoes sao mantidas.
+
+CANCELAMENTO E EXCLUSAO
+Ao confirmar cancelamento no painel: NUMERO-DO-ORCAMENTO - CANCELADO.
+Ao confirmar exclusao: NUMERO-DO-ORCAMENTO - DELETADO.
+O numero e os arquivos (inclusive os que voce acrescentou) sao preservados.
+Se cancelar e depois excluir, CANCELADO e substituido por DELETADO.
+Abrir pasta continua funcionando para registros cancelados no historico.
+Excluir remove o registro do painel, mas a pasta DELETADO permanece no Windows.
+Se o aplicativo estiver indisponivel, a operacao no banco continua salva e a
+renomeacao fica pendente neste navegador vinculado. Abra o aplicativo e use
+Sincronizar nomes das pastas em Marca da empresa. A fila nao e copiada para
+outros computadores ou navegadores; limpar os dados do navegador apaga a fila.
+Se nenhuma pasta existir, o painel avisa e nao cria uma pasta vazia.
+Pastas de destino existentes nunca sao substituidas. Conflitos e arquivos em
+uso exigem verificacao no Windows antes de tentar sincronizar novamente.
 
 ALTERAR PASTA
 No painel, vincule o aplicativo, clique em Verificar conexao, edite Caminho

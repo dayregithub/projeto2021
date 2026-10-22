@@ -6,6 +6,8 @@ import {
   updateWindowsArchiveRoot,
   sendWindowsArchive,
   openWindowsArchive,
+  markWindowsFolder,
+  syncWindowsFolderStates,
 } from "./windows-archiver.js";
 import {
   archiveFolder,
@@ -602,6 +604,7 @@ export function initEstimates({ getState, navigate }) {
       "windows-archive-check",
       "windows-archive-disconnect",
       "windows-archive-root-save",
+      "windows-archive-sync",
     ];
     controls.forEach((id) => ($(id).disabled = true));
     windowsStatus.textContent = "Conectando ao aplicativo deste computador…";
@@ -638,6 +641,10 @@ export function initEstimates({ getState, navigate }) {
       $("windows-archive-root").value = status.root;
       windowsStatus.textContent =
         "Caminho atualizado no aplicativo. Os próximos orçamentos serão arquivados nessa pasta. Arquivos anteriores não foram movidos.";
+    });
+  $("windows-archive-sync").onclick = () =>
+    windowsAction(async () => {
+      windowsStatus.textContent = await syncWindowsFolderStates();
     });
   $("windows-archive-disconnect").onclick = () => {
     disconnectWindowsArchive();
@@ -995,9 +1002,9 @@ export function initEstimates({ getState, navigate }) {
       `${target.number} · ${target.customer || "Cliente não informado"} · ${target.title}. ` +
       (type === "delete"
         ? saved
-          ? "O registro será removido do banco, histórico, Kanban e relatórios; seus valores deixarão de compor o financeiro. Esta ação não pode ser desfeita."
+          ? "O registro será removido do banco, histórico, Kanban e relatórios; seus valores deixarão de compor o financeiro. Esta ação não pode ser desfeita. Se o aplicativo Windows estiver vinculado, a pasta receberá o sufixo DELETADO, preservando os arquivos."
           : "Este rascunho ainda não foi salvo no histórico e será descartado."
-        : "Será salvo com status Cancelado e arquivado. Dados e pagamentos já registrados serão preservados no sistema e no banco.");
+        : "Será salvo com status Cancelado e arquivado. Dados e pagamentos já registrados serão preservados no sistema e no banco. Se o aplicativo Windows estiver vinculado, a pasta receberá o sufixo CANCELADO, preservando os arquivos.");
     $("estimate-record-confirm").textContent =
       type === "delete"
         ? "Sim, excluir definitivamente"
@@ -1016,6 +1023,7 @@ export function initEstimates({ getState, navigate }) {
         button.disabled = true;
         button.textContent = "Abrindo…";
         button.setAttribute("aria-busy", "true");
+        message("Solicitando abertura da pasta no Windows…");
         try {
           const result = await openWindowsArchive(record.number);
           message(
@@ -1062,6 +1070,10 @@ export function initEstimates({ getState, navigate }) {
     recordBusy = true;
     $("estimate-record-confirm").disabled = true;
     $("estimate-record-back").disabled = true;
+    const folderNumber = (
+      records.find((row) => row.id === operation.id) ||
+      (quote.id === operation.id ? quote : null)
+    )?.number;
     try {
       if (getState().client && !getState().local && !cloud)
         throw Error(
@@ -1126,8 +1138,21 @@ export function initEstimates({ getState, navigate }) {
       navigate("estimate-history");
       message(
         operation.type === "cancel"
+          ? "Orçamento cancelado. Atualizando o nome da pasta…"
+          : "Orçamento excluído. Atualizando o nome da pasta…",
+      );
+      const folderNote = folderNumber
+        ? await markWindowsFolder(
+            folderNumber,
+            operation.type === "cancel" ? "cancelled" : "deleted",
+          )
+        : "";
+      message(
+        (operation.type === "cancel"
           ? "Orçamento cancelado e salvo. Dados e pagamentos preservados."
-          : "Orçamento excluído. Histórico, produção, relatórios e financeiro atualizados.",
+          : "Orçamento excluído. Histórico, produção, relatórios e financeiro atualizados.") +
+          " " +
+          folderNote,
       );
     } catch (error) {
       $("estimate-record-status").textContent = error.message;
