@@ -118,3 +118,47 @@ test("cancel preserves records and payments and deletion requires confirmation b
     ),
   ).toBe(0);
 });
+
+test("continue editing returns to an unsaved draft restored outside the editor without saving or replacing it", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="estimates"]').click();
+  await page.locator("#new-laser-estimate").click();
+  await page
+    .locator('#estimate-form [name="customer"]')
+    .fill("Rascunho a continuar");
+  await page.locator('[data-item="minutes"]').fill("37");
+  const before = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("papeled-estimate-draft-v1")),
+  );
+  await page.reload();
+  await page.locator("#estimate-new").click();
+  await expect(page.locator("#estimate-leave-dialog")).toBeVisible();
+  await page.locator("#estimate-leave-back").click();
+  await expect(page.locator("#estimate-leave-dialog")).toBeHidden();
+  await expect(page.locator('[data-section="estimates"]')).toBeVisible();
+  await expect(page.locator("#estimate-editor")).toBeVisible();
+  await expect(page.locator('#estimate-form [name="customer"]')).toHaveValue(
+    "Rascunho a continuar",
+  );
+  await expect(page.locator('[data-item="minutes"]')).toHaveValue("37");
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("papeled-estimate-draft-v1")).id,
+    ),
+  ).toBe(before.id);
+  expect(
+    await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("papeled-issued-estimates-v1") || "[]"),
+    ),
+  ).toEqual([]);
+  await page.locator("#estimate-new").click();
+  await expect(page.locator("#estimate-leave-dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#estimate-leave-dialog")).toBeHidden();
+  await expect(page.locator('#estimate-form [name="customer"]')).toHaveValue(
+    "Rascunho a continuar",
+  );
+});

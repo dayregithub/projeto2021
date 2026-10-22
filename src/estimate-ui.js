@@ -760,13 +760,22 @@ export function initEstimates({ getState, navigate }) {
     });
   };
   $("estimate-new-back").onclick = () => $("estimate-new-dialog").close();
-  $("estimate-leave-dialog").addEventListener("cancel", () => {
-    pendingTransition = null;
-  });
-  $("estimate-leave-back").onclick = () => {
+  function continueEditing() {
     pendingTransition = null;
     $("estimate-leave-dialog").close();
-  };
+    $("estimate-editor").hidden = false;
+    navigate("estimates");
+    $("estimate-editor").scrollIntoView({ behavior: "smooth", block: "start" });
+    form.elements.customer.focus({ preventScroll: true });
+    message(
+      "Continue editando este orçamento. As alterações ainda não foram salvas.",
+    );
+  }
+  $("estimate-leave-dialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    continueEditing();
+  });
+  $("estimate-leave-back").onclick = continueEditing;
   $("estimate-leave-discard").onclick = () => {
     const action = pendingTransition;
     pendingTransition = null;
