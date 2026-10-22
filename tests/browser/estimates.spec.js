@@ -59,7 +59,7 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.locator("#new-print-estimate").click();
   await expect(page.locator("#estimate-form [data-pricing]")).toHaveCount(0);
   await page.locator('[data-item="materialMode"]').selectOption("included");
-  await page.locator('[data-item="materialQuantity"]').fill("110");
+  await page.locator('[data-item="grams"]').fill("110");
   await page.locator('[data-item="hours"]').fill("5");
   await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
     "38,96",

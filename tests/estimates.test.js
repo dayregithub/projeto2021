@@ -528,3 +528,116 @@ test("3D operating costs include consumables, supervision and allocated overhead
   }
   assert.throws(() => printOperating({ ...pricing, printProductiveHours: 0 }));
 });
+
+test("3D spreadsheet project uses purchase price, exact energy and 150 percent markup", () => {
+  const q = newEstimate({
+    pricing: {
+      filamentKg: 200,
+      printerWatts: 400,
+      printEnergy: 1.191,
+      printMarkup: 150,
+    },
+  });
+  q.calculationVersion = 2;
+  q.items = [
+    {
+      ...newEstimateItem("print"),
+      printInputMode: "piece",
+      materialMode: "included",
+      grams: 100,
+      hours: 2,
+    },
+  ];
+  const before = JSON.stringify(q),
+    result = calculateEstimate(q),
+    item = result.items[0];
+  near(item.costs.material, 20);
+  near(item.costs.energy, 0.9528);
+  near(item.baseCost, 20.9528);
+  assert.equal(result.cost, 20.95);
+  assert.equal(result.total, 52.38);
+  near(item.pricePerGram, 0.5238);
+  assert.equal(
+    item.invoiceRows.reduce((sum, row) => sum + row.subtotal, 0),
+    52.38,
+  );
+  assert.equal(JSON.stringify(q), before);
+  q.items[0].material = { name: "PLA", price: 200, salePrice: 9999 };
+  assert.equal(calculateEstimate(q).total, 52.38);
+});
+test("3D piece and slicer batch modes scale weight and time together, and extra services have their own quantities", () => {
+  const q = newEstimate({
+    pricing: {
+      filamentKg: 200,
+      printerWatts: 400,
+      printEnergy: 1.191,
+      printMarkup: 150,
+    },
+  });
+  q.calculationVersion = 2;
+  q.items = [
+    {
+      ...newEstimateItem("print"),
+      printInputMode: "piece",
+      materialMode: "included",
+      grams: 100,
+      hours: 2,
+      quantity: 2,
+    },
+  ];
+  assert.equal(calculateEstimate(q).total, 104.76);
+  assert.equal(calculateEstimate(q).items[0].totalGrams, 200);
+  assert.equal(calculateEstimate(q).items[0].totalHours, 4);
+  q.items[0].printInputMode = "batch";
+  assert.equal(calculateEstimate(q).total, 52.38);
+  assert.equal(calculateEstimate(q).items[0].unitPrice, 26.19);
+  q.items[0].services = [
+    {
+      name: "Pintura cadastrada",
+      unit: "unidade",
+      type: "service",
+      price: 10,
+      cost: 2,
+      quantity: 7,
+    },
+  ];
+  assert.equal(calculateEstimate(q).total, 122.38);
+  q.items[0].materialMode = "provided";
+  assert.equal(calculateEstimate(q).items[0].costs.material, 0);
+  q.items[0].grams = 0;
+  assert.throws(() => calculateEstimate(q), /Peso/);
+});
+test("3D project finishing uses the configured labor and pricing method, without changing laser prices", () => {
+  const q = newEstimate({
+    pricing: {
+      filamentKg: 200,
+      printerWatts: 400,
+      printEnergy: 1.191,
+      printMarkup: 150,
+    },
+  });
+  q.calculationVersion = 2;
+  q.items = [
+    {
+      ...newEstimateItem("print"),
+      printInputMode: "piece",
+      materialMode: "included",
+      grams: 100,
+      hours: 2,
+      handlingMinutes: 10,
+      paintingCost: 12,
+      extras: 2,
+    },
+  ];
+  assert.equal(calculateEstimate(q).total, 95.72);
+  q.pricing.printPricingMethod = "margin";
+  q.pricing.printMarginPercent = 30;
+  q.pricing.taxPercent = 10;
+  assert.equal(calculateEstimate(q).total, 63.81);
+  q.items = [
+    { ...newEstimateItem("laser"), minutes: 60, materialMode: "none" },
+  ];
+  assert.equal(calculateEstimate(q).total, 70);
+  q.pricing.printMarginPercent = 99;
+  assert.throws(() => calculateEstimate(q), /Margem 3D/);
+});

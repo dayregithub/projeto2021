@@ -6,12 +6,12 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-DV3C18Bu.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-DQkZSMd_.js">
+    <script type="module" crossorigin src="./assets/admin-CTdLM6o1.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-BHyzRqp3.js">
     <link rel="modulepreload" crossorigin href="./assets/browser-eqoWqH1V.js">
     <link rel="modulepreload" crossorigin href="./assets/geometry-D2vbGyY5.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-BAQrxjDn.js">
-    <link rel="stylesheet" crossorigin href="./assets/admin-BMWBnpd2.css">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-phkM9QEk.js">
+    <link rel="stylesheet" crossorigin href="./assets/admin-CyYz9w4R.css">
   </head>
   <body>
     <header>
@@ -682,8 +682,21 @@
               Cadastrar materiais e serviços
             </button>
           </div>
+          <div
+            class="cost-settings-tabs"
+            role="group"
+            aria-label="Configurações de orçamento"
+          >
+            <button type="button" class="secondary" data-cost-tab="laser">
+              Corte laser</button
+            ><button type="button" class="secondary" data-cost-tab="print">
+              Impressão 3D</button
+            ><button type="button" class="secondary" data-cost-tab="general">
+              Geral e marca do PDF
+            </button>
+          </div>
           <form id="estimate-settings-form">
-            <section class="card">
+            <section class="card" data-cost-panel="laser">
               <h3>Laser · tarifa e custo por hora</h3>
               <p>
                 A venda usa o tempo de máquina. O custo interno reúne energia,
@@ -712,11 +725,31 @@
               <div id="laser-cost-breakdown" aria-live="polite"></div>
               <p id="laser-settings-example" class="muted"></p>
             </section>
-            <section class="card">
+            <section class="card" data-cost-panel="print" hidden>
               <h3>Impressão 3D · composição do custo por hora</h3>
               <p>
                 Preço e especificações do filamento ficam no cadastro de
                 materiais. Consumo em gramas e duração vêm do fatiador.
+              </p>
+              <label
+                >Formação do preço de impressão 3D<select
+                  name="printPricingMethod"
+                >
+                  <option value="markup">
+                    Custo + lucro sobre o custo (modelo da planilha)
+                  </option>
+                  <option value="margin">Margem sobre o preço de venda</option>
+                </select></label
+              >
+              <p class="muted">
+                No modelo da planilha: custo total × (1 + acréscimo / 100).
+                Exemplo: 150% significa multiplicar o custo por 2,5; não
+                significa margem de 150%. Com custos de máquina zerados, 100 g a
+                R$ 200/kg + 2 h a 400 W e R$ 1,191/kWh = R$ 20,9528 de custo e
+                R$ 52,38 de venda. Custos operacionais adicionais configurados
+                também entram na base. O preço de compra do material é usado na
+                composição; o preço avulso de venda do filamento não substitui
+                esta regra.
               </p>
               <div id="estimate-print-settings" class="grid three"></div>
               <div id="print-cost-breakdown" aria-live="polite"></div>
@@ -730,8 +763,8 @@
                 impressão 3D é aplicado sobre o custo para formar a venda.
               </p>
             </section>
-            <section class="card">
-              <h3>Regras comerciais</h3>
+            <section class="card" data-cost-panel="general" hidden>
+              <h3>Regras gerais</h3>
               <div id="estimate-commercial-settings" class="grid"></div>
               <p class="muted">
                 Acréscimo sobre custo e margem sobre venda são métodos
@@ -740,7 +773,7 @@
                 venda.
               </p>
             </section>
-            <section class="card">
+            <section class="card" data-cost-panel="general" hidden>
               <h3>Marca e apresentação do PDF</h3>
               <div class="grid three">
                 <label

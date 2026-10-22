@@ -181,6 +181,7 @@ test("separate settings affect new quotes only and history reopens original pric
   await page.locator('[data-pricing="laserSaleHour"]').fill("120");
   await page.locator('[name="laserCostMode"]').selectOption("manual");
   await page.locator('[data-pricing="laserCostHour"]').fill("30");
+  await page.locator('[data-cost-tab="general"]').click();
   await page.locator('[data-layout="businessName"]').fill("Marca renovada");
   await page.locator("#estimate-save-profile").click();
   await expect(page.locator("#estimate-settings-status")).toContainText(
@@ -302,6 +303,7 @@ test("machine settings calculate detailed costs and persist components for new q
   await page.locator('[name="laserCostMode"]').selectOption("detailed");
   await page.locator('[data-pricing="lensPrice"]').fill("200");
   await page.locator('[data-pricing="lensLifeHours"]').fill("1000");
+  await page.locator('[data-cost-tab="print"]').click();
   await page.locator('[data-pricing="printConsumablesHour"]').fill("2");
   await expect(page.locator("#laser-cost-breakdown")).toContainText("0,20");
   await expect(page.locator("#print-cost-breakdown")).toContainText("2,00");

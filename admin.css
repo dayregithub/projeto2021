@@ -804,3 +804,18 @@ main {
     gap: 10px;
   }
 }
+
+.cost-settings-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.cost-settings-tabs button[aria-pressed="true"] {
+  background: #684b43;
+  color: #fff;
+}
+.print-estimate-item [data-item-result] {
+  font-weight: 700;
+  color: #503a31;
+}

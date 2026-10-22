@@ -1,3 +1,4 @@
+import { calculatePrintItem } from "./print-estimate.js";
 export function durationLabel(minutes) {
   const seconds = Math.round(minutes * 60);
   return [
@@ -15,6 +16,17 @@ export function calculateSimpleItem(
   laser,
   { money, number, validateMaterial, materialFor, validateService, printer },
 ) {
+  if (
+    item.process === "print" &&
+    ["piece", "batch"].includes(item.printInputMode)
+  )
+    return calculatePrintItem(item, p, printer, {
+      money,
+      number,
+      validateMaterial,
+      materialFor,
+      validateService,
+    });
   const qty = item.quantity,
     minutes = item.minutes * qty,
     hours = item.hours * qty;

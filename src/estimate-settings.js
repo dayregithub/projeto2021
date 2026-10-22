@@ -10,6 +10,7 @@ import {
 const KEY = "papeled-estimate-profile-v1";
 const fields = {
   laser: [
+    ["laserMaterialMarkup", "Acréscimo sobre material laser (%)"],
     ["laserSaleHour", "Preço de venda da máquina (R$/hora)"],
     ["laserCostHour", "Custo interno adotado (R$/hora)"],
     ["laserInvestment", "Valor da máquina sem tubo (R$)"],
@@ -31,6 +32,9 @@ const fields = {
     ["laserMaintenanceHour", "Outras manutenções e insumos (R$/hora)"],
   ],
   print: [
+    ["printMarkup", "Lucro sobre o custo / acréscimo (%)"],
+    ["printMarginPercent", "Margem sobre a venda (%) · método de margem"],
+    ["filamentKg", "Preço padrão de compra do filamento (R$/kg)"],
     ["printerWatts", "Consumo da impressora (W)"],
     ["printEnergy", "Energia (R$/kWh)"],
     ["printerInvestment", "Valor da impressora (R$; 0 = sem depreciação)"],
@@ -49,9 +53,8 @@ const fields = {
   ],
   commercial: [
     ["laborHour", "Trabalho manual / acabamento (R$/hora)"],
-    ["laserMaterialMarkup", "Acréscimo sobre material laser (%)"],
-    ["printMarkup", "Acréscimo sobre impressão 3D (%)"],
-    ["marginPercent", "Margem no método de margem (%)"],
+
+    ["marginPercent", "Margem de propostas anteriores (%)"],
     ["taxPercent", "Impostos inclusos na venda (%)"],
   ],
 };
@@ -102,11 +105,18 @@ export function initEstimateSettings({ getState, onSaved }) {
           form.querySelector(`[data-pricing="${key}"]`).value,
         );
     pricing.laserCostMode = form.elements.laserCostMode.value;
+    pricing.printPricingMethod = form.elements.printPricingMethod.value;
     return pricing;
   }
   const breakdown = (entries, total) =>
     `<dl class="machine-cost-breakdown">${entries.map(([label, value]) => `<div><dt>${label}</dt><dd>${brl(value)}/h</dd></div>`).join("")}<div class="machine-cost-total"><dt>Custo base por hora</dt><dd>${brl(total)}</dd></div><div><dt>Custo por minuto</dt><dd>${brl(total / 60)}</dd></div></dl>`;
   function hint() {
+    const marginMethod = form.elements.printPricingMethod.value === "margin";
+    form
+      .querySelector('[data-pricing="printMarginPercent"]')
+      .closest("label").hidden = !marginMethod;
+    form.querySelector('[data-pricing="printMarkup"]').closest("label").hidden =
+      marginMethod;
     const input = form.querySelector('[data-pricing="laserCostHour"]');
     input.readOnly = form.elements.laserCostMode.value === "detailed";
     try {
@@ -148,6 +158,25 @@ export function initEstimateSettings({ getState, onSaved }) {
         "Revise os valores para calcular.";
     }
   }
+  function showSettings(section) {
+    document
+      .querySelectorAll("[data-cost-panel]")
+      .forEach((panel) => (panel.hidden = panel.dataset.costPanel !== section));
+    document
+      .querySelectorAll("[data-cost-tab]")
+      .forEach((button) =>
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.costTab === section),
+        ),
+      );
+  }
+  document
+    .querySelectorAll("[data-cost-tab]")
+    .forEach(
+      (button) => (button.onclick = () => showSettings(button.dataset.costTab)),
+    );
+  showSettings("laser");
   form.oninput = hint;
   async function refresh() {
     try {
@@ -175,6 +204,11 @@ export function initEstimateSettings({ getState, onSaved }) {
       current.pricing.laserMaterialMarkup ??=
         stored.pricing?.markupPercent ?? 100;
       current.pricing.printMarkup ??= stored.pricing?.markupPercent ?? 150;
+      current.pricing.printMarginPercent ??=
+        stored.pricing?.marginPercent ?? 30;
+      current.pricing.printPricingMethod ??= "markup";
+      form.elements.printPricingMethod.value =
+        current.pricing.printPricingMethod;
       for (const entries of Object.values(fields))
         for (const [key] of entries)
           form.querySelector(`[data-pricing="${key}"]`).value =

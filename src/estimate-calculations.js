@@ -228,6 +228,18 @@ export function calculateEstimate(quote) {
     number(p.laserMaterialMarkup, "Acréscimo material laser", { max: 10000 });
   if (p.printMarkup !== undefined)
     number(p.printMarkup, "Acréscimo impressão 3D", { max: 10000 });
+  if (p.printMarginPercent !== undefined)
+    number(p.printMarginPercent, "Margem 3D", { max: 99.99 });
+  if (
+    p.printPricingMethod !== undefined &&
+    !["markup", "margin"].includes(p.printPricingMethod)
+  )
+    throw Error("Método de preço 3D inválido.");
+  if (
+    p.printPricingMethod === "margin" &&
+    (p.printMarginPercent ?? p.marginPercent) + p.taxPercent >= 100
+  )
+    throw Error("Margem 3D + impostos devem ser menores que 100%.");
   const sheetM2 = (p.sheetWidth * p.sheetLength) / 10000,
     materialM2 = p.sheetPrice / sheetM2;
   const items = quote.items.map((item, index) => {
@@ -262,6 +274,11 @@ export function calculateEstimate(quote) {
     number(item.lossPercent, `${label}, perda filamento`, { max: 1000 });
     if (item.process === "print" && item.method === "rate")
       throw Error(`${label}: impressão 3D usa acréscimo ou margem.`);
+    if (
+      item.printInputMode != null &&
+      !["piece", "batch"].includes(item.printInputMode)
+    )
+      throw Error("Escolha peso e tempo por peça ou por lote.");
     if (quote.calculationVersion === 2)
       return calculateSimpleItem(item, p, laser, {
         money,
