@@ -107,3 +107,54 @@ test("folder writer creates numbered directory and updates PDF and JSON", async 
   expect(result.pdf).toEqual([3]);
   expect(result.quote.quote.customer).toBe("Atualizado");
 });
+
+test("unsupported folder API does not wait for IndexedDB and keeps brand and navigation usable", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.showDirectoryPicker = undefined;
+    const open = indexedDB.open.bind(indexedDB);
+    indexedDB.open = (...args) =>
+      args[0] === "papeled-local-archive" ? {} : open(...args);
+  });
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="brand"]').click();
+  await page.locator('[data-cost-panel="brand"] details summary').click();
+  await expect(page.locator("#archive-folder-status")).toContainText(
+    "Arquivamento por ZIP disponível",
+  );
+  await expect(page.locator("#archive-folder-choose")).toBeHidden();
+  await page.locator("#archive-folder-help").click();
+  await expect(page.locator("#archive-folder-status")).toContainText(
+    "Após baixar, extraia-o",
+  );
+  await page.locator('[data-layout="businessName"]').fill("Papeled teste");
+  await page.locator("#estimate-save-profile").click();
+  await expect(page.locator('[data-layout="businessName"]')).toHaveValue(
+    "Papeled teste",
+  );
+  await page.locator('[data-tab="finance"]').click();
+  await expect(page.locator('[data-section="finance"]')).toBeVisible();
+});
+
+test("folder storage that never responds times out without locking navigation", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.showDirectoryPicker = async () => {};
+    const open = indexedDB.open.bind(indexedDB);
+    indexedDB.open = (...args) =>
+      args[0] === "papeled-local-archive" ? {} : open(...args);
+  });
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="brand"]').click();
+  await page.locator('[data-cost-panel="brand"] details summary').click();
+  await expect(page.locator("#archive-folder-status")).toContainText(
+    "Não foi possível recuperar a pasta",
+    { timeout: 10000 },
+  );
+  await page.locator('[data-tab="finance"]').click();
+  await expect(page.locator('[data-section="finance"]')).toBeVisible();
+});

@@ -586,6 +586,11 @@ export function initEstimates({ getState, navigate }) {
   const folderStatus = $("archive-folder-status");
   const foldersSupported = typeof window.showDirectoryPicker === "function";
   async function showFolder() {
+    if (!foldersSupported) {
+      folderStatus.textContent =
+        "Arquivamento por ZIP disponível. No orçamento, clique em ‘Salvar, arquivar e fechar’ para baixar a pasta compactada. Para escolher uma pasta diretamente, abra o site no Chrome ou Edge do computador.";
+      return;
+    }
     try {
       const folder = await archiveFolder();
       folderStatus.textContent = foldersSupported
@@ -598,7 +603,14 @@ export function initEstimates({ getState, navigate }) {
         "Não foi possível recuperar a pasta. Escolha-a novamente; se o navegador bloquear o armazenamento, use outro perfil.";
     }
   }
-  $("archive-folder-choose").disabled = !foldersSupported;
+  $("archive-folder-choose").hidden = !foldersSupported;
+  $("archive-folder-forget").hidden = !foldersSupported;
+  $("archive-folder-help").hidden = foldersSupported;
+  $("archive-folder-help").onclick = () => {
+    folderStatus.textContent =
+      "Para arquivar: abra ou crie um orçamento e clique em ‘Salvar, arquivar e fechar’. O ZIP terá PDF e cópia editável. Após baixar, extraia-o na pasta desejada do computador.";
+    folderStatus.scrollIntoView({ block: "nearest" });
+  };
   $("archive-folder-choose").onclick = async () => {
     try {
       await chooseArchiveFolder();

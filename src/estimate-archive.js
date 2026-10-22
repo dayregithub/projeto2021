@@ -5,8 +5,33 @@ function database() {
     const request = indexedDB.open("papeled-local-archive", 1);
     request.onupgradeneeded = () =>
       request.result.createObjectStore("settings");
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      reject(
+        Error(
+          "O armazenamento do navegador não respondeu. Reabra o painel ou verifique as permissões de armazenamento do site.",
+        ),
+      );
+    }, 5000);
+    request.onsuccess = () => {
+      clearTimeout(timer);
+      if (timedOut) request.result.close();
+      else resolve(request.result);
+    };
+    request.onerror = () => {
+      clearTimeout(timer);
+      reject(request.error);
+    };
+    request.onblocked = () => {
+      clearTimeout(timer);
+      timedOut = true;
+      reject(
+        Error(
+          "Feche outras abas do painel e tente novamente para liberar o armazenamento.",
+        ),
+      );
+    };
   });
 }
 async function setting(write, value) {
