@@ -1,9 +1,10 @@
+import { costSummaryHTML } from "./estimate-cost-summary.js";
 import { initWorkReports } from "./work-reports.js";
 import { initFinance } from "./finance-ui.js";
 import { loadAllRows } from "./finance-data.js";
 import { durationLabel } from "./simple-estimate.js";
 import { renderEstimateKanban } from "./estimate-kanban.js";
-import { materialFor, MATERIAL_NAMES } from "./estimate-materials.js";
+import { materialFor } from "./estimate-materials.js";
 import {
   DEFAULT_PRICING,
   DEFAULT_LAYOUT,
@@ -144,40 +145,62 @@ export function initEstimates({ getState, navigate }) {
           ? NaN
           : Number(form.elements[key].value);
   }
+  function materialChoices(item) {
+    const current = materialFor(item, quote.pricing);
+    const catalog = (profile.materials || []).filter(
+      (entry) => entry.process === item.process,
+    );
+    const names = [...new Set(catalog.map((entry) => entry.material.name))];
+    const missing = item.materialSelectionRequired && !item.material;
+    const saved =
+      item.material || (!item.materialSelectionRequired ? current : null);
+    if (saved && !names.includes(saved.name)) names.unshift(saved.name);
+    return names.length
+      ? (missing
+          ? '<option value="" selected>Selecione um material cadastrado</option>'
+          : "") +
+          names
+            .map(
+              (name) =>
+                `<option ${!missing && name === current.name ? "selected" : ""} value="${esc(name)}">${esc(name)}${!catalog.some((entry) => entry.material.name === name) ? " · salvo neste orçamento" : ""}</option>`,
+            )
+            .join("")
+      : '<option value="">Nenhum material cadastrado</option>';
+  }
+  function newItem(process) {
+    const entry = (profile.materials || []).find((m) => m.process === process);
+    return {
+      ...newEstimateItem(process),
+      materialMode: process === "print" ? "included" : "none",
+      materialQuantity: 0,
+      primaryService: null,
+      material: entry ? structuredClone(entry.material) : null,
+      materialSelectionRequired: true,
+      ...(process === "print" ? { printInputMode: "piece" } : {}),
+    };
+  }
   function materialFields(item) {
-    const m = materialFor(item, quote.pricing),
-      catalog = (profile.materials || []).filter(
-        (entry) =>
-          entry.process === item.process &&
-          (item.process !== "laser" ||
-            !entry.material.unit ||
-            entry.material.unit === "chapa"),
-      ),
-      choices = [
-        ...new Set([m.name, ...catalog.map((entry) => entry.material.name)]),
-      ];
-    return `<div class="estimate-material"><label>Material<select data-material-name>${choices.map((name) => `<option ${name === m.name ? "selected" : ""}>${esc(name)}</option>`).join("")}</select></label><p class="muted" data-material-summary>${esc(m.name)} · ${brl(m.price)}/${item.process === "laser" ? `chapa de ${m.width} × ${m.length} cm` : "kg"}${m.specification ? " · " + esc(m.specification) : ""}</p></div>`;
+    const m = materialFor(item, quote.pricing);
+    return `<div class="estimate-material"><label>Material<select data-material-name>${materialChoices(item)}</select></label><p class="muted" data-material-summary>${esc(m.name)} · ${brl(m.price)}/${item.process === "laser" ? `chapa de ${m.width} × ${m.length} cm` : "kg"}${m.specification ? " · " + esc(m.specification) : ""}</p></div>`;
   }
   function serviceFields(item) {
     return `<fieldset class="estimate-services"><legend>Serviços adicionais</legend><div class="service-entry"><label>Serviço / recurso<select data-service-pick aria-label="Adicionar serviço ou recurso"><option value="">Selecione um cadastro</option>${(profile.services || []).map((s, i) => `<option value="${i}">${esc(s.name)} · ${brl(s.price)}/${s.unit}</option>`).join("")}</select></label><label>Quantidade<input data-new-service-quantity type="number" min="0" step="any" value="1"></label><button type="button" data-service-add>+ Adicionar</button></div>${(item.services || []).map((s, i) => `<div class="service-line"><span>${esc(s.name)} · ${brl(s.price)}/${s.unit}</span><label>Quantidade (${s.unit})<input data-service-quantity="${i}" type="number" min="0" step="any" value="${s.quantity}"></label><button type="button" class="secondary" data-service-remove="${i}">Remover</button></div>`).join("")}<p class="muted">${quote.calculationVersion === 2 ? "Quantidade total de cada serviço, independente da quantidade de peças." : "Orçamento anterior: valores e quantidades originais preservados."}</p></fieldset>`;
   }
   function printFields(item, i) {
-    const materials = (profile.materials || []).filter(
-      (m) => m.process === "print",
-    );
     const m = materialFor(item, quote.pricing),
-      perPiece = item.printInputMode === "piece";
+      perPiece = item.printInputMode === "piece",
+      missing = item.materialSelectionRequired && !item.material;
     const unit = perPiece ? "por peça" : "do lote completo";
     return `<article class="card estimate-item print-estimate-item" data-row="${item.id}"><div class="heading"><h3>Item ${i + 1} · Impressão 3D</h3><div><button type="button" class="secondary" data-copy="${i}">Duplicar</button><button type="button" class="secondary" data-remove="${i}">Remover</button></div></div>
       <label>Descrição do projeto<textarea data-item="description" maxlength="1200" rows="2">${esc(item.description)}</textarea></label>
       <div class="grid"><label>Medidas do fatiador<select data-item="printInputMode"><option value="piece" ${perPiece ? "selected" : ""}>Peso e tempo por peça</option><option value="batch" ${!perPiece ? "selected" : ""}>Peso e tempo do lote completo</option></select></label>${itemField("quantity", "Quantidade de peças", item.quantity)}</div>
-      <div class="estimate-material" data-material-group><div class="grid"><label>Filamento / material<select data-material-name>${[...new Set([m.name, ...MATERIAL_NAMES.print, ...materials.map((x) => x.material.name)])].map((name) => `<option ${name === m.name ? "selected" : ""}>${esc(name)}</option>`).join("")}</select></label><label>Preço de compra do filamento (R$/kg)<input type="number" min="0" step="any" data-material-cost value="${m.price}"></label></div><p class="muted" data-material-summary>${esc(m.name)} · ${esc(m.specification || "Preço usado neste projeto; não altera o cadastro do material.")}</p></div>
+      <div class="estimate-material" data-material-group><div class="grid"><label>Filamento / material<select data-material-name>${materialChoices(item)}</select></label><label>Preço de compra do filamento (R$/kg)<input type="number" min="0" step="any" data-material-cost ${missing ? "disabled" : ""} value="${missing ? "" : m.price}"></label></div><p class="muted" data-material-summary>${missing ? "Cadastre o filamento em Materiais e serviços e selecione-o nesta proposta." : esc(m.name) + " · " + esc(m.specification || "Preço usado neste projeto; não altera o cadastro do material.")}</p></div>
       <div class="grid">${itemField("grams", `Peso ${unit} (g)`, item.grams)}${itemField("hours", `Duração ${unit} (horas)`, item.hours)}</div>
       <p data-time-result class="muted">Inclua suportes e purga no peso informado pelo fatiador.</p>
       <label>Fornecimento do filamento<select data-item="materialMode"><option value="included" ${item.materialMode === "included" ? "selected" : ""}>Filamento da Papeled Maker</option><option value="provided" ${item.materialMode === "provided" ? "selected" : ""}>Filamento do cliente · sem cobrança do material</option><option value="none" ${item.materialMode === "none" ? "selected" : ""}>Somente serviço · sem cobrança do material</option></select></label>
       <details class="item-extra"><summary>Pintura, acabamento e ajustes deste projeto</summary><div class="grid">${itemField("handlingMinutes", `Trabalho manual ${unit} (min)`, item.handlingMinutes)}${itemField("paintingCost", `Tinta / pintura ${unit} (R$ de custo)`, item.paintingCost)}${itemField("extras", `Embalagem / outros ${unit} (R$ de custo)`, item.extras)}${itemField("lossPercent", "Material extra para perdas (%)", item.lossPercent)}</div><p class="muted">Campos opcionais. Não repita a mesma pintura ou acabamento nos serviços adicionais.</p></details>
       <details class="item-extra" ${(item.services || []).length ? "open" : ""}><summary>Serviços adicionais cadastrados</summary>${serviceFields(item)}</details>
-      <p data-item-result class="item-total"></p><details class="item-extra"><summary>Conferir custos calculados deste projeto</summary><div data-print-cost-result></div><p class="muted">Energia, depreciação e regra de preço são definidas em Cadastros → Custos e marca do PDF → Impressão 3D.</p></details></article>`;
+      <p data-item-result class="item-total"></p></article>`;
   }
   function simpleFields(item, i) {
     if (
@@ -185,9 +208,6 @@ export function initEstimates({ getState, navigate }) {
       ["piece", "batch"].includes(item.printInputMode)
     )
       return printFields(item, i);
-    const materials = (profile.materials || []).filter(
-      (m) => m.process === item.process,
-    );
     const m = materialFor(item, quote.pricing),
       mode = item.materialMode || "none";
     const primary = (profile.services || [])
@@ -198,7 +218,7 @@ export function initEstimates({ getState, navigate }) {
       <div class="grid three"><label>2. Serviço<select data-primary-service><option value="">${item.process === "laser" ? "Corte / gravação a laser" : "Impressão 3D"}</option>${item.process === "laser" ? primary.map(({ service, index }) => `<option value="${index}" ${item.primaryService?.id === service.id ? "selected" : ""}>${esc(service.name)}</option>`).join("") : ""}</select></label>${itemField("quantity", "Quantidade de peças", item.quantity)}${item.process === "laser" ? itemField("minutes", "Tempo de laser por peça (min)", item.minutes) : itemField("hours", "Tempo de impressão por peça (horas)", item.hours)}</div>
       <p data-time-result class="muted"></p>
       <label>3. Material<select data-item="materialMode"><option value="none" ${mode === "none" ? "selected" : ""}>Sem material</option><option value="included" ${mode === "included" ? "selected" : ""}>Com material</option><option value="provided" ${mode === "provided" ? "selected" : ""}>Material fornecido pelo cliente</option></select></label>
-      <div class="estimate-material" data-material-group ${mode !== "included" ? "hidden" : ""}><div class="grid"><label>Tipo de material<select data-material-name>${[...new Set([m.name, ...materials.map((x) => x.material.name)])].map((name) => `<option ${name === m.name ? "selected" : ""}>${esc(name)}</option>`).join("")}</select></label>${itemField("materialQuantity", `Quantidade total de material (${item.process === "print" ? "g" : m.unit || "chapa"})`, item.materialQuantity ?? 0)}</div><p class="muted" data-material-summary>${esc(m.name)} · ${brl(m.salePrice ?? m.price * (1 + (item.process === "laser" ? (quote.pricing.laserMaterialMarkup ?? quote.pricing.markupPercent) : (quote.pricing.printMarkup ?? quote.pricing.markupPercent)) / 100))}/${item.process === "print" ? "kg" : m.unit || "chapa"}</p></div>
+      <div class="estimate-material" data-material-group ${mode !== "included" ? "hidden" : ""}><div class="grid"><label>Tipo de material<select data-material-name>${materialChoices(item)}</select></label>${itemField("materialQuantity", `Quantidade total de material (${item.process === "print" ? "g" : m.unit || "chapa"})`, item.materialQuantity ?? 0)}</div><p class="muted" data-material-summary>${esc(m.name)} · ${brl(m.salePrice ?? m.price * (1 + (item.process === "laser" ? (quote.pricing.laserMaterialMarkup ?? quote.pricing.markupPercent) : (quote.pricing.printMarkup ?? quote.pricing.markupPercent)) / 100))}/${item.process === "print" ? "kg" : m.unit || "chapa"}</p></div>
       ${serviceFields(item)}<p data-item-result class="item-total"></p></article>`;
   }
   function renderItems() {
@@ -209,6 +229,14 @@ export function initEstimates({ getState, navigate }) {
           : `<article class="card estimate-item" data-row="${item.id}"><div class="heading"><h3>${i + 1}. ${item.process === "laser" ? "Corte e gravação a laser" : "Impressão 3D"}</h3><div><button type="button" class="secondary" data-copy="${i}">Duplicar</button><button type="button" class="secondary" data-remove="${i}">Remover</button></div></div><label>Descrição na proposta<textarea data-item="description" rows="2" maxlength="1200">${esc(item.description)}</textarea></label>${materialFields(item)}<div class="grid three">${itemField("quantity", "Quantidade de peças", item.quantity)}${item.process === "laser" ? itemField("minutes", "Tempo de máquina por peça (min)", item.minutes) + itemField("boards", "Recortes por peça (0 = só serviço)", item.boards) : itemField("grams", "Material por peça (g)", item.grams) + itemField("hours", "Tempo por peça (horas)", item.hours)}</div>${item.process === "laser" ? `<details class="item-extra" ${item.boards ? "open" : ""}><summary>Medidas do material consumido</summary><p class="muted">Informe a área de cada recorte, e não a área da chapa inteira. Recortes × área × custo/m² determina o material.</p><div class="grid three">${itemField("boardWidth", "Largura do recorte (cm)", item.boardWidth)}${itemField("boardLength", "Comprimento do recorte (cm)", item.boardLength)}${itemField("wastePercent", "Perdas de material (%)", item.wastePercent)}</div></details>` : `<input data-item="boardWidth" type="hidden" value="${item.boardWidth}"><details class="item-extra"><summary>Perdas de impressão</summary>${itemField("lossPercent", "Perda de filamento (%)", item.lossPercent)}</details>`}<label class="check"><input type="checkbox" data-item="materialProvided" ${item.materialProvided ? "checked" : ""}> Material fornecido pelo cliente</label><details class="item-extra" ${(item.services || []).length ? "open" : ""}><summary>Adicionar serviços e recursos</summary>${serviceFields(item)}</details><details class="item-extra"><summary>Ajustar preço e acabamento deste item</summary><div class="grid three"><label>Método de preço<select data-item="method">${[...(item.process === "laser" ? [["rate", "Tempo de máquina + material"]] : []), ["markup", "Custo + acréscimo"], ["margin", "Margem sobre a venda"]].map(([value, label]) => `<option value="${value}" ${item.method === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>${itemField("manualUnitPrice", "Preço unitário manual (R$; vazio = automático)", item.manualUnitPrice ?? "")}${itemField("handlingMinutes", "Trabalho manual por peça (min)", item.handlingMinutes)}${itemField("paintingCost", "Tinta / acabamento por peça (R$)", item.paintingCost)}${itemField("extras", "Embalagem / outros custos por peça (R$)", item.extras)}</div></details><p data-item-result class="item-total"></p></article>`,
       )
       .join("");
+    $("estimate-items")
+      .querySelectorAll("[data-row]")
+      .forEach((row) =>
+        row.insertAdjacentHTML(
+          "beforeend",
+          '<details class="item-extra"><summary>Conferir custos calculados deste projeto</summary><div data-print-cost-result data-project-cost-result></div></details>',
+        ),
+      );
     $("estimate-items")
       .querySelectorAll("[data-row]")
       .forEach((row, index) => {
@@ -272,6 +300,7 @@ export function initEstimates({ getState, navigate }) {
         row.querySelector("[data-material-name]").onchange = (e) => {
           const item = quote.items[index],
             name = e.target.value;
+          if (!name) return;
           const saved = (profile.materials || []).find(
             (x) => x.process === item.process && x.material.name === name,
           );
@@ -399,14 +428,33 @@ export function initEstimates({ getState, navigate }) {
                 : item.printInputMode
                   ? `${item.totalGrams.toLocaleString("pt-BR")} g · ${item.totalHours.toLocaleString("pt-BR")} h no lote de ${item.quantity} peça(s).`
                   : `${item.hours} h × ${item.quantity} peça(s).`;
-          const costs = row
-            .closest("[data-row]")
-            .querySelector("[data-print-cost-result]");
-          if (costs)
-            costs.innerHTML = `<dl class="machine-cost-breakdown"><div><dt>Filamento</dt><dd>${brl(item.costs.material)}</dd></div><div><dt>Energia</dt><dd>${brl(item.costs.energy)}</dd></div><div><dt>Máquina e custos operacionais</dt><dd>${brl(item.costs.machine)}</dd></div><div><dt>Trabalho manual</dt><dd>${brl(item.costs.handling)}</dd></div><div><dt>Pintura / tinta</dt><dd>${brl(item.costs.painting)}</dd></div><div><dt>Outros / serviços (custo)</dt><dd>${brl(item.costs.extras)}</dd></div><div class="machine-cost-total"><dt>Custo total</dt><dd>${brl(item.totalCost)}</dd></div></dl>`;
         } else if (row)
           row.textContent = `${brl(item.unitPrice)} por peça · Total do item: ${brl(item.subtotal)}`;
+        if (row)
+          row
+            .closest("[data-row]")
+            .querySelector("[data-project-cost-result]").innerHTML =
+            costSummaryHTML(item, quote, result);
       });
+      $("estimate-summary").insertAdjacentHTML(
+        "beforeend",
+        `<details class="item-extra"><summary>Impostos e resultado geral</summary><dl class="machine-cost-breakdown"><div><dt>Venda total</dt><dd>${brl(result.total)}</dd></div><div><dt>Base tributável após descontos e ajustes</dt><dd>${brl(result.taxable)}</dd></div><div><dt>Impostos inclusos (${quote.pricing.taxPercent.toLocaleString("pt-BR")}%)</dt><dd>${brl(result.tax)}</dd></div><div><dt>Custo total · inclui preparação e frete</dt><dd>${brl(result.cost)}</dd></div><div class="machine-cost-total"><dt>Resultado após impostos</dt><dd>${brl(result.profit)}</dd></div></dl><p class="muted">Imposto já incluído no preço de venda. Frete tratado como repasse fora da base tributável.</p></details>`,
+      );
+      const currentTax =
+        profile.pricing?.taxPercent ?? DEFAULT_PRICING.taxPercent;
+      if (currentTax !== quote.pricing.taxPercent) {
+        $("estimate-summary").insertAdjacentHTML(
+          "beforeend",
+          `<p class="muted">Esta proposta usa imposto de ${quote.pricing.taxPercent.toLocaleString("pt-BR")}%. O cadastro atual está em ${currentTax.toLocaleString("pt-BR")}%.</p><button type="button" class="secondary" data-refresh-quote-tax>Aplicar imposto atual do cadastro (${currentTax.toLocaleString("pt-BR")}%)</button><p class="muted">Aplicar a taxa recalcula o resultado e pode alterar o preço no método de margem. Salve a proposta para registrar a alteração.</p>`,
+        );
+        $("estimate-summary").querySelector(
+          "[data-refresh-quote-tax]",
+        ).onclick = () => {
+          quote.pricing.taxPercent = currentTax;
+          invalidate();
+          renderSummary();
+        };
+      }
       $("estimate-save").disabled =
         $("estimate-pdf").disabled =
         $("estimate-preview-button").disabled =
@@ -444,15 +492,7 @@ export function initEstimates({ getState, navigate }) {
   function start(process, source) {
     quote = newEstimate(profile);
     quote.calculationVersion = 2;
-    quote.items = [
-      {
-        ...newEstimateItem(process),
-        materialMode: process === "print" ? "included" : "none",
-        ...(process === "print" ? { printInputMode: "piece" } : {}),
-        materialQuantity: 0,
-        primaryService: null,
-      },
-    ];
+    quote.items = [newItem(process)];
     if (process === "laser" && profile.pricing?.markupPercent === undefined)
       quote.pricing.markupPercent = 100;
     if (source) {
@@ -547,17 +587,11 @@ export function initEstimates({ getState, navigate }) {
     $(id).onclick = () => {
       if (quote.items.length >= 150) return;
       readForm();
-      quote.items.push({
-        ...newEstimateItem(process),
-        ...(quote.calculationVersion === 2
-          ? {
-              materialMode: process === "print" ? "included" : "none",
-              ...(process === "print" ? { printInputMode: "piece" } : {}),
-              materialQuantity: 0,
-              primaryService: null,
-            }
-          : {}),
-      });
+      quote.items.push(
+        quote.calculationVersion === 2
+          ? newItem(process)
+          : newEstimateItem(process),
+      );
       renderItems();
       invalidate();
       renderSummary();

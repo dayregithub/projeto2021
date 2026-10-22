@@ -279,6 +279,12 @@ export function calculateEstimate(quote) {
       !["piece", "batch"].includes(item.printInputMode)
     )
       throw Error("Escolha peso e tempo por peça ou por lote.");
+    if (
+      item.materialSelectionRequired &&
+      item.materialMode === "included" &&
+      !item.material
+    )
+      throw Error("Cadastre e selecione um material para este projeto.");
     if (quote.calculationVersion === 2)
       return calculateSimpleItem(item, p, laser, {
         money,
@@ -424,6 +430,23 @@ export function calculateEstimate(quote) {
         quote.shipping,
     ),
     profit = money(total - tax - cost);
+  // Allocate the actual taxable sale and included tax, preserving cent totals after discounts/adjustments.
+  let cumulative = 0,
+    allocatedSale = 0,
+    allocatedTax = 0;
+  for (const item of items) {
+    cumulative += subtotal ? item.subtotal : 1;
+    const denominator = subtotal || items.length;
+    const saleToHere = money((taxable * cumulative) / denominator);
+    const taxToHere = money((tax * cumulative) / denominator);
+    item.saleAfterAdjustments = money(saleToHere - allocatedSale);
+    item.includedTax = money(taxToHere - allocatedTax);
+    item.netRevenue = money(item.saleAfterAdjustments - item.includedTax);
+    item.estimatedProfit = money(item.netRevenue - item.totalCost);
+    allocatedSale = saleToHere;
+    allocatedTax = taxToHere;
+  }
+  const setupTax = money(tax - allocatedTax);
   if (total > 1e9) throw Error("O total excede o limite permitido.");
   return {
     items,
@@ -459,6 +482,7 @@ export function calculateEstimate(quote) {
     taxable,
     total,
     tax,
+    setupTax,
     cost,
     profit,
     margin: taxable ? (profit / taxable) * 100 : 0,

@@ -81,6 +81,12 @@ export function initEstimateSettings({ getState, onSaved }) {
           `<label>${label}<input data-pricing="${key}" type="number" step="any" min="0" required></label>`,
       )
       .join("");
+  document
+    .getElementById("estimate-commercial-settings")
+    .insertAdjacentHTML(
+      "afterend",
+      '<p class="muted">O imposto é uma parcela do preço de venda: taxa × venda após descontos e ajustes. Ele reduz o resultado líquido, sem ser acrescentado novamente ao custo. No método de margem, a taxa entra no denominador para preservar a margem desejada. A tarifa laser e o acréscimo 3D devem cobrir essa parcela.</p>',
+    );
   const layoutFields = [
     ["businessName", "Nome da empresa"],
     ["tagline", "Subtítulo"],
@@ -159,6 +165,9 @@ export function initEstimateSettings({ getState, onSaved }) {
     }
   }
   function showSettings(section) {
+    document.querySelector(".cost-settings-tabs").hidden = section === "brand";
+    document.getElementById("estimate-settings-heading").textContent =
+      section === "brand" ? "Marca da empresa" : "Custos e regras de cálculo";
     document
       .querySelectorAll("[data-cost-panel]")
       .forEach((panel) => (panel.hidden = panel.dataset.costPanel !== section));
@@ -326,5 +335,5 @@ export function initEstimateSettings({ getState, onSaved }) {
     current.layout.logoData = null;
     message("Logo padrão selecionada. Salve as configurações para confirmar.");
   };
-  return { refresh };
+  return { refresh, show: showSettings };
 }

@@ -7,6 +7,19 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(
+    ({ price }) =>
+      !localStorage.getItem("papeled-estimate-profile-v1") &&
+      localStorage.setItem(
+        "papeled-estimate-profile-v1",
+        JSON.stringify({
+          materials: [
+            { process: "print", material: { name: "PLA", price, unit: "kg" } },
+          ],
+        }),
+      ),
+    { price: 120 },
+  );
   await page.goto("/admin.html");
   await page.locator("#local-preview").click();
   await page.locator('[data-tab="estimates"]').click();

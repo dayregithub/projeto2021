@@ -57,9 +57,18 @@ document.addEventListener("click", (event) => {
 });
 function tab(name) {
   if (["finance", "work-reports"].includes(name)) void estimates.refresh();
+  const section = name.startsWith("resources-")
+    ? "resources"
+    : name === "brand"
+      ? "estimate-settings"
+      : name;
   document
     .querySelectorAll("[data-section]")
-    .forEach((e) => (e.hidden = e.dataset.section !== name));
+    .forEach((e) => (e.hidden = e.dataset.section !== section));
+  if (name === "resources" || name.startsWith("resources-"))
+    resources.setProcess(name === "resources" ? "all" : name.slice(10));
+  if (name === "brand" || name === "estimate-settings")
+    estimateSettings.show(name === "brand" ? "brand" : "laser");
   document
     .querySelectorAll("[data-tab]")
     .forEach((e) =>

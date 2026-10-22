@@ -58,7 +58,14 @@ export function initResourceCatalog({ getState, onSaved }) {
     form.reset();
     fields();
   }
-  $("resource-new").onclick = reset;
+  $("resource-new").onclick = () => {
+    reset();
+    if ($("resource-process-filter").value !== "all") {
+      form.elements.process.value = $("resource-process-filter").value;
+      fields();
+    }
+  };
+  $("resource-process-filter").onchange = render;
   async function refresh() {
     try {
       profile = JSON.parse(localStorage.getItem(KEY) || "{}");
@@ -82,11 +89,13 @@ export function initResourceCatalog({ getState, onSaved }) {
     }
   }
   function render() {
+    const process = $("resource-process-filter").value;
     $("resource-list").innerHTML =
       [
-        ...(profile.materials || []).map(
-          (entry, i) =>
-            `<article class="card"><h3>${esc(entry.material.name)}</h3><p>${entry.process === "laser" ? "Laser · " + (entry.material.unit || "chapa") : "3D · kg"} · Custo R$ ${entry.material.price.toFixed(2)}${entry.material.salePrice != null ? " · Venda R$ " + entry.material.salePrice.toFixed(2) : " · Venda conforme acréscimo"}${entry.material.thickness ? " · " + entry.material.thickness + " mm" : ""}${entry.material.specification ? " · " + esc(entry.material.specification) : ""}</p><button type="button" data-material-edit="${i}">Editar material</button></article>`,
+        ...(profile.materials || []).map((entry, i) =>
+          process !== "all" && entry.process !== process
+            ? ""
+            : `<article class="card"><h3>${esc(entry.material.name)}</h3><p>${entry.process === "laser" ? "Laser · " + (entry.material.unit || "chapa") : "3D · kg"} · Custo R$ ${entry.material.price.toFixed(2)}${entry.material.salePrice != null ? " · Venda R$ " + entry.material.salePrice.toFixed(2) : " · Venda conforme acréscimo"}${entry.material.thickness ? " · " + entry.material.thickness + " mm" : ""}${entry.material.specification ? " · " + esc(entry.material.specification) : ""}</p><button type="button" data-material-edit="${i}">Editar material</button></article>`,
         ),
         ...(profile.services || []).map(
           (s, i) =>
@@ -263,5 +272,16 @@ export function initResourceCatalog({ getState, onSaved }) {
       button.disabled = false;
     }
   };
-  return { refresh };
+  return {
+    refresh,
+    setProcess: (process) => {
+      $("resource-process-filter").value = process;
+      if (process !== "all") {
+        reset();
+        form.elements.process.value = process;
+        fields();
+      }
+      render();
+    },
+  };
 }

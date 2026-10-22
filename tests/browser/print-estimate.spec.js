@@ -4,6 +4,19 @@ test("3D project form matches spreadsheet and separates fixed settings from edit
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(
+    ({ price }) =>
+      !localStorage.getItem("papeled-estimate-profile-v1") &&
+      localStorage.setItem(
+        "papeled-estimate-profile-v1",
+        JSON.stringify({
+          materials: [
+            { process: "print", material: { name: "PLA", price, unit: "kg" } },
+          ],
+        }),
+      ),
+    { price: 200 },
+  );
   await page.goto("/admin.html");
   await page.locator("#local-preview").click();
   await page.locator('[data-tab="estimate-settings"]').click();

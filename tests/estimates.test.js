@@ -641,3 +641,49 @@ test("3D project finishing uses the configured labor and pricing method, without
   q.pricing.printMarginPercent = 99;
   assert.throws(() => calculateEstimate(q), /Margem 3D/);
 });
+
+test("included tax is visible per item and reconciles with actual sale after discounts and shipping", () => {
+  const q = newEstimate({
+    pricing: { filamentKg: 200, printMarkup: 150, taxPercent: 10 },
+  });
+  q.calculationVersion = 2;
+  q.items = [
+    {
+      ...newEstimateItem("print"),
+      printInputMode: "piece",
+      materialMode: "included",
+      grams: 100,
+      hours: 2,
+    },
+  ];
+  let r = calculateEstimate(q);
+  assert.equal(r.total, 52.38);
+  assert.equal(r.tax, 5.24);
+  assert.equal(r.items[0].includedTax, 5.24);
+  assert.equal(r.items[0].netRevenue, 47.14);
+  assert.equal(r.items[0].estimatedProfit, 26.19);
+  q.items = [
+    { ...newEstimateItem("laser"), materialMode: "none", minutes: 60 },
+  ];
+  r = calculateEstimate(q);
+  assert.equal(r.total, 70);
+  assert.equal(r.items[0].includedTax, 7);
+  assert.equal(r.items[0].estimatedProfit, 56.14);
+  q.items = [
+    { ...newEstimateItem("laser"), manualUnitPrice: 0.03 },
+    { ...newEstimateItem("laser"), manualUnitPrice: 0.03 },
+    { ...newEstimateItem("laser"), manualUnitPrice: 0.03 },
+  ];
+  q.calculationVersion = undefined;
+  q.pricing.taxPercent = 33.33;
+  q.setupPrice = 0.01;
+  q.adjustment = 0.01;
+  q.shipping = 10;
+  r = calculateEstimate(q);
+  near(
+    r.items.reduce((sum, item) => sum + item.includedTax, 0) + r.setupTax,
+    r.tax,
+  );
+  assert.equal(r.tax, 0.04);
+  assert.equal(r.total, 10.11);
+});

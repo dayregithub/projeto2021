@@ -819,3 +819,26 @@ main {
   font-weight: 700;
   color: #503a31;
 }
+
+.nav-subgroup {
+  display: flex;
+  flex-direction: column;
+  margin-left: 14px;
+  padding-left: 8px;
+  border-left: 1px solid #d9c8bb;
+}
+.nav-subgroup button {
+  font-size: 13px;
+}
+@media (max-width: 850px) {
+  .nav-subgroup {
+    flex-direction: row;
+    margin-left: 0;
+  }
+}
+@media (min-width: 851px) {
+  #workspace > nav {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+}

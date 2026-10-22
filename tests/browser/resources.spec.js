@@ -181,7 +181,7 @@ test("separate settings affect new quotes only and history reopens original pric
   await page.locator('[data-pricing="laserSaleHour"]').fill("120");
   await page.locator('[name="laserCostMode"]').selectOption("manual");
   await page.locator('[data-pricing="laserCostHour"]').fill("30");
-  await page.locator('[data-cost-tab="general"]').click();
+  await page.locator('[data-tab="brand"]').click();
   await page.locator('[data-layout="businessName"]').fill("Marca renovada");
   await page.locator("#estimate-save-profile").click();
   await expect(page.locator("#estimate-settings-status")).toContainText(

@@ -6,12 +6,12 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-CTdLM6o1.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-BHyzRqp3.js">
+    <script type="module" crossorigin src="./assets/admin-CQUWj4kq.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-D6oK3QXV.js">
     <link rel="modulepreload" crossorigin href="./assets/browser-eqoWqH1V.js">
     <link rel="modulepreload" crossorigin href="./assets/geometry-D2vbGyY5.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-phkM9QEk.js">
-    <link rel="stylesheet" crossorigin href="./assets/admin-CyYz9w4R.css">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-CTrYrtW-.js">
+    <link rel="stylesheet" crossorigin href="./assets/admin-BTSugihU.css">
   </head>
   <body>
     <header>
@@ -61,25 +61,36 @@
         </div>
         <nav aria-label="Seções do painel">
           <div class="nav-group">
-            <span>COMERCIAL</span
-            ><button data-tab="estimates">Novo orçamento</button
-            ><button data-tab="estimate-history">Histórico</button
-            ><button data-tab="work-reports">Relatórios de trabalhos</button
-            ><button data-tab="production" class="production-nav">
-              Produção · Kanban</button
+            <span>SITE</span><button data-tab="overview">Estatísticas</button
+            ><button data-tab="files">Arquivos baixados</button
             ><button data-tab="quotes">Solicitações</button
-            ><button data-tab="customer-projects">Projetos de clientes</button>
-          </div>
-          <div class="nav-group">
-            <span>CADASTROS</span
-            ><button data-tab="resources">Materiais e serviços</button
-            ><button data-tab="estimate-settings">Custos e marca do PDF</button
+            ><button data-tab="customer-projects">Projetos de clientes</button
             ><button data-tab="products">Produtos do site</button>
           </div>
           <div class="nav-group">
+            <span>COMERCIAL</span
+            ><button data-tab="production" class="production-nav">
+              Produção · Kanban</button
+            ><button data-tab="estimates">Novo orçamento</button
+            ><button data-tab="estimate-history">Orçamento</button
+            ><button data-tab="work-reports">Relatórios de trabalhos</button>
+          </div>
+          <div class="nav-group">
+            <span>CADASTROS</span
+            ><button data-tab="resources">Materiais e serviços</button>
+            <div
+              class="nav-subgroup"
+              role="group"
+              aria-label="Materiais por processo"
+            >
+              <button data-tab="resources-laser">Laser</button
+              ><button data-tab="resources-print">Impressão 3D</button>
+            </div>
+            <button data-tab="estimate-settings">Custos</button
+            ><button data-tab="brand">Marca da empresa</button>
+          </div>
+          <div class="nav-group">
             <span>GESTÃO</span><button data-tab="finance">Financeiro</button
-            ><button data-tab="overview">Estatísticas</button
-            ><button data-tab="files">Arquivos baixados</button
             ><button data-tab="assistant">Assistente de IA</button
             ><button data-tab="database">Banco de dados</button>
           </div>
@@ -323,6 +334,17 @@
           </p>
           <p id="resource-status" role="status"></p>
           <button id="resource-new" type="button">Novo cadastro</button>
+          <label
+            >Filtrar materiais por processo<select id="resource-process-filter">
+              <option value="all">Laser e impressão 3D</option>
+              <option value="laser">Laser</option>
+              <option value="print">Impressão 3D</option>
+            </select></label
+          >
+          <p class="muted">
+            Os serviços e recursos cadastrados são compartilhados entre os
+            processos.
+          </p>
           <form id="resource-form" class="card">
             <div class="grid three">
               <label
@@ -672,7 +694,7 @@
           <div class="heading">
             <div>
               <p class="eyebrow">CONFIGURE UMA VEZ</p>
-              <h2>Configurações de orçamento</h2>
+              <h2 id="estimate-settings-heading">Custos e regras de cálculo</h2>
               <p>
                 Custos e marca para novos orçamentos. Alterações não recalculam
                 propostas já criadas.
@@ -692,7 +714,7 @@
             ><button type="button" class="secondary" data-cost-tab="print">
               Impressão 3D</button
             ><button type="button" class="secondary" data-cost-tab="general">
-              Geral e marca do PDF
+              Regras gerais
             </button>
           </div>
           <form id="estimate-settings-form">
@@ -773,7 +795,7 @@
                 venda.
               </p>
             </section>
-            <section class="card" data-cost-panel="general" hidden>
+            <section class="card" data-cost-panel="brand" hidden>
               <h3>Marca e apresentação do PDF</h3>
               <div class="grid three">
                 <label
