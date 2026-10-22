@@ -1,4 +1,12 @@
 import {
+  windowsArchiveEnabled,
+  connectWindowsArchive,
+  disconnectWindowsArchive,
+  windowsArchiveStatus,
+  updateWindowsArchiveRoot,
+  sendWindowsArchive,
+} from "./windows-archiver.js";
+import {
   archiveFolder,
   chooseArchiveFolder,
   forgetArchiveFolder,
@@ -583,6 +591,63 @@ export function initEstimates({ getState, navigate }) {
     } else action();
   }
   $("estimate-close").onclick = () => requestTransition(closeEditor);
+  const windowsStatus = $("windows-archive-status");
+  let windowsBusy = false;
+  async function windowsAction(action) {
+    if (windowsBusy) return;
+    windowsBusy = true;
+    const controls = [
+      "windows-archive-connect",
+      "windows-archive-check",
+      "windows-archive-disconnect",
+      "windows-archive-root-save",
+    ];
+    controls.forEach((id) => ($(id).disabled = true));
+    windowsStatus.textContent = "Conectando ao aplicativo deste computador…";
+    try {
+      await action();
+    } catch (error) {
+      windowsStatus.textContent = error.message;
+    } finally {
+      windowsBusy = false;
+      controls.forEach((id) => ($(id).disabled = false));
+    }
+  }
+  $("windows-archive-connect").onclick = () =>
+    windowsAction(async () => {
+      const status = await connectWindowsArchive(
+        $("windows-archive-token").value,
+      );
+      $("windows-archive-token").value = "";
+      $("windows-archive-root").value = status.root;
+      windowsStatus.textContent =
+        "Aplicativo vinculado. Os próximos arquivamentos criarão pastas automaticamente no Windows.";
+    });
+  $("windows-archive-check").onclick = () =>
+    windowsAction(async () => {
+      const status = await windowsArchiveStatus();
+      $("windows-archive-root").value = status.root;
+      windowsStatus.textContent = `Aplicativo conectado. Destino: ${status.root}`;
+    });
+  $("windows-archive-root-save").onclick = () =>
+    windowsAction(async () => {
+      const status = await updateWindowsArchiveRoot(
+        $("windows-archive-root").value,
+      );
+      $("windows-archive-root").value = status.root;
+      windowsStatus.textContent =
+        "Caminho atualizado no aplicativo. Os próximos orçamentos serão arquivados nessa pasta. Arquivos anteriores não foram movidos.";
+    });
+  $("windows-archive-disconnect").onclick = () => {
+    disconnectWindowsArchive();
+    $("windows-archive-token").value = "";
+    $("windows-archive-root").value = "";
+    windowsStatus.textContent =
+      "Aplicativo desvinculado deste navegador. A pasta autorizada ou o ZIP voltam a ser usados.";
+  };
+  if (windowsArchiveEnabled())
+    windowsStatus.textContent =
+      "Aplicativo vinculado neste navegador. Clique em Verificar conexão para consultar o destino.";
   const folderStatus = $("archive-folder-status");
   const foldersSupported = typeof window.showDirectoryPicker === "function";
   async function showFolder() {
@@ -636,22 +701,30 @@ export function initEstimates({ getState, navigate }) {
     pdfBusy = true;
     try {
       // Ask for permission before saving/generating, while the click is active.
-      const folder = foldersSupported ? await authorizeArchiveFolder() : null;
+      const useWindows = windowsArchiveEnabled();
+      const folder =
+        !useWindows && foldersSupported ? await authorizeArchiveFolder() : null;
+      if (useWindows) await windowsArchiveStatus();
       message("Salvando e preparando arquivos do orçamento…");
       const snapshot = await save();
       const { estimatePDF } = await import("./estimate-pdf.js");
       const archive = archiveFiles(snapshot, await estimatePDF(snapshot));
-      if (folder) await writeArchive(folder, archive);
-      else
+      const windowsResult = useWindows
+        ? await sendWindowsArchive(archive)
+        : null;
+      if (!windowsResult && folder) await writeArchive(folder, archive);
+      else if (!windowsResult)
         download(
           new Blob([archiveZip(archive)], { type: "application/zip" }),
           `${archive.folder}.zip`,
         );
       closeEditor();
       message(
-        folder
-          ? `Orçamento salvo e arquivado em ${folder.name}/${archive.folder}. PDF e cópia editável atualizados.`
-          : "Orçamento salvo. Download ZIP solicitado; confirme o download e extraia a pasta para arquivar no computador.",
+        windowsResult
+          ? `Orçamento salvo e arquivado no Windows: ${windowsResult.path}`
+          : folder
+            ? `Orçamento salvo e arquivado em ${folder.name}/${archive.folder}. PDF e cópia editável atualizados.`
+            : "Orçamento salvo. Download ZIP solicitado; confirme o download e extraia a pasta para arquivar no computador.",
       );
     } catch (error) {
       message(

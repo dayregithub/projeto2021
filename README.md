@@ -293,3 +293,23 @@ Em **Marca da empresa → Arquivamento no computador**, escolha ou altere a past
 No formulário, **Salvar, arquivar e fechar** primeiro persiste o orçamento e depois grava `<número>/orcamento-<número>.pdf`, `orcamento-editavel.json` e instruções na pasta autorizada. O JSON permite reimportação no painel e contém custos internos e dados pessoais: compartilhe somente o PDF com clientes. Repetir o arquivamento atualiza os arquivos desse número; não remove outros arquivos da pasta nem muda a etapa do Kanban. Não inclui arquivos de fabricação externos. Falhas de gravação mantêm o formulário aberto; se a etapa de salvamento já terminou, o registro continua no histórico. Fechar sem arquivar continua disponível.
 
 Em navegadores sem File System Access API, a mesma ação solicita o download de um ZIP com a subpasta e arquivos. Nesse caso, o usuário confirma o download e extrai o ZIP; o site não pode confirmar a gravação no disco nem escolher a pasta automaticamente.
+
+### Aplicativo auxiliar para arquivamento automático no Windows
+
+O painel oferece o download em **Marca da empresa → Arquivamento no Windows** e instruções em `public/windows-archiver.html`. O ZIP versionado em `public/downloads/` contém um instalador executável Windows x64 e instruções. Não exige Node, Python ou Go no computador do usuário. Ainda não há assinatura digital de editor nem execução de teste em Windows nesta sessão; compilação cruzada Windows, servidor/arquivos em Linux e integração do painel foram verificados.
+
+O executável instala para o usuário atual em `%LOCALAPPDATA%\PapeledMaker\Arquivador`, cria atalhos no menu Iniciar e configura inicialização em `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. A pasta Documentos real (incluindo redirecionamento OneDrive) é obtida por `SHGetFolderPathW`. O destino padrão é `Documentos\Papeled Maker\Orçamentos`. O painel pode alterar o caminho via `/settings` após vinculação; os arquivos anteriores não são movidos. O caminho da instalação do executável é fixo; o campo editável refere-se ao destino dos orçamentos.
+
+A primeira execução abre uma página local com um código aleatório de 256 bits, para copiar e vincular no painel. O código fica no `config.json` local do aplicativo e em uma chave própria de localStorage, fora de `WORKSPACE_KEYS`, sem sincronização com Supabase. O serviço escuta somente `127.0.0.1:47831`; valida Host, Origin, autorização Bearer, tipo e limite do conteúdo. Sites permitidos: produção Vercel e origem GitHub Pages `dayregithub.github.io`; novos domínios exigem atualizar o aplicativo. Navegadores podem solicitar autorização de acesso à rede local. A página de configuração local usa o token apenas no fragmento da URL, removido pelo script antes de qualquer navegação externa.
+
+O helper aceita somente o número, PDF e JSON do orçamento. Ele valida nomes do Windows, impede travessia de diretórios/atalhos na pasta de orçamento e grava somente seus três arquivos conhecidos. Não executa comandos enviados pelo site, nem acessa credenciais de nuvem. Não recebe os arquivos de fabricação externos. A confirmação vem após a gravação dos três arquivos. Cada arquivo é substituído por renomeação de um temporário; o conjunto não é uma transação de filesystem. Se um arquivo estiver bloqueado, a operação pode ser parcial, retorna erro e o painel mantém o orçamento aberto para nova tentativa. Não há fallback silencioso para ZIP quando um aplicativo está vinculado.
+
+Os atalhos do menu Iniciar permitem parar e desinstalar. A desinstalação remove a inicialização, atalhos, executável e configuração; preserva as pastas de orçamentos. Desvincule também no navegador após desinstalar. O token de pareamento não é rotacionado por simples desvinculação do navegador; desinstalar/reinstalar gera novo token.
+
+Para recompilar o ZIP, com Go 1.24+ disponível:
+
+```sh
+npm run build:windows
+```
+
+Se necessário use `PAPELED_GO_BIN=/caminho/do/go` (variável usada apenas no desenvolvimento). O script compila `windows-archiver/`, gera o ZIP e o arquivo SHA-256; a publicação web usa esses artefatos versionados. Testes do helper: `go -C windows-archiver test -race ./...`; validação Windows: `GOOS=windows GOARCH=amd64 go -C windows-archiver build .`. Testes de integração do painel: `npx playwright test tests/browser/windows-archiver.spec.js tests/browser/quote-archive.spec.js`.

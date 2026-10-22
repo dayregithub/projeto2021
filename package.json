@@ -10,7 +10,8 @@
     "test": "node --test tests/geometry.test.js tests/platform.test.js tests/assistant.test.js tests/estimates.test.js tests/finance.test.js",
     "test:e2e": "playwright test",
     "build:fonts": "node scripts/build-letter-fonts.mjs",
-    "build:assistant": "node scripts/build-assistant-function.mjs"
+    "build:assistant": "node scripts/build-assistant-function.mjs",
+    "build:windows": "node scripts/build-windows-archiver.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",

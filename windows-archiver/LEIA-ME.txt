@@ -1,0 +1,52 @@
+PAPELED MAKER - ARQUIVADOR WINDOWS 1.0
+Windows 10/11, 64 bits (x64). Nao precisa instalar Node, Python ou Go.
+
+INSTALACAO
+1. Extraia o ZIP antes de abrir o aplicativo.
+2. Abra PapeledMakerArquivador.exe com duplo clique.
+3. Ele instala para o usuario atual, sem administrador, em:
+   %LOCALAPPDATA%\PapeledMaker\Arquivador
+   Cria atalhos no menu Iniciar e inicia junto com o Windows.
+4. Uma pagina local abre com o codigo de vinculacao. Clique em Copiar codigo.
+5. No painel web, abra Marca da empresa > Arquivamento no Windows.
+6. Cole o codigo e clique em Vincular aplicativo.
+7. Se o navegador pedir acesso a rede local, permita para o site.
+
+USO
+No orcamento, clique em Salvar, arquivar e fechar. O aplicativo cria:
+Documentos\Papeled Maker\Orçamentos\NUMERO-DO-ORCAMENTO
+com PDF, JSON editavel e instrucoes. Documentos pode estar no OneDrive.
+O painel confirma somente depois da resposta de gravacao do aplicativo.
+Para reabrir o orcamento editavel, importe o JSON no painel.
+O JSON inclui custos internos e dados pessoais; envie ao cliente apenas o PDF.
+Repetir o arquivamento atualiza os tres arquivos; nao cria outra versao.
+O aplicativo nao recebe nem armazena senhas ou chaves do Supabase.
+
+ALTERAR PASTA
+No painel, vincule o aplicativo, clique em Verificar conexao, edite Caminho
+de salvamento no Windows e clique em Alterar caminho de salvamento.
+Use um caminho local completo. Ele sera criado se nao existir.
+Arquivos anteriores nao sao movidos. A pasta vale para todos os navegadores
+vinculados a este aplicativo no mesmo computador.
+
+CONEXAO
+O aplicativo usa apenas 127.0.0.1:47831, sem acesso pela rede de outros PCs.
+O codigo de vinculacao e uma credencial local: nao publique nem envie a terceiros.
+A vinculacao e feita por navegador; ela nao vai para backups ou banco de dados.
+Sites autorizados: papeledmaker.vercel.app e dayregithub.github.io.
+Dominios novos exigem uma atualizacao do aplicativo.
+Se houver falha, abra o atalho Papeled Maker Arquivador no menu Iniciar.
+Nao e necessario escolher uma pasta pelo navegador.
+
+PARAR / DESINSTALAR
+Menu Iniciar > Papeled Maker > Parar arquivador encerra o aplicativo.
+Ele volta na proxima entrada no Windows, ou pelo atalho principal.
+Desinstalar arquivador encerra o aplicativo, remove sua inicializacao automatica,
+atalhos, executavel instalado e configuracao. As pastas de orcamentos nao sao apagadas.
+Depois, desvincule tambem no painel. Apague o ZIP e a copia extraida se desejar.
+
+Este instalador ainda nao possui assinatura digital de editor. O Windows pode
+exibir um aviso. Verifique a origem do download e siga as regras do seu computador;
+nao desative o antivirus. A primeira versao foi compilada para Windows e os testes
+de gravacao/integracao foram executados em Linux; a instalacao precisa ser
+validada no seu Windows.

@@ -871,7 +871,75 @@
             <section class="card" data-cost-panel="brand" hidden>
               <h3>Marca e apresentação do PDF</h3>
               <details>
-                <summary>Arquivamento no computador</summary>
+                <summary>Arquivamento no Windows</summary>
+                <h4>Criar pastas automaticamente</h4>
+                <p>
+                  Instale o aplicativo auxiliar uma vez neste computador. Ele
+                  cria as pastas por número em Documentos\Papeled
+                  Maker\Orçamentos. Depois de vincular, “Salvar, arquivar e
+                  fechar” envia o PDF e a cópia editável automaticamente.
+                </p>
+                <p>
+                  <a
+                    href="./downloads/PapeledMaker-Arquivador-Windows.zip"
+                    download
+                    >Baixar aplicativo para Windows 10/11 (64 bits)</a
+                  >
+                  ·
+                  <a
+                    href="./windows-archiver.html"
+                    target="_blank"
+                    rel="noopener"
+                    >Como instalar</a
+                  >
+                </p>
+                <label
+                  >Código exibido pelo aplicativo<input
+                    id="windows-archive-token"
+                    type="password"
+                    autocomplete="off"
+                    placeholder="Cole o código para vincular"
+                /></label>
+                <div class="actions">
+                  <button type="button" id="windows-archive-connect">
+                    Vincular aplicativo</button
+                  ><button
+                    type="button"
+                    id="windows-archive-check"
+                    class="secondary"
+                  >
+                    Verificar conexão</button
+                  ><button
+                    type="button"
+                    id="windows-archive-disconnect"
+                    class="secondary"
+                  >
+                    Desvincular aplicativo
+                  </button>
+                </div>
+                <label
+                  >Caminho de salvamento no Windows<input
+                    id="windows-archive-root"
+                    type="text"
+                    placeholder="Vincule o aplicativo para consultar a pasta"
+                /></label>
+                <button
+                  type="button"
+                  id="windows-archive-root-save"
+                  class="secondary"
+                >
+                  Alterar caminho de salvamento
+                </button>
+                <p id="windows-archive-status" role="status">
+                  Aplicativo não vinculado neste navegador.
+                </p>
+                <p>
+                  O aplicativo deve estar aberto neste computador. A vinculação
+                  fica somente neste navegador e não é copiada para o banco. Se
+                  o navegador perguntar, autorize o acesso à rede local. Alterar
+                  o caminho não move os arquivos anteriores.
+                </p>
+                <h4>Alternativa sem aplicativo</h4>
                 <p>
                   Escolha a pasta principal. Ao usar “Salvar, arquivar e
                   fechar”, será criada uma subpasta com o número do orçamento,
