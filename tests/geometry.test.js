@@ -1070,3 +1070,141 @@ test("laser fit width adjusts only finger and T receivers, preserving cross slot
     );
   }
 });
+
+test("profile hinge stays inside the closed box footprint and exports keyed pivots", () => {
+  for (const [joint, lidJoint] of ["straight", "finger", "tslot"].flatMap(
+    (joint) =>
+      ["straight", "finger", "tslot"].map((lidJoint) => [joint, lidJoint]),
+  )) {
+    const s = {
+      ...defaults("compacthinge"),
+      hingeType: "profile",
+      joint,
+      lidJoint,
+      lidHeight: 18,
+      height: 65,
+      lidOpening: 0,
+    };
+    assert.deepEqual(validate(s), []);
+    const ps = panels(s),
+      hd = hingeDimensions(s),
+      t = s.thickness;
+    assert.ok(hd.y - hd.radius >= t);
+    assert.ok(hd.z + hd.radius <= s.height);
+    assert.equal(ps.filter((p) => p.role === "pivot-disc").length, 2);
+    assert.equal(ps.filter((p) => p.role === "pivot-key").length, 2);
+    assert.equal(ps.filter((p) => p.group === "hinge-hardware").length, 0);
+    for (const p of ps) {
+      assert.equal(p.shape.length, 1, `${joint}/${p.name} detached`);
+      if (joint === "tslot" && p.group !== "lid" && p.group !== "hinge-cut")
+        continue;
+      for (const [u, v] of panelPolygons(p).flat(2))
+        for (const level of [0, t]) {
+          const xyz = p.pose.origin.map(
+            (n, i) =>
+              n + p.pose.u[i] * u + p.pose.v[i] * v + p.pose.normal[i] * level,
+          );
+          assert.ok(
+            xyz[0] >= -1e-6 && xyz[0] <= s.width + 1e-6,
+            `${joint}/${p.name} exceeds width ${xyz}`,
+          );
+          assert.ok(
+            xyz[1] >= -1e-6 && xyz[1] <= s.depth + 1e-6,
+            `${joint}/${p.name} exceeds depth ${xyz}`,
+          );
+        }
+    }
+    assert.match(exportSVG(s), /Tampa articulada alinhada ao perfil/);
+    assert.equal(readProject(JSON.stringify(s)).hingeType, "profile");
+    assert.ok(validate({ ...s, height: 20 }).length);
+    assert.ok(validate({ ...s, lidOpening: 110 }).length);
+  }
+});
+test("profile hinge moving lid clears body and lowered dividers throughout its preview travel", () => {
+  for (const [joint, lidJoint] of ["straight", "finger", "tslot"].flatMap(
+    (joint) =>
+      ["straight", "finger", "tslot"].map((lidJoint) => [joint, lidJoint]),
+  )) {
+    const s = {
+      ...defaults("grid"),
+      lidType: "hinged",
+      hingeType: "profile",
+      joint,
+      lidJoint,
+      lidHeight: 18,
+      height: 80,
+    };
+    assert.deepEqual(validate(s), []);
+    const hd = hingeDimensions(s),
+      t = s.thickness,
+      ps = panels(s);
+    for (const degrees of [0, 10, 30, 50, 70, 90, 100]) {
+      const a = (degrees * Math.PI) / 180;
+      const rotate = (v, point = false) => {
+        const dy = v[1] - (point ? hd.y : 0),
+          dz = v[2] - (point ? hd.z : 0);
+        return [
+          v[0],
+          (point ? hd.y : 0) + dy * Math.cos(a) - dz * Math.sin(a),
+          (point ? hd.z : 0) + dy * Math.sin(a) + dz * Math.cos(a),
+        ];
+      };
+      const parts = ps.map((p) =>
+        p.group === "lid"
+          ? {
+              ...p,
+              pose: {
+                origin: rotate(p.pose.origin, true),
+                u: rotate(p.pose.u),
+                v: rotate(p.pose.v),
+                normal: rotate(p.pose.normal),
+              },
+            }
+          : p,
+      );
+      const bounds = parts.map((p) => {
+        const vertices = panelPolygons(p)
+          .flat(2)
+          .flatMap(([u, v]) =>
+            [0, t].map((level) =>
+              p.pose.origin.map(
+                (n, i) =>
+                  n +
+                  p.pose.u[i] * u +
+                  p.pose.v[i] * v +
+                  p.pose.normal[i] * level,
+              ),
+            ),
+          );
+        return [0, 1, 2].map((i) => [
+          Math.min(...vertices.map((v) => v[i])),
+          Math.max(...vertices.map((v) => v[i])),
+        ]);
+      });
+      let seed = 12345;
+      const random = () =>
+        (seed = (1664525 * seed + 1013904223) >>> 0) / 2 ** 32;
+      for (let i = 0; i < parts.length; i++)
+        for (let j = i + 1; j < parts.length; j++) {
+          if (parts[i].group !== "lid" && parts[j].group !== "lid") continue;
+          const range = bounds[i].map((r, k) => [
+            Math.max(r[0], bounds[j][k][0]),
+            Math.min(r[1], bounds[j][k][1]),
+          ]);
+          if (range.some(([lo, hi]) => hi - lo < 1e-5)) continue;
+          for (let sample = 0; sample < 400; sample++) {
+            const point = range.map(
+              ([lo, hi]) => lo + (0.001 + 0.998 * random()) * (hi - lo),
+            );
+            assert.ok(
+              !(
+                insidePanel(parts[i], point, t) &&
+                insidePanel(parts[j], point, t)
+              ),
+              `${joint}/${degrees}: ${parts[i].name} overlaps ${parts[j].name} at ${point}`,
+            );
+          }
+        }
+    }
+  }
+});

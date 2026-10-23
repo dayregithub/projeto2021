@@ -253,7 +253,7 @@ export function validate(s) {
     errors.push(
       "Alojamento do pivô pequeno: use diâmetro maior que a diagonal da haste (espessura × √2), mais a folga.",
     );
-  if (lidType(s) === "hinged" && hingeType(s) === "laser") {
+  if (lidType(s) === "hinged" && ["laser", "profile"].includes(hingeType(s))) {
     const hd = hingeDimensions(s);
     if (s.pivotDiameter <= Math.hypot(hd.keyWidth, hd.keyHeight) + 0.5)
       errors.push(
@@ -261,6 +261,25 @@ export function validate(s) {
       );
     if (hd.radius >= s.height - s.thickness)
       errors.push("Aumente a altura do corpo para acomodar o suporte do pivô.");
+  }
+  if (lidType(s) === "hinged" && hingeType(s) === "profile") {
+    const hd = hingeDimensions(s);
+    if (hd.rearRelief >= s.height - 2 * s.thickness)
+      errors.push(
+        "Tampa alinhada: aumente a altura do corpo ou reduza o pivô/aba para preservar a traseira abaixo dos alívios de giro.",
+      );
+    if (hd.y + 2 * hd.radius >= s.depth - 2 * s.thickness - s.clearance)
+      errors.push(
+        "Tampa alinhada: aumente a profundidade para acomodar o braço diagonal e o pivô.",
+      );
+    if (shellMetrics(s).innerWidth <= 2 * (s.thickness + s.clearance) + 15)
+      errors.push(
+        "Tampa alinhada: aumente a largura para deixar espaço entre os dois braços internos.",
+      );
+    if (s.lidOpening > 100)
+      errors.push(
+        "A tampa alinhada ao perfil permite abertura de até 100° nesta versão.",
+      );
   }
   const metrics = shellMetrics(s),
     span = metrics.frontHeight - s.thickness;

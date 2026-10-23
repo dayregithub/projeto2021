@@ -15,6 +15,7 @@ export const JOINTS = {
 };
 export const HINGES = {
   laser: "Discos e eixos recortados",
+  profile: "Articulada alinhada ao perfil",
   tabbed: "Haste integrada à tampa",
   hardware: "Eixo externo (projeto anterior)",
 };
@@ -89,17 +90,24 @@ export function shellMetrics(s) {
         ? s.height - 3 * t - 3 * c - slidingDimensions(s).drop
         : type === "removable"
           ? s.height - guideDepth(s) - c
-          : type === "hinged" && hingeType(s) === "tabbed"
-            ? s.height - t / 2 - c
-            : s.height,
+          : type === "hinged" && hingeType(s) === "profile"
+            ? s.height - 2 * hingeDimensions(s).radius - 2 * c
+            : type === "hinged" && hingeType(s) === "tabbed"
+              ? s.height - t / 2 - c
+              : s.height,
   };
 }
 export function hingeDimensions(s) {
   const radius = s.pivotDiameter / 2 + 2 * s.thickness;
   return {
     radius,
-    y: -radius,
-    z: s.height,
+    y:
+      hingeType(s) === "profile" ? radius + s.thickness + s.clearance : -radius,
+    z: hingeType(s) === "profile" ? s.height - radius - s.clearance : s.height,
+    rearRelief:
+      radius +
+      2 * s.clearance +
+      Math.hypot(radius, radius + s.clearance + s.lidHeight),
     holeRadius:
       hingeType(s) === "tabbed"
         ? s.pivotDiameter / 2
@@ -299,7 +307,29 @@ export function buildBoxPanels(s) {
     }
     left = right = side;
   }
-  if (type === "hinged") {
+  if (type === "hinged" && hingeType(s) === "profile") {
+    const hd = hingeDimensions(s),
+      v = h - hd.z;
+    left = diff(
+      left,
+      rect(
+        hd.y - hd.keyWidth / 2,
+        v - hd.keyHeight / 2,
+        hd.keyWidth,
+        hd.keyHeight,
+      ),
+    );
+    right = left;
+    // Open the rear corners for the moving cheeks. Removing the whole corner
+    // also prevents isolated finger tabs along the edge of a narrow relief.
+    const notch = m.inset + 2 * t + 2 * c;
+    back = diff(
+      back,
+      rect(0, 0, notch, hd.rearRelief),
+      rect(w - notch, 0, notch, hd.rearRelief),
+    );
+  }
+  if (type === "hinged" && hingeType(s) !== "profile") {
     const { radius: r, holeRadius } = hingeDimensions(s);
     const ear = union(circle(-r, 0, r), rect(-r, 0, r + t, r));
     const hd = hingeDimensions(s);
@@ -449,7 +479,11 @@ export function buildBoxPanels(s) {
       },
     );
   }
-  if (type === "hinged" && hingeType(s) !== "tabbed") {
+  if (
+    type === "hinged" &&
+    hingeType(s) !== "tabbed" &&
+    hingeType(s) !== "profile"
+  ) {
     const { radius: r, holeRadius } = hingeDimensions(s),
       lh = s.lidHeight;
     const rail = diff(
@@ -515,6 +549,72 @@ export function buildBoxPanels(s) {
           sidePose(i === 0 ? m.inset - 2 * t - c : w - m.inset + c + t, -r, h),
           { group: "hinge-hardware" },
         );
+    }
+  }
+  if (type === "hinged" && hingeType(s) === "profile") {
+    const hd = hingeDimensions(s),
+      r = hd.radius,
+      v = h - hd.z;
+    // An inner cheek fits between the side wall and the usable cavity. Its pivot
+    // remains within the body's side silhouette; the top rail has a diagonal heel.
+    const shoulder = [
+      [
+        [t + c, -c - s.lidHeight],
+        [hd.y + 2 * r, -c - s.lidHeight],
+        [hd.y + 2 * r, -c],
+        [hd.y + r / Math.SQRT2, v + r / Math.SQRT2],
+        [hd.y - r / Math.SQRT2, v + r / Math.SQRT2],
+        [t + c, v],
+        [t + c, -c - s.lidHeight],
+      ],
+    ];
+    const cheek = diff(
+      union(
+        rect(t + c, -c - s.lidHeight, d - 3 * t - 2 * c, s.lidHeight),
+        circle(hd.y, v, r),
+        shoulder,
+      ),
+      circle(hd.y, v, hd.holeRadius),
+    );
+    add(
+      "Tampa alinhada · painel",
+      rect(0, 0, w, d),
+      basePose(0, 0, h + c + s.lidHeight),
+      {
+        group: "lid",
+        role: "lid-panel",
+        coverArea: { x: 0, y: 0, width: w, height: d },
+      },
+    );
+    add(
+      "Tampa alinhada · aba frontal",
+      rect(0, 0, w, s.lidHeight),
+      frontPose(0, d - 2 * t - c, h + c + s.lidHeight),
+      { group: "lid", role: "lid-front" },
+    );
+    for (const [label, armX, keyX] of [
+      ["esquerdo", m.inset + t + c, m.inset],
+      ["direito", w - m.inset - 2 * t - c, w - m.inset - 2 * t - c],
+    ]) {
+      add(`Braço alinhado ${label}`, cheek, sidePose(armX, 0, h), {
+        group: "lid",
+        role: label === "esquerdo" ? "lid-left" : "lid-right",
+      });
+      add(
+        `Disco-pivô alinhado ${label}`,
+        diff(
+          circle(0, 0, hd.discRadius),
+          rect(-t / 2, -hd.keyHeight / 2, t, hd.keyHeight),
+        ),
+        sidePose(armX, hd.y, hd.z),
+        { group: "hinge-cut", role: "pivot-disc" },
+      );
+      add(
+        `Eixo recortado alinhado ${label}`,
+        rect(0, 0, hd.shaftLength, hd.keyHeight),
+        frontPose(keyX, hd.y - t / 2, hd.z + hd.keyHeight / 2),
+        { group: "hinge-cut", role: "pivot-key" },
+      );
     }
   }
   if (type === "hinged" && hingeType(s) === "tabbed") {
@@ -587,17 +687,42 @@ function applyLidJoinery(s, parts) {
       left = parts.find((p) => p.role === "lid-left"),
       right = parts.find((p) => p.role === "lid-right");
     for (const [p, x] of [
-      [left, m.inset - t / 2 - c],
-      [right, w - m.inset + c + t / 2],
+      [
+        left,
+        hingeType(s) === "profile"
+          ? m.inset + 1.5 * t + c
+          : m.inset - t / 2 - c,
+      ],
+      [
+        right,
+        hingeType(s) === "profile"
+          ? w - m.inset - 1.5 * t - c
+          : w - m.inset + c + t / 2,
+      ],
     ]) {
-      join(lid, p, [x, 0, z], [x, d - t, z], [0, 0, 1]);
-      join(front, p, [x, d - t, h + c], [x, d - t, z], [0, 1, 0]);
+      join(
+        lid,
+        p,
+        [x, hingeType(s) === "profile" ? t + c : 0, z],
+        [x, hingeType(s) === "profile" ? d - 2 * t - c : d - t, z],
+        [0, 0, 1],
+      );
+      const frontY = hingeType(s) === "profile" ? d - 2 * t - c : d - t;
+      join(front, p, [x, frontY, h + c], [x, frontY, z], [0, 1, 0]);
     }
     join(
       lid,
       front,
-      [-t - c, d - t / 2, z],
-      [w + t + c, d - t / 2, z],
+      [
+        hingeType(s) === "profile" ? 0 : -t - c,
+        hingeType(s) === "profile" ? d - 1.5 * t - c : d - t / 2,
+        z,
+      ],
+      [
+        hingeType(s) === "profile" ? w : w + t + c,
+        hingeType(s) === "profile" ? d - 1.5 * t - c : d - t / 2,
+        z,
+      ],
       [0, 0, 1],
     );
   }
@@ -647,11 +772,13 @@ export function constructionNotes(s) {
         : ` Moldura inferior com união ${JOINTS[resolvedJoint(s, "lidJoint")]}; divisórias ficam abaixo da guia.`,
     sliding: ` Fixe os quatro trilhos nas laterais internas com união ${JOINTS[resolvedJoint(s, "railJoint")]}. A tampa entra pela frente; as divisórias ficam abaixo do canal.`,
     hinged:
-      hingeType(s) === "tabbed"
-        ? ` Haste de pivô recortada na própria tampa, apoiada nos furos circulares das laterais. Monte a tampa entre as laterais antes de fechar a caixa; não cole a região de giro. Não precisa de discos separados nem de eixo comprado.`
-        : hingeType(s) === "laser"
-          ? ` Pivô sem ferragens: corte 2 discos-pivô e 2 eixos retangulares junto com as demais peças. Encaixe os eixos nos rasgos do corpo e dos discos; os braços giram ao redor dos discos. Fixe somente os encaixes retangulares; não cole braços aos discos. Monte e confira o espaçamento da tampa antes de fixar os eixos.`
-          : ` Dobradiça recortada nas laterais e braços da tampa. Monte com 2 pinos ou parafusos de Ø${s.pivotDiameter} mm e retenção. Comprimento útil mínimo do eixo: ${Number((3 * s.thickness + s.clearance).toFixed(1))} mm, mais a fixação. Não cole a articulação.`,
+      hingeType(s) === "profile"
+        ? ` Tampa articulada alinhada ao perfil: braços internos e pivôs dentro do contorno lateral, sem orelhas traseiras. Corte 2 discos-pivô e 2 eixos retangulares junto com as placas; fixe os rasgos retangulares, sem colar os discos aos braços móveis. Os alívios nos cantos da traseira permitem o giro. A prévia abre até 100°; confira a folga em um protótipo antes de produzir.`
+        : hingeType(s) === "tabbed"
+          ? ` Haste de pivô recortada na própria tampa, apoiada nos furos circulares das laterais. Monte a tampa entre as laterais antes de fechar a caixa; não cole a região de giro. Não precisa de discos separados nem de eixo comprado.`
+          : hingeType(s) === "laser"
+            ? ` Pivô sem ferragens: corte 2 discos-pivô e 2 eixos retangulares junto com as demais peças. Encaixe os eixos nos rasgos do corpo e dos discos; os braços giram ao redor dos discos. Fixe somente os encaixes retangulares; não cole braços aos discos. Monte e confira o espaçamento da tampa antes de fixar os eixos.`
+            : ` Dobradiça recortada nas laterais e braços da tampa. Monte com 2 pinos ou parafusos de Ø${s.pivotDiameter} mm e retenção. Comprimento útil mínimo do eixo: ${Number((3 * s.thickness + s.clearance).toFixed(1))} mm, mais a fixação. Não cole a articulação.`,
   };
   return (
     joints[jointType(s)] +

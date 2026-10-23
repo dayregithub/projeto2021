@@ -451,20 +451,25 @@ function renderEditor() {
   }[jointType(state)];
   $("#hinge-fields").hidden = lid !== "hinged";
   $("#hinge-mechanism").hidden = lid !== "hinged";
-  $("#hinge-guide").hidden = lid !== "hinged" || hingeType(state) !== "laser";
+  $("#hinge-guide").hidden =
+    lid !== "hinged" || !["laser", "profile"].includes(hingeType(state));
+  $("#profile-guide").hidden =
+    lid !== "hinged" || hingeType(state) !== "profile";
   $("#integral-guide").hidden =
     lid !== "hinged" || hingeType(state) !== "tabbed";
-  $("#pivot-label").textContent =
-    hingeType(state) === "laser"
-      ? "Ø do disco-pivô (mm)"
-      : hingeType(state) === "tabbed"
-        ? "Ø do alojamento (mm)"
-        : "Ø do eixo externo (mm)";
+  $("#pivot-label").textContent = ["laser", "profile"].includes(
+    hingeType(state),
+  )
+    ? "Ø do disco-pivô (mm)"
+    : hingeType(state) === "tabbed"
+      ? "Ø do alojamento (mm)"
+      : "Ø do eixo externo (mm)";
   $("#lid-opening-label").hidden = lid === "none";
   $("#toggle-lid").hidden = lid === "none";
   $("#lid-opening-value").textContent =
     state.lidOpening + (lid === "hinged" ? "°" : "%");
-  $("#lidOpening").max = lid === "hinged" ? 110 : 100;
+  $("#lidOpening").max =
+    lid === "hinged" && hingeType(state) !== "profile" ? 110 : 100;
   $("#toggle-lid").textContent =
     state.lidOpening > 0 ? "Fechar tampa" : "Abrir tampa";
   $("#lid-hint").textContent = {
@@ -479,6 +484,9 @@ function renderEditor() {
   if (lid === "hinged" && hingeType(state) === "tabbed")
     $("#lid-hint").textContent =
       "A haste está integrada ao contorno da tampa e gira nas laterais, como no novo SVG de referência. Sem discos, eixos separados ou parafusos.";
+  if (lid === "hinged" && hingeType(state) === "profile")
+    $("#lid-hint").textContent =
+      "Pivô alinhado ao perfil lateral, sem orelhas traseiras e com braços internos. A tampa acompanha a largura da caixa. Abertura na prévia até 100°; preserva discos e eixos recortados, sem parafusos.";
   if (lid === "hinged" && hingeType(state) === "laser")
     $("#lid-hint").textContent =
       "Sem eixos comprados: dois discos e dois eixos retangulares são recortados na chapa. Os braços giram ao redor dos discos. Consulte a montagem abaixo.";
@@ -1022,6 +1030,8 @@ $("#toggle-lid").onclick = () => {
 };
 $("#hinge-type").onchange = (e) => {
   state.hingeType = e.target.value;
+  if (state.hingeType === "profile")
+    state.lidOpening = Math.min(100, state.lidOpening);
   ensureJoinSizes();
   if (state.hingeType === "tabbed")
     state.pivotDiameter =
