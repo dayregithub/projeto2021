@@ -581,13 +581,13 @@ test("grouped catalog removes duplicate cards while variations and saved preset 
   await page.goto("/");
   await expect(page.locator(".model-card")).toHaveCount(5);
   await expect(page.locator("#model-count")).toHaveText(
-    "5 grupos · 22 variações",
+    "5 grupos · 23 variações",
   );
   await page.locator("#search").fill("chá");
   await expect(page.locator(".model-card")).toHaveCount(1);
   await page.locator('[data-group="laser-boxes"]').click();
   await expect(page.locator("#model-variation")).toHaveValue("tea");
-  await expect(page.locator("#model-variation option")).toHaveCount(15);
+  await expect(page.locator("#model-variation option")).toHaveCount(16);
   await page.selectOption("#model-variation", "heartbox");
   await expect(page.locator("#width")).toHaveValue("84");
   await expect(page.locator("#hinge-type")).toHaveValue("tabbed");

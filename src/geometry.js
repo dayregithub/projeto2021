@@ -281,6 +281,41 @@ export function validate(s) {
         "A tampa alinhada ao perfil permite abertura de até 100° nesta versão.",
       );
   }
+  if (lidType(s) === "hinged" && hingeType(s) === "reference") {
+    const hd = hingeDimensions(s);
+    if (s.lidOpening > 100)
+      errors.push(
+        "A tampa do SVG permite abertura de até 100° nesta versão, para preservar a passagem da faixa traseira.",
+      );
+    if (s.lidHeight <= s.thickness || hd.rearStripHeight < 0.5)
+      errors.push(
+        "Tampa do SVG: aumente a altura da moldura para acomodar o painel e a faixa traseira curta.",
+      );
+    if (hd.bodyHeight <= 2 * hd.radius + 2 * s.thickness)
+      errors.push(
+        "Tampa do SVG: aumente a altura total ou reduza a moldura/pivô para deixar material abaixo da articulação.",
+      );
+    if (s.depth <= (2 + Math.SQRT2) * hd.radius + s.thickness)
+      errors.push(
+        "Tampa do SVG: aumente a profundidade para acomodar o ombro diagonal do braço.",
+      );
+    if (shellMetrics(s).innerWidth < 15)
+      errors.push(
+        "Tampa do SVG: aumente a largura para acomodar braços e paredes laterais.",
+      );
+    if (hd.radius - hd.holeRadius < Math.max(0.3, s.thickness / 3))
+      errors.push(
+        "Tampa do SVG: reduza a folga do pivô para preservar material ao redor do furo.",
+      );
+    if (s.pivotDiameter <= Math.hypot(hd.keyWidth, hd.keyHeight) + 0.5)
+      errors.push(
+        "Tampa do SVG: aumente o disco-pivô para deixar material ao redor do rasgo retangular.",
+      );
+    if (resolvedJoint(s, "lidJoint") === "tslot" && hd.rearStripHeight < 15)
+      errors.push(
+        "Tampa do SVG com união T: aumente a moldura para que a faixa traseira tenha pelo menos 15 mm para o canal da porca.",
+      );
+  }
   const metrics = shellMetrics(s),
     span = metrics.frontHeight - s.thickness;
   if (supportsConstruction(s) && metrics.innerWidth < 15)

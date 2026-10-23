@@ -10,11 +10,11 @@
     />
     <title>Papeled Maker — seu espaço maker online</title>
     <link rel="icon" type="image/png" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/main-DzrkUjOP.js"></script>
+    <script type="module" crossorigin src="./assets/main-CHxD3uaQ.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-8-FSwln_.js">
     <link rel="modulepreload" crossorigin href="./assets/browser-eqoWqH1V.js">
-    <link rel="modulepreload" crossorigin href="./assets/geometry-BVU4yy_-.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-BCa7N4ie.js">
+    <link rel="modulepreload" crossorigin href="./assets/geometry-D6zhNVrB.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-BE9qppIz.js">
     <link rel="stylesheet" crossorigin href="./assets/main-CpAQ_kdE.css">
   </head>
   <body>
@@ -405,6 +405,9 @@
                   <option value="laser">
                     Discos e eixos recortados — sem ferragens
                   </option>
+                  <option value="reference">
+                    Articulada com moldura — modelo do SVG
+                  </option>
                   <option value="profile">
                     Articulada alinhada ao perfil — sem ferragens
                   </option>
@@ -416,7 +419,8 @@
               </div>
               <div id="hinge-fields" class="split-fields" hidden>
                 <label
-                  >Altura da aba (mm)<input
+                  ><span id="lid-height-title">Altura da aba (mm)</span
+                  ><input
                     id="lidHeight"
                     type="number"
                     min="3"
@@ -441,6 +445,13 @@
                 Fechar tampa
               </button>
               <p class="field-hint" id="lid-hint"></p>
+              <p class="field-hint" id="reference-guide" hidden>
+                A altura total inclui a moldura da tampa. Este modelo segue o
+                SVG: braços externos alinhados, paredes sem recortes traseiros,
+                discos de pivô e uma faixa traseira curta para liberar o giro.
+                As faixas frontal e traseira são coladas entre os braços. Corte
+                um protótipo para verificar a folga real.
+              </p>
               <p class="field-hint" id="profile-guide" hidden>
                 Os pivôs ficam dentro do contorno lateral e os braços ficam no
                 interior da caixa. Inclui dois discos e dois eixos recortados na

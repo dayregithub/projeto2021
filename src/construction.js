@@ -5,6 +5,7 @@ import {
   makePanel,
   rectanglePose,
   resolvedJoint,
+  reshape,
 } from "./joinery.js";
 import { familyFor } from "./models.js";
 import clipping from "polygon-clipping";
@@ -16,6 +17,7 @@ export const JOINTS = {
 export const HINGES = {
   laser: "Discos e eixos recortados",
   profile: "Articulada alinhada ao perfil",
+  reference: "Articulada com moldura — modelo do SVG",
   tabbed: "Haste integrada à tampa",
   hardware: "Eixo externo (projeto anterior)",
 };
@@ -44,9 +46,10 @@ export const lidType = (s) =>
 export const jointType = (s) =>
   supportsJoinery(s) ? (s.joint ?? "straight") : "straight";
 export const wallInset = (s) =>
-  supportsConstruction(s) && jointType(s) === "tslot"
+  (supportsConstruction(s) && jointType(s) === "tslot"
     ? Math.max(2 * s.thickness, 6.4)
-    : 0;
+    : 0) +
+  (lidType(s) === "hinged" && hingeType(s) === "reference" ? s.thickness : 0);
 export const railWidth = (s) =>
   resolvedJoint(s, "railJoint") === "tslot" ? 18 : s.thickness;
 export const guideDepth = (s) =>
@@ -78,15 +81,19 @@ export function shellMetrics(s) {
   const t = s.thickness,
     c = s.clearance,
     type = lidType(s),
-    inset = wallInset(s);
+    inset = wallInset(s),
+    reference = type === "hinged" && hingeType(s) === "reference",
+    bodyHeight = reference ? s.height - s.lidHeight : s.height;
   return {
+    bodyHeight,
     inset,
     innerWidth: s.width - 2 * (t + inset),
     innerDepth: s.depth - 2 * t,
     frontHeight:
-      type === "sliding" ? slidingDimensions(s).frontHeight : s.height,
-    dividerTop:
-      type === "sliding"
+      type === "sliding" ? slidingDimensions(s).frontHeight : bodyHeight,
+    dividerTop: reference
+      ? bodyHeight - c
+      : type === "sliding"
         ? s.height - 3 * t - 3 * c - slidingDimensions(s).drop
         : type === "removable"
           ? s.height - guideDepth(s) - c
@@ -98,6 +105,33 @@ export function shellMetrics(s) {
   };
 }
 export function hingeDimensions(s) {
+  if (hingeType(s) === "reference") {
+    const t = s.thickness,
+      radius = s.pivotDiameter / 2 + t;
+    const bodyHeight = s.height - s.lidHeight;
+    const swingSafety = Math.max(t / 3, s.clearance);
+    // Rear band is shortened by the swept lower inside corner, as in the SVG:
+    // t=3, disc=10, lid=9 -> 2.851108 mm of band below the top sheet.
+    const rearStripHeight =
+      s.lidHeight -
+      t +
+      radius -
+      Math.sqrt(2 * radius ** 2 - (radius - t) ** 2) -
+      swingSafety;
+    return {
+      radius,
+      y: radius,
+      z: bodyHeight - radius,
+      bodyHeight,
+      rearStripHeight,
+      holeRadius: s.pivotDiameter / 2 + s.clearance,
+      discRadius: s.pivotDiameter / 2,
+      keyWidth: t,
+      keyHeight: Math.max(t, s.pivotDiameter / 2),
+      shaftLength: 2 * t + Math.max(0, wallInset(s) - t),
+      swingSafety,
+    };
+  }
   const radius = s.pivotDiameter / 2 + 2 * s.thickness;
   return {
     radius,
@@ -190,6 +224,8 @@ const sidePose = (x, y, z) => ({
   normal: [1, 0, 0],
 });
 export function buildBoxPanels(s) {
+  if (lidType(s) === "hinged" && hingeType(s) === "reference")
+    return buildReferenceHinge(s);
   const { width: w, depth: d, height: h, thickness: t, clearance: c } = s,
     type = lidType(s),
     joint = jointType(s),
@@ -638,6 +674,114 @@ export function buildBoxPanels(s) {
   applyLidJoinery(s, body);
   return body;
 }
+function buildReferenceHinge(s) {
+  const { width: w, depth: d, height: h, thickness: t, clearance: c } = s;
+  const hd = hingeDimensions(s),
+    r = hd.radius,
+    bh = hd.bodyHeight;
+  const body = buildBoxPanels({
+    ...s,
+    width: w - 2 * t,
+    height: bh,
+    lidType: "none",
+  });
+  for (const part of body) part.pose.origin[0] += t;
+  for (const side of body.filter((p) => p.role === "side")) {
+    const u = hd.y - side.pose.origin[1],
+      v = side.pose.origin[2] - hd.z;
+    reshape(
+      side,
+      diff(side.shape, rect(u - t / 2, v - hd.keyHeight / 2, t, hd.keyHeight)),
+    );
+  }
+  const add = (name, shape, pose, extra = {}) => {
+    const part = normalizePanel(name, shape, pose, extra);
+    body.push(part);
+    return part;
+  };
+  const z = h - t,
+    band = s.lidHeight - t;
+  const lid = add(
+    "Tampa do SVG · painel superior",
+    rect(0, 0, w, d),
+    basePose(0, 0, z),
+    {
+      group: "lid",
+      role: "lid-panel",
+      coverArea: { x: 0, y: 0, width: w, height: d },
+    },
+  );
+  const front = add(
+    "Tampa do SVG · frente",
+    rect(0, 0, w - 2 * t, band),
+    frontPose(t, d - t, z),
+    { group: "lid", role: "lid-front" },
+  );
+  const rear = add(
+    "Tampa do SVG · traseira curta",
+    rect(0, 0, w - 2 * t, hd.rearStripHeight),
+    frontPose(t, 0, z),
+    { group: "lid", role: "lid-back" },
+  );
+  const tangent = r + r / Math.SQRT2,
+    shoulderEnd = 2 * r + Math.SQRT2 * r;
+  const shoulder = [
+    [
+      [0, -band],
+      [shoulderEnd, -band],
+      [shoulderEnd, 0],
+      [tangent, tangent],
+      [0, r],
+      [0, -band],
+    ],
+  ];
+  const armShape = diff(
+    union(rect(0, -band, d, band), circle(r, r, r), shoulder),
+    circle(r, r, hd.holeRadius),
+  );
+  const arms = [];
+  for (const [label, armX, keyX] of [
+    ["esquerdo", 0, 0],
+    ["direito", w - t, w - t - hd.shaftLength + t],
+  ]) {
+    const arm = add(`Braço do SVG ${label}`, armShape, sidePose(armX, 0, bh), {
+      group: "lid",
+      role: label === "esquerdo" ? "lid-left" : "lid-right",
+    });
+    arms.push(arm);
+    add(
+      `Disco-pivô do SVG ${label}`,
+      diff(
+        circle(0, 0, hd.discRadius),
+        rect(-t / 2, -hd.keyHeight / 2, t, hd.keyHeight),
+      ),
+      sidePose(armX, hd.y, hd.z),
+      { group: "hinge-cut", role: "pivot-disc" },
+    );
+    add(
+      `Eixo recortado do SVG ${label}`,
+      rect(0, 0, hd.shaftLength, hd.keyHeight),
+      frontPose(keyX, hd.y - t / 2, hd.z + hd.keyHeight / 2),
+      { group: "hinge-cut", role: "pivot-key" },
+    );
+  }
+  const joint = resolvedJoint(s, "lidJoint");
+  for (const [arm, x] of [
+    [arms[0], t / 2],
+    [arms[1], w - t / 2],
+  ]) {
+    joinContact(lid, arm, [x, 0, z], [x, d, z], [0, 0, 1], joint, s);
+  }
+  for (const [part, y] of [
+    [front, d - t / 2],
+    [rear, t / 2],
+  ]) {
+    joinContact(lid, part, [t, y, z], [w - t, y, z], [0, 0, 1], joint, s);
+  }
+  // The end bands butt against the side arms, as on the supplied cut sheet.
+  // Their upper edges carry the selected lid joints; no extra rear-corner relief.
+  return body;
+}
 function applyLidJoinery(s, parts) {
   const t = s.thickness,
     c = s.clearance,
@@ -772,13 +916,15 @@ export function constructionNotes(s) {
         : ` Moldura inferior com união ${JOINTS[resolvedJoint(s, "lidJoint")]}; divisórias ficam abaixo da guia.`,
     sliding: ` Fixe os quatro trilhos nas laterais internas com união ${JOINTS[resolvedJoint(s, "railJoint")]}. A tampa entra pela frente; as divisórias ficam abaixo do canal.`,
     hinged:
-      hingeType(s) === "profile"
-        ? ` Tampa articulada alinhada ao perfil: braços internos e pivôs dentro do contorno lateral, sem orelhas traseiras. Corte 2 discos-pivô e 2 eixos retangulares junto com as placas; fixe os rasgos retangulares, sem colar os discos aos braços móveis. Os alívios nos cantos da traseira permitem o giro. A prévia abre até 100°; confira a folga em um protótipo antes de produzir.`
-        : hingeType(s) === "tabbed"
-          ? ` Haste de pivô recortada na própria tampa, apoiada nos furos circulares das laterais. Monte a tampa entre as laterais antes de fechar a caixa; não cole a região de giro. Não precisa de discos separados nem de eixo comprado.`
-          : hingeType(s) === "laser"
-            ? ` Pivô sem ferragens: corte 2 discos-pivô e 2 eixos retangulares junto com as demais peças. Encaixe os eixos nos rasgos do corpo e dos discos; os braços giram ao redor dos discos. Fixe somente os encaixes retangulares; não cole braços aos discos. Monte e confira o espaçamento da tampa antes de fixar os eixos.`
-            : ` Dobradiça recortada nas laterais e braços da tampa. Monte com 2 pinos ou parafusos de Ø${s.pivotDiameter} mm e retenção. Comprimento útil mínimo do eixo: ${Number((3 * s.thickness + s.clearance).toFixed(1))} mm, mais a fixação. Não cole a articulação.`,
+      hingeType(s) === "reference"
+        ? ` Tampa com moldura baseada no SVG: a altura informada inclui corpo e tampa. Corpo de ${Number((s.height - s.lidHeight).toFixed(3))} mm; moldura de ${s.lidHeight} mm. Braços externos com ombro diagonal e pivôs dentro do perfil lateral, paredes traseiras sem alívios. Corte os 2 discos e 2 eixos junto com a caixa. A aba traseira é encurtada para liberar o giro. Cole as faixas frontal/traseira entre os braços e fixe somente os rasgos retangulares dos eixos; não cole os braços aos discos. Teste a folga na chapa real.`
+        : hingeType(s) === "profile"
+          ? ` Tampa articulada alinhada ao perfil: braços internos e pivôs dentro do contorno lateral, sem orelhas traseiras. Corte 2 discos-pivô e 2 eixos retangulares junto com as placas; fixe os rasgos retangulares, sem colar os discos aos braços móveis. Os alívios nos cantos da traseira permitem o giro. A prévia abre até 100°; confira a folga em um protótipo antes de produzir.`
+          : hingeType(s) === "tabbed"
+            ? ` Haste de pivô recortada na própria tampa, apoiada nos furos circulares das laterais. Monte a tampa entre as laterais antes de fechar a caixa; não cole a região de giro. Não precisa de discos separados nem de eixo comprado.`
+            : hingeType(s) === "laser"
+              ? ` Pivô sem ferragens: corte 2 discos-pivô e 2 eixos retangulares junto com as demais peças. Encaixe os eixos nos rasgos do corpo e dos discos; os braços giram ao redor dos discos. Fixe somente os encaixes retangulares; não cole braços aos discos. Monte e confira o espaçamento da tampa antes de fixar os eixos.`
+              : ` Dobradiça recortada nas laterais e braços da tampa. Monte com 2 pinos ou parafusos de Ø${s.pivotDiameter} mm e retenção. Comprimento útil mínimo do eixo: ${Number((3 * s.thickness + s.clearance).toFixed(1))} mm, mais a fixação. Não cole a articulação.`,
   };
   return (
     joints[jointType(s)] +

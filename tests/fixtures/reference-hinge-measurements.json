@@ -1,0 +1,13 @@
+{
+  "source": "caixa-com-dobradiça-a-laser-106x150x50-3mm (1).svg",
+  "units": "mm",
+  "overall": [106, 150, 50],
+  "thickness": 3,
+  "lidHeight": 9,
+  "bodyHeight": 41,
+  "pivot": { "y": 8, "z": 33, "outerRadius": 8, "discRadius": 5, "holeRadius": 5.2 },
+  "key": [6, 5],
+  "panels": { "base": [100, 150], "front": [100, 41], "back": [100, 41], "side": [150, 41], "lid-panel": [106, 150], "lid-front": [100, 9], "lid-back": [100, 5.852], "lid-left": [150, 24.988], "lid-right": [150, 24.988], "pivot-disc": [9.953, 9.976], "pivot-key": [6, 5] },
+  "contourTolerance": 0.05,
+  "notes": "Measurements from red/blue fabrication paths only; ignore the black engraved part labels. Source arcs are tessellated and rounded to 0.001 mm."
+}

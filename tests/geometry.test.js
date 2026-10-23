@@ -803,7 +803,7 @@ import {
 } from "../src/models.js";
 test("catalog groups share construction and preserve every distinct preset ID", () => {
   assert.equal(CATALOG_GROUPS.length, 5);
-  assert.equal(variationsFor("laser-boxes").length, 15);
+  assert.equal(variationsFor("laser-boxes").length, 16);
   assert.equal(variationsFor("laser-drawers").length, 2);
   assert.equal(variationsFor("printed-boxes").length, 3);
   const members = CATALOG_GROUPS.flatMap((g) =>
@@ -1207,4 +1207,148 @@ test("profile hinge moving lid clears body and lowered dividers throughout its p
         }
     }
   }
+});
+
+test("SVG reference hinge matches the supplied 14-piece cut sheet and total height semantics", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const measured = JSON.parse(
+    await readFile(
+      new URL("./fixtures/reference-hinge-measurements.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const s = defaults("referencehinge"),
+    ps = panels(s),
+    hd = hingeDimensions(s);
+  assert.deepEqual(validate(s), []);
+  assert.equal(ps.length, 14);
+  near(hd.bodyHeight, measured.bodyHeight);
+  near(hd.y, measured.pivot.y);
+  near(hd.z, measured.pivot.z);
+  near(hd.radius, measured.pivot.outerRadius);
+  near(hd.holeRadius, measured.pivot.holeRadius);
+  for (const p of ps) {
+    assert.equal(p.shape.length, 1, `${p.name} detached`);
+    const size = measured.panels[p.role];
+    assert.ok(
+      Math.abs(p.width - size[0]) < measured.contourTolerance,
+      `${p.name} width ${p.width}`,
+    );
+    assert.ok(
+      Math.abs(p.height - size[1]) < measured.contourTolerance,
+      `${p.name} height ${p.height}`,
+    );
+    for (const [u, v] of panelPolygons(p).flat(2))
+      for (const level of [0, s.thickness]) {
+        const xyz = p.pose.origin.map(
+          (n, i) =>
+            n + p.pose.u[i] * u + p.pose.v[i] * v + p.pose.normal[i] * level,
+        );
+        for (let i = 0; i < 3; i++)
+          assert.ok(
+            xyz[i] >= -1e-6 && xyz[i] <= measured.overall[i] + 1e-6,
+            `${p.name} outside overall footprint: ${xyz}`,
+          );
+      }
+  }
+  // Whole back wall has no corner relief; pivot supports are the ordinary side walls.
+  const back = ps.find((p) => p.role === "back");
+  assert.ok(
+    insidePanel(
+      back,
+      [s.thickness * 2 + 0.1, s.thickness / 2, hd.bodyHeight - 0.5],
+      s.thickness,
+    ),
+  );
+  assert.equal(readProject(JSON.stringify(s)).hingeType, "reference");
+  assert.match(exportSVG(s), /aba traseira é encurtada/);
+  assert.ok(exportDXF(s).includes("LWPOLYLINE"));
+  assert.ok(validate({ ...s, height: 20 }).length);
+  assert.ok(validate({ ...s, lidHeight: 3 }).length);
+});
+test("SVG reference external arms and short rear band clear the box through 100 degrees with all top joint types", () => {
+  for (const joint of ["straight", "finger", "tslot"])
+    for (const lidJoint of ["straight", "finger", "tslot"]) {
+      const s = {
+        ...defaults("referencehinge"),
+        joint,
+        lidJoint,
+        height: 80,
+        lidHeight: lidJoint === "tslot" ? 22 : 9,
+      };
+      assert.deepEqual(validate(s), [], `${joint}/${lidJoint}`);
+      const original = panels(s),
+        hd = hingeDimensions(s),
+        t = s.thickness;
+      for (const p of original)
+        assert.equal(
+          p.shape.length,
+          1,
+          `${joint}/${lidJoint}/${p.name} detached`,
+        );
+      for (const degrees of [0, 10, 30, 50, 70, 90, 100]) {
+        const a = (degrees * Math.PI) / 180;
+        const rotate = (v, point = false) => {
+          const dy = v[1] - (point ? hd.y : 0),
+            dz = v[2] - (point ? hd.z : 0);
+          return [
+            v[0],
+            (point ? hd.y : 0) + dy * Math.cos(a) - dz * Math.sin(a),
+            (point ? hd.z : 0) + dy * Math.sin(a) + dz * Math.cos(a),
+          ];
+        };
+        const ps = original.map((p) =>
+          p.group === "lid"
+            ? {
+                ...p,
+                pose: {
+                  origin: rotate(p.pose.origin, true),
+                  u: rotate(p.pose.u),
+                  v: rotate(p.pose.v),
+                  normal: rotate(p.pose.normal),
+                },
+              }
+            : p,
+        );
+        const bs = ps.map((p) => {
+          const vertices = panelPolygons(p)
+            .flat(2)
+            .flatMap(([u, v]) =>
+              [0, t].map((level) =>
+                p.pose.origin.map(
+                  (n, i) =>
+                    n +
+                    p.pose.u[i] * u +
+                    p.pose.v[i] * v +
+                    p.pose.normal[i] * level,
+                ),
+              ),
+            );
+          return [0, 1, 2].map((i) => [
+            Math.min(...vertices.map((v) => v[i])),
+            Math.max(...vertices.map((v) => v[i])),
+          ]);
+        });
+        let seed = 3944;
+        const random = () =>
+          (seed = (1664525 * seed + 1013904223) >>> 0) / 2 ** 32;
+        for (let i = 0; i < ps.length; i++)
+          for (let j = i + 1; j < ps.length; j++) {
+            const range = bs[i].map((r, k) => [
+              Math.max(r[0], bs[j][k][0]),
+              Math.min(r[1], bs[j][k][1]),
+            ]);
+            if (range.some(([lo, hi]) => hi - lo < 1e-5)) continue;
+            for (let k = 0; k < 350; k++) {
+              const point = range.map(
+                ([lo, hi]) => lo + (0.001 + 0.998 * random()) * (hi - lo),
+              );
+              assert.ok(
+                !(insidePanel(ps[i], point, t) && insidePanel(ps[j], point, t)),
+                `${joint}/${lidJoint}/${degrees}: ${ps[i].name} overlaps ${ps[j].name} at ${point}`,
+              );
+            }
+          }
+      }
+    }
 });

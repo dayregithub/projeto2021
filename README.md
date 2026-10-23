@@ -329,3 +329,22 @@ Nos modelos de caixa a laser que aceitam tampas, selecione **Tampa → Dobradiç
 A posição do eixo é compartilhada pela geometria de corte e pela rotação da prévia 3D. SVG/DXF/PDF usam os mesmos painéis e os projetos JSON preservam o mecanismo. Os alívios nos cantos traseiros dão passagem aos braços; as divisórias são rebaixadas automaticamente para liberar a região do pivô. A variante permite abertura de 0 a 100 graus na prévia; dimensões insuficientes de altura, largura, profundidade e pivô bloqueiam a exportação com uma orientação. Os encaixes da tampa continuam selecionáveis entre reta, dedo e T.
 
 Esta é uma adaptação paramétrica da referência visual, sem desenho técnico cotado do mecanismo original. Os testes verificam contornos conectados, limite do perfil fechado, material ao redor do eixo, persistência e amostras de interferência em nove combinações de união e sete ângulos. A renderização não substitui ensaio físico: corte um protótipo na espessura real e ajuste folga/encaixe antes de produzir um lote.
+
+### Tampa articulada com moldura baseada no SVG fornecido
+
+A variação **Caixa articulada do SVG** (`referencehinge`) fica no grupo de caixas a laser. Seu mecanismo também pode ser escolhido em outras caixas por **Tampa → Dobradiça integrada → Articulada com moldura — modelo do SVG** (`hingeType: "reference"`). Preserva as variações anteriores. A prévia estática ilustrativa está em `public/references/tampa-do-svg.png`.
+
+A construção foi medida a partir dos contornos de corte do arquivo `caixa-com-dobradiça-a-laser-106x150x50-3mm (1).svg`, ignorando os nomes de peças em preto. As medidas extraídas estão em `tests/fixtures/reference-hinge-measurements.json`. Para o preset de 106 × 150 × 50 mm, chapa de 3 mm e moldura de 9 mm:
+
+- os 50 mm incluem o corpo de 41 mm e a moldura de 9 mm;
+- o corpo/base tem 100 × 150 mm e a tampa superior, 106 × 150 mm;
+- os braços ficam por fora das paredes, dentro dos 106 mm totais, com ombro diagonal e raio externo de 8 mm;
+- os pivôs ficam a 8 mm da traseira e a 33 mm da base, com discos de 10 mm e alojamentos de 10,4 mm;
+- as duas chaves retangulares medem 6 × 5 mm;
+- a faixa traseira da tampa é curta (2,851108 mm abaixo do painel; 5,851108 mm incluindo os dedos superiores), liberando o giro;
+- a traseira do corpo permanece inteira: não há os alívios dos modelos anteriores;
+- são 14 peças: 5 do corpo, 5 da moldura/painel da tampa, 2 discos e 2 chaves.
+
+As faixas frontal e traseira são coladas entre os braços, como na referência; as uniões selecionadas da tampa são aplicadas aos contatos com o painel superior. A altura e a largura úteis internas consideram o corpo menor. Divisórias permanecem abaixo do corpo, sem ocupar a moldura. O modelo limita a prévia a 100° para manter a faixa traseira fora do corpo; a validação rejeita combinações com pouca altura, alojamento sem parede ou largura/profundidade insuficientes. Para união T no painel, a moldura precisa crescer para acomodar o canal na faixa traseira; a UI ajusta a moldura e a validação confere o espaço restante no corpo.
+
+Os testes comparam as 14 peças com as medidas do SVG (tolerância de 0,05 mm para arredondamento/tesselação do arquivo de origem), verificam limites externos fechados, persistência e amostras de colisão em nove combinações de uniões e sete ângulos até 100°. A sequência dos dentes é recalculada pelo gerador para cada dimensão; não é uma cópia ponto a ponto dos caminhos do SVG. Corte um protótipo para verificar folga, kerf, colagem e retenção dos eixos na chapa real antes de fabricar um lote.

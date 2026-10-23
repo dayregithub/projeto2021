@@ -28,6 +28,7 @@ import {
 import {
   HINGES,
   hingeType,
+  hingeDimensions,
   JOINTS,
   LIDS,
   lidType,
@@ -346,7 +347,9 @@ function renderEditor() {
     ? state.signOrientation === "standing"
       ? "Espessura das letras"
       : "Altura total"
-    : "Altura";
+    : lidType(state) === "hinged" && hingeType(state) === "reference"
+      ? "Altura total com tampa"
+      : "Altura";
   $("#height").min = isSign ? 3 : 15;
   for (const option of $("#print-lid").options)
     option.disabled = option.hidden =
@@ -435,6 +438,10 @@ function renderEditor() {
       resolvedJoint(state, k),
     ),
   ].includes("finger");
+  $("#lid-height-title").textContent =
+    hingeType(state) === "reference"
+      ? "Altura da moldura (mm)"
+      : "Altura da aba (mm)";
   $("#lidHeight").closest("label").hidden = hingeType(state) === "tabbed";
   $("#finger-size-value").textContent = state.fingerSize + " mm";
   $$("[data-joint]").forEach((b) => {
@@ -452,7 +459,10 @@ function renderEditor() {
   $("#hinge-fields").hidden = lid !== "hinged";
   $("#hinge-mechanism").hidden = lid !== "hinged";
   $("#hinge-guide").hidden =
-    lid !== "hinged" || !["laser", "profile"].includes(hingeType(state));
+    lid !== "hinged" ||
+    !["laser", "profile", "reference"].includes(hingeType(state));
+  $("#reference-guide").hidden =
+    lid !== "hinged" || hingeType(state) !== "reference";
   $("#profile-guide").hidden =
     lid !== "hinged" || hingeType(state) !== "profile";
   $("#integral-guide").hidden =
@@ -469,7 +479,9 @@ function renderEditor() {
   $("#lid-opening-value").textContent =
     state.lidOpening + (lid === "hinged" ? "°" : "%");
   $("#lidOpening").max =
-    lid === "hinged" && hingeType(state) !== "profile" ? 110 : 100;
+    lid === "hinged" && !["profile", "reference"].includes(hingeType(state))
+      ? 110
+      : 100;
   $("#toggle-lid").textContent =
     state.lidOpening > 0 ? "Fechar tampa" : "Abrir tampa";
   $("#lid-hint").textContent = {
@@ -484,6 +496,11 @@ function renderEditor() {
   if (lid === "hinged" && hingeType(state) === "tabbed")
     $("#lid-hint").textContent =
       "A haste está integrada ao contorno da tampa e gira nas laterais, como no novo SVG de referência. Sem discos, eixos separados ou parafusos.";
+  if (lid === "hinged" && hingeType(state) === "reference") {
+    const hd = hingeDimensions(state);
+    $("#lid-hint").textContent =
+      `Modelo do SVG: altura total ${fmt(state.height)} mm = corpo ${fmt(hd.bodyHeight)} mm + moldura ${fmt(state.lidHeight)} mm. Braços por fora das paredes, tampa completa e faixa traseira curta de ${fmt(hd.rearStripHeight)} mm. Sem recortes nos cantos da traseira e sem eixo comprado.`;
+  }
   if (lid === "hinged" && hingeType(state) === "profile")
     $("#lid-hint").textContent =
       "Pivô alinhado ao perfil lateral, sem orelhas traseiras e com braços internos. A tampa acompanha a largura da caixa. Abertura na prévia até 100°; preserva discos e eixos recortados, sem parafusos.";
@@ -1030,7 +1047,7 @@ $("#toggle-lid").onclick = () => {
 };
 $("#hinge-type").onchange = (e) => {
   state.hingeType = e.target.value;
-  if (state.hingeType === "profile")
+  if (["profile", "reference"].includes(state.hingeType))
     state.lidOpening = Math.min(100, state.lidOpening);
   ensureJoinSizes();
   if (state.hingeType === "tabbed")
@@ -1042,6 +1059,17 @@ $("#hinge-type").onchange = (e) => {
   persistDraft();
 };
 function ensureJoinSizes() {
+  if (
+    lidType(state) === "hinged" &&
+    hingeType(state) === "reference" &&
+    resolvedJoint(state, "lidJoint") === "tslot"
+  ) {
+    const hd = hingeDimensions(state);
+    if (hd.rearStripHeight < 15)
+      state.lidHeight =
+        Math.ceil((state.lidHeight + 15 - hd.rearStripHeight) * 2) / 2;
+    $("#lidHeight").value = state.lidHeight;
+  }
   if (
     lidType(state) === "hinged" &&
     hingeType(state) !== "tabbed" &&
