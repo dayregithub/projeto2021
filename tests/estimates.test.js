@@ -1016,6 +1016,6 @@ test("all item discounts reconcile with the general discount and are listed indi
   assert.match(text,/Item 3 - Terceiro projeto 3D: R\$ 2,00/);
   assert.match(text,/Soma dos descontos dos itens: R\$ 32,00/);
   assert.match(text,/Desconto geral: R\$ 32,80/);
-  assert.match(text,/Descontos totais\s+-R\$ 64,80/);
+  assert.match(text,/Todos os descontos\s+-R\$ 64,80/);
   assert.match(text,/TOTAL\s+R\$ 295,20/);
 });

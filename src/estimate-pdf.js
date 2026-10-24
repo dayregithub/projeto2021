@@ -226,7 +226,7 @@ export async function estimatePDF(quote, { logoData } = {}) {
         ]
       : [["Itens", result.itemGrossSubtotal]]),
     ...(quote.setupPrice ? [["Preparação / projeto", quote.setupPrice]] : []),
-    ["Descontos totais", -result.totalDiscount],
+    ["Todos os descontos", -result.totalDiscount],
     ...(quote.adjustment ? [["Ajuste comercial", quote.adjustment]] : []),
     ...(quote.shipping ? [["Frete", quote.shipping]] : []),
   ];
