@@ -26,6 +26,7 @@ test("laser time shorthand and clock notation calculate the same 80-piece quote 
   );
   expect(await page.locator("#estimate-summary").textContent()).toBe(total);
   await page.locator("#estimate-save").click();
+  await expect.poll(() => page.evaluate(() => Boolean(localStorage.getItem("papeled-issued-estimates-v1")))).toBe(true);
   expect(
     await page.evaluate(
       () =>

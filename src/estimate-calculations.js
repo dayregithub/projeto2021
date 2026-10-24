@@ -95,10 +95,12 @@ export function newEstimateItem(process = "laser") {
   };
 }
 export function newEstimate(profile = {}) {
+  const id = crypto.randomUUID();
   return {
     version: 1,
-    id: crypto.randomUUID(),
-    number: `PM-${localDate().replaceAll("-", "")}-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
+    id,
+    number: `RASCUNHO-${id.slice(0, 8)}`,
+    numberPending: true,
     issuedOn: localDate(),
     validityDays: 7,
     customer: "",

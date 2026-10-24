@@ -929,3 +929,48 @@ test("PDF groups a service and its material into one numbered item, shows discou
   assert.match(text, /159,70/);
   assert.doesNotMatch(text, /R\$\s*[\d.]+,\d{3,}/);
 });
+
+test("sequential quote reservations are admin-only, repeatable and survive deletion and migration reruns", async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(`create role anon; create role authenticated; create schema auth;
+      create table public.issued_quotes(id uuid primary key,quote_number text);
+      create function public.is_admin() returns boolean language sql as $$select current_setting('test.admin',true)='yes'$$;`);
+    const sql = await readFile(new URL('../public/estimate-numbering.sql',import.meta.url),'utf8');
+    await db.exec(sql);
+    await db.exec("set role authenticated; set test.admin='no'");
+    const id1='11111111-1111-4111-8111-111111111111', id2='22222222-2222-4222-8222-222222222222';
+    const reserve = async id => (await db.query('select public.reserve_estimate_number($1) as number',[id])).rows[0].number;
+    await assert.rejects(reserve(id1));
+    await db.exec("set test.admin='yes'");
+    const first=await reserve(id1);
+    assert.match(first,/^PM-\d{8}-000001$/);
+    assert.equal(await reserve(id1),first);
+    await db.exec('reset role');
+    await db.query('insert into public.issued_quotes values($1,$2)',[id1,first]);
+    await db.query('delete from public.issued_quotes where id=$1',[id1]);
+    await db.exec(sql);
+    await db.exec("set role authenticated; set test.admin='yes'");
+    assert.equal(await reserve(id1),first);
+    assert.match(await reserve(id2),/000002$/);
+    await assert.rejects(db.query('select * from public.estimate_number_counter'));
+    await db.exec('reset role');
+    await db.exec("insert into public.issued_quotes values('33333333-3333-4333-8333-333333333333','PM-OLD-ABC123')");
+    assert.equal(await reserve('33333333-3333-4333-8333-333333333333'),'PM-OLD-ABC123');
+  } finally { await db.close(); }
+});
+
+test("new quote numbers remain drafts until a successful shared reservation", async () => {
+  const { assignEstimateNumber } = await import('../src/estimate-number.js');
+  const quote = newEstimate();
+  assert.equal(quote.numberPending,true);
+  await assert.rejects(assignEstimateNumber(quote,{rpc:async()=>({error:{code:'PGRST202'}})}),/estimate-numbering.sql/);
+  assert.equal(quote.numberPending,true);
+  let calls=0;
+  const client={rpc:async(name,args)=>{calls++;assert.equal(name,'reserve_estimate_number');assert.equal(args.p_id,quote.id);return {data:'PM-20261024-000001'};}};
+  await assignEstimateNumber(quote,client);
+  await assignEstimateNumber(quote,client);
+  assert.equal(calls,1);
+  assert.equal(quote.number,'PM-20261024-000001');
+  assert.equal(quote.numberPending,false);
+});

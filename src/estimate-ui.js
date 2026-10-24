@@ -1,3 +1,4 @@
+import { assignEstimateNumber } from "./estimate-number.js";
 import { laserMinuteReference } from "./item-pricing.js";
 import { parseLaserTime, LASER_TIME_HELP } from "./laser-time.js";
 import {
@@ -97,6 +98,7 @@ export function initEstimates({ getState, navigate }) {
   const store = (key, value) =>
     localStorage.setItem(key, JSON.stringify(value));
   function sync() {
+    form.elements.number.readOnly = true;
     const contacts = customerContacts(quote);
     quote.customerPhone = contacts.phone;
     quote.customerEmail = contacts.email;
@@ -906,6 +908,13 @@ export function initEstimates({ getState, navigate }) {
       invalidate();
       renderSummary();
     };
+  async function ensureNumber() {
+    if (getState().client && !getState().local && !cloud)
+      throw Error("Conecte aos orçamentos no banco antes de reservar um número.");
+    await assignEstimateNumber(quote, cloud ? getState().client : null);
+    form.elements.number.value = quote.number;
+    $("estimate-editor-title").textContent = `Orçamento ${quote.number}`;
+  }
   async function save() {
     if (getState().client && !getState().local && !cloud)
       throw Error(
@@ -913,6 +922,7 @@ export function initEstimates({ getState, navigate }) {
       );
     readForm();
     validateEstimate(quote);
+    await ensureNumber();
     const existing = records.find(
       (r) => r.number === quote.number && r.id !== quote.id,
     );
@@ -973,8 +983,9 @@ export function initEstimates({ getState, navigate }) {
           : "Gerando PDF do orçamento…",
       );
       const requestedVersion = previewVersion;
-      const snapshot = structuredClone(quote);
       if (!preview) await save();
+      else await ensureNumber();
+      const snapshot = structuredClone(quote);
       const { estimatePDF } = await import("./estimate-pdf.js");
       const file = await estimatePDF(snapshot);
       if (preview && requestedVersion !== previewVersion) return;
@@ -1036,10 +1047,11 @@ export function initEstimates({ getState, navigate }) {
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
-  $("estimate-export-json").onclick = () => {
+  $("estimate-export-json").onclick = async () => {
     try {
       readForm();
       validateEstimate(quote);
+      await ensureNumber();
       download(
         new Blob(
           [JSON.stringify({ type: "papeled-estimate", quote }, null, 2)],
@@ -1313,6 +1325,7 @@ export function initEstimates({ getState, navigate }) {
         Object.assign(quote, {
           id: fresh.id,
           number: fresh.number,
+          numberPending: true,
           issuedOn: fresh.issuedOn,
           createdAt: fresh.createdAt,
           status: "draft",

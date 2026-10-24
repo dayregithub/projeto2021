@@ -35,6 +35,7 @@ test("item discounts and minute overrides persist independently and leave global
     "Total de descontos: R$",
   );
   await page.locator("#estimate-save").click();
+  await expect.poll(() => page.evaluate(() => Boolean(localStorage.getItem("papeled-issued-estimates-v1")))).toBe(true);
   const saved = await page.evaluate(
     () => JSON.parse(localStorage.getItem("papeled-issued-estimates-v1"))[0],
   );
