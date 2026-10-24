@@ -72,6 +72,9 @@ export function calculateSimpleItem(
     costRate = item.primaryService.cost / divisor;
     name = item.primaryService.name;
   }
+  const referenceRate = rate;
+  if (item.process === "laser" && item.laserMinutePrice != null)
+    rate = number(item.laserMinutePrice, "Valor do minuto deste item");
   const machine =
     item.process === "laser" ? minutes * costRate : hours * printer.machine;
   const energy =
@@ -116,7 +119,7 @@ export function calculateSimpleItem(
       subtotal: serviceAmount,
       technical:
         item.process === "laser"
-          ? `${item.minutes} min × ${qty} peça(s) = ${minutes} min (${durationLabel(minutes)})`
+          ? `${durationLabel(item.minutes)} por peça × ${qty} peça(s) = ${minutes.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} min (${durationLabel(minutes)})`
           : `${hours} horas totais de impressão`,
       unit: item.process === "laser" ? "min" : "un.",
       process: item.process,
@@ -149,6 +152,7 @@ export function calculateSimpleItem(
     additionalAmount,
     totalMinutes: minutes,
     ratePerMinute: item.process === "laser" ? rate : null,
+    referenceRatePerMinute: item.process === "laser" ? referenceRate : null,
     invoiceRows: rows,
     costs: {
       material: costMaterial,

@@ -166,9 +166,10 @@ export async function estimatePDF(quote, { logoData } = {}) {
   y += 8;
   block(l.title, quote.title);
   tableHeader();
-  (result.invoiceRows || result.items).forEach((item, index) => {
+  (result.proposalRows || result.items).forEach((item, index) => {
     const description = [
       `${index + 1}. ${item.description}`,
+      ...(item.compositionLines || []),
       ...(l.showTechnical
         ? [
             `${item.process === "laser" ? "Laser" : "Impressão 3D"} - ${item.technical}`,
@@ -182,19 +183,7 @@ export async function estimatePDF(quote, { logoData } = {}) {
       tableHeader();
     }
     text(String(item.quantity), 117, y);
-    text(
-      item.preciseUnitPrice
-        ? item.unitPrice.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 6,
-          })
-        : brl(item.unitPrice),
-      136,
-      y,
-      item.preciseUnitPrice ? 8 : font,
-    );
+    text(brl(item.unitPrice), 136, y, font);
     text(brl(item.subtotal), 166, y, font, "bold");
     for (const entry of lines) {
       if (y + line > bottom) {
@@ -209,6 +198,14 @@ export async function estimatePDF(quote, { logoData } = {}) {
     doc.line(margin, y, 194, y);
     y += 6;
   });
+  space(10);
+  text(
+    "Valores unitários exibidos com 2 casas; totais calculados com precisão integral.",
+    margin,
+    y,
+    8,
+  );
+  y += 8;
   const totals = [
     ...(quote.calculationVersion === 2
       ? [
@@ -218,9 +215,12 @@ export async function estimatePDF(quote, { logoData } = {}) {
             ? [["Serviços adicionais", result.additionalTotal]]
             : []),
         ]
-      : [["Itens", result.itemSubtotal]]),
+      : [["Itens", result.itemGrossSubtotal]]),
     ...(quote.setupPrice ? [["Preparação / projeto", quote.setupPrice]] : []),
-    ...(result.discount ? [["Desconto", -result.discount]] : []),
+    ...(result.itemDiscount
+      ? [["Descontos por item", -result.itemDiscount]]
+      : []),
+    ...(result.discount ? [["Desconto geral", -result.discount]] : []),
     ...(quote.adjustment ? [["Ajuste comercial", quote.adjustment]] : []),
     ...(quote.shipping ? [["Frete", quote.shipping]] : []),
   ];

@@ -1,5 +1,6 @@
+import { applyItemDiscount, groupedProposalItem } from "./item-pricing.js";
 import { companyLinks } from "./company-links.js";
-import { calculateSimpleItem } from "./simple-estimate.js";
+import { calculateSimpleItem, durationLabel } from "./simple-estimate.js";
 import { validateService } from "./resource-catalog.js";
 import { materialFor, validateMaterial } from "./estimate-materials.js";
 export const money = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -87,6 +88,9 @@ export function newEstimateItem(process = "laser") {
     extras: 0,
     materialProvided: false,
     manualUnitPrice: null,
+    laserMinutePrice: null,
+    discountType: "amount",
+    discount: 0,
     material: null,
   };
 }
@@ -249,166 +253,177 @@ export function calculateEstimate(quote) {
     throw Error("Margem 3D + impostos devem ser menores que 100%.");
   const sheetM2 = (p.sheetWidth * p.sheetLength) / 10000,
     materialM2 = p.sheetPrice / sheetM2;
-  const items = quote.items.map((item, index) => {
-    const label = `Item ${index + 1}`;
-    if (
-      !["laser", "print"].includes(item.process) ||
-      !["rate", "markup", "margin"].includes(item.method)
-    )
-      throw Error(`${label}: processo ou precificação inválidos.`);
-    if (
-      typeof item.description !== "string" ||
-      !item.description.trim() ||
-      item.description.length > 1200
-    )
-      throw Error(`${label}: preencha a descrição (até 1.200 caracteres).`);
-    number(item.quantity, `${label}, quantidade`, { min: 1, max: 100000 });
-    if (!Number.isInteger(item.quantity))
-      throw Error(`${label}: a quantidade deve ser inteira.`);
-    for (const key of [
-      "minutes",
-      "boardWidth",
-      "boardLength",
-      "boards",
-      "grams",
-      "hours",
-      "handlingMinutes",
-      "paintingCost",
-      "extras",
-    ])
-      number(item[key], `${label}, ${key}`);
-    number(item.wastePercent, `${label}, perda MDF`, { max: 1000 });
-    number(item.lossPercent, `${label}, perda filamento`, { max: 1000 });
-    if (item.process === "print" && item.method === "rate")
-      throw Error(`${label}: impressão 3D usa acréscimo ou margem.`);
-    if (
-      item.printInputMode != null &&
-      !["piece", "batch"].includes(item.printInputMode)
-    )
-      throw Error("Escolha peso e tempo por peça ou por lote.");
-    if (
-      item.materialSelectionRequired &&
-      item.materialMode === "included" &&
-      !item.material
-    )
-      throw Error("Cadastre e selecione um material para este projeto.");
-    if (quote.calculationVersion === 2)
-      return calculateSimpleItem(item, p, laser, {
-        money,
-        number,
-        validateMaterial,
-        materialFor,
-        validateService,
-        printer,
-      });
-    const selectedMaterial = validateMaterial(
-      materialFor(item, p),
-      item.process,
-    );
-    if (
-      item.material &&
-      !item.materialProvided &&
-      selectedMaterial.price === 0 &&
-      (item.process === "laser" ? item.boards > 0 : item.grams > 0)
-    )
-      throw Error(`${label}: informe o preço do material selecionado.`);
-    const itemMaterialM2 =
-      item.process === "laser"
-        ? selectedMaterial.price /
-          ((selectedMaterial.width * selectedMaterial.length) / 10000)
-        : 0;
-    const material = item.materialProvided
-      ? 0
-      : item.process === "laser"
-        ? ((item.boardWidth * item.boardLength) / 10000) *
-          item.boards *
-          (1 + item.wastePercent / 100) *
-          itemMaterialM2
-        : (item.grams / 1000) *
-          selectedMaterial.price *
-          (1 + item.lossPercent / 100);
-    const machine =
-      item.process === "laser"
-        ? (item.minutes / 60) * laser.hour
-        : item.hours * printer.machine;
-    const energy =
-      item.process === "print"
-        ? ((item.hours * p.printerWatts) / 1000) * p.printEnergy
-        : 0;
-    const services = item.services || [];
-    if (!Array.isArray(services) || services.length > 30)
-      throw Error(`${label}: lista de serviços inválida.`);
-    let serviceCost = 0,
-      servicePrice = 0;
-    for (const entry of services) {
-      validateService(entry);
-      number(entry.quantity, "Quantidade de serviço", { max: 100000 });
-      serviceCost += entry.cost * entry.quantity;
-      servicePrice += entry.price * entry.quantity;
-    }
-    const handling = (item.handlingMinutes / 60) * p.laborHour,
-      unitCost =
-        material +
-        machine +
-        energy +
-        handling +
-        item.paintingCost +
-        item.extras +
-        serviceCost;
-    let suggested;
-    const markup =
-      item.process === "laser"
-        ? (p.laserMaterialMarkup ?? p.markupPercent)
-        : (p.printMarkup ?? p.markupPercent);
-    if (item.method === "rate")
-      suggested =
-        (item.minutes / 60) * p.laserSaleHour +
-        (material + handling + item.paintingCost + item.extras) *
-          (1 + markup / 100);
-    else if (item.method === "markup")
-      suggested = (unitCost - serviceCost) * (1 + markup / 100);
-    else {
-      if (p.marginPercent + p.taxPercent >= 100)
-        throw Error("Margem + impostos devem ser menores que 100%.");
-      suggested =
-        (unitCost - serviceCost) / (1 - (p.marginPercent + p.taxPercent) / 100);
-    }
-    suggested += servicePrice;
-    if (item.manualUnitPrice !== null && item.manualUnitPrice !== undefined)
-      number(item.manualUnitPrice, `${label}, preço manual`);
-    const unitPrice = money(item.manualUnitPrice ?? suggested),
-      subtotal = money(unitPrice * item.quantity),
-      totalCost = unitCost * item.quantity;
-    return {
-      ...item,
-      unitPrice,
-      suggested: money(suggested),
-      subtotal,
-      unitCost,
-      totalCost,
-      costs: {
-        material,
-        machine,
-        energy,
-        handling,
-        painting: item.paintingCost,
-        extras: item.extras,
-      },
-      materialName: selectedMaterial.name,
-      technical:
-        selectedMaterial.name +
-        " · " +
-        (item.process === "laser"
-          ? `${item.minutes} min/un. · Recorte ${item.boardWidth} × ${item.boardLength} cm × ${item.boards} placa(s)/un.`
-          : `${item.grams} g/un. · ${item.hours} h/un.`) +
-        (services.length
-          ? " · " +
-            services
-              .map((s) => `${s.name}: ${s.quantity} ${s.unit}/un.`)
-              .join("; ")
-          : ""),
-    };
-  });
+  const items = quote.items
+    .map((item, index) => {
+      const label = `Item ${index + 1}`;
+      if (item.laserMinutePrice != null) {
+        if (item.process !== "laser")
+          throw Error("A tarifa por minuto é exclusiva do laser.");
+        number(item.laserMinutePrice, `${label}, valor por minuto`);
+      }
+      if (
+        !["laser", "print"].includes(item.process) ||
+        !["rate", "markup", "margin"].includes(item.method)
+      )
+        throw Error(`${label}: processo ou precificação inválidos.`);
+      if (
+        typeof item.description !== "string" ||
+        !item.description.trim() ||
+        item.description.length > 1200
+      )
+        throw Error(`${label}: preencha a descrição (até 1.200 caracteres).`);
+      number(item.quantity, `${label}, quantidade`, { min: 1, max: 100000 });
+      if (!Number.isInteger(item.quantity))
+        throw Error(`${label}: a quantidade deve ser inteira.`);
+      for (const key of [
+        "minutes",
+        "boardWidth",
+        "boardLength",
+        "boards",
+        "grams",
+        "hours",
+        "handlingMinutes",
+        "paintingCost",
+        "extras",
+      ])
+        number(item[key], `${label}, ${key}`);
+      number(item.wastePercent, `${label}, perda MDF`, { max: 1000 });
+      number(item.lossPercent, `${label}, perda filamento`, { max: 1000 });
+      if (item.process === "print" && item.method === "rate")
+        throw Error(`${label}: impressão 3D usa acréscimo ou margem.`);
+      if (
+        item.printInputMode != null &&
+        !["piece", "batch"].includes(item.printInputMode)
+      )
+        throw Error("Escolha peso e tempo por peça ou por lote.");
+      if (
+        item.materialSelectionRequired &&
+        item.materialMode === "included" &&
+        !item.material
+      )
+        throw Error("Cadastre e selecione um material para este projeto.");
+      if (quote.calculationVersion === 2)
+        return calculateSimpleItem(item, p, laser, {
+          money,
+          number,
+          validateMaterial,
+          materialFor,
+          validateService,
+          printer,
+        });
+      const selectedMaterial = validateMaterial(
+        materialFor(item, p),
+        item.process,
+      );
+      if (
+        item.material &&
+        !item.materialProvided &&
+        selectedMaterial.price === 0 &&
+        (item.process === "laser" ? item.boards > 0 : item.grams > 0)
+      )
+        throw Error(`${label}: informe o preço do material selecionado.`);
+      const itemMaterialM2 =
+        item.process === "laser"
+          ? selectedMaterial.price /
+            ((selectedMaterial.width * selectedMaterial.length) / 10000)
+          : 0;
+      const material = item.materialProvided
+        ? 0
+        : item.process === "laser"
+          ? ((item.boardWidth * item.boardLength) / 10000) *
+            item.boards *
+            (1 + item.wastePercent / 100) *
+            itemMaterialM2
+          : (item.grams / 1000) *
+            selectedMaterial.price *
+            (1 + item.lossPercent / 100);
+      const machine =
+        item.process === "laser"
+          ? (item.minutes / 60) * laser.hour
+          : item.hours * printer.machine;
+      const energy =
+        item.process === "print"
+          ? ((item.hours * p.printerWatts) / 1000) * p.printEnergy
+          : 0;
+      const services = item.services || [];
+      if (!Array.isArray(services) || services.length > 30)
+        throw Error(`${label}: lista de serviços inválida.`);
+      let serviceCost = 0,
+        servicePrice = 0;
+      for (const entry of services) {
+        validateService(entry);
+        number(entry.quantity, "Quantidade de serviço", { max: 100000 });
+        serviceCost += entry.cost * entry.quantity;
+        servicePrice += entry.price * entry.quantity;
+      }
+      const handling = (item.handlingMinutes / 60) * p.laborHour,
+        unitCost =
+          material +
+          machine +
+          energy +
+          handling +
+          item.paintingCost +
+          item.extras +
+          serviceCost;
+      let suggested;
+      const markup =
+        item.process === "laser"
+          ? (p.laserMaterialMarkup ?? p.markupPercent)
+          : (p.printMarkup ?? p.markupPercent);
+      if (item.method === "rate")
+        suggested =
+          item.minutes * (item.laserMinutePrice ?? p.laserSaleHour / 60) +
+          (material + handling + item.paintingCost + item.extras) *
+            (1 + markup / 100);
+      else if (item.method === "markup")
+        suggested = (unitCost - serviceCost) * (1 + markup / 100);
+      else {
+        if (p.marginPercent + p.taxPercent >= 100)
+          throw Error("Margem + impostos devem ser menores que 100%.");
+        suggested =
+          (unitCost - serviceCost) /
+          (1 - (p.marginPercent + p.taxPercent) / 100);
+      }
+      suggested += servicePrice;
+      if (item.manualUnitPrice !== null && item.manualUnitPrice !== undefined)
+        number(item.manualUnitPrice, `${label}, preço manual`);
+      const unitPrice = money(item.manualUnitPrice ?? suggested),
+        subtotal = money(unitPrice * item.quantity),
+        totalCost = unitCost * item.quantity;
+      return {
+        ...item,
+        unitPrice,
+        suggested: money(suggested),
+        subtotal,
+        unitCost,
+        totalCost,
+        costs: {
+          material,
+          machine,
+          energy,
+          handling,
+          painting: item.paintingCost,
+          extras: item.extras,
+        },
+        materialName: selectedMaterial.name,
+        technical:
+          selectedMaterial.name +
+          " · " +
+          (item.process === "laser"
+            ? `${durationLabel(item.minutes)}/un. · Recorte ${item.boardWidth.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} × ${item.boardLength.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} cm × ${item.boards.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} placa(s)/un.`
+            : `${item.grams.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} g/un. · ${item.hours.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} h/un.`) +
+          (services.length
+            ? " · " +
+              services
+                .map(
+                  (s) =>
+                    `${s.name}: ${s.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${s.unit}/un.`,
+                )
+                .join("; ")
+            : ""),
+      };
+    })
+    .map((item) => applyItemDiscount(item, { money, number }));
   for (const key of ["setupMinutes", "setupPrice", "shipping", "discount"])
     number(quote[key], key);
   number(quote.adjustment, "Ajuste comercial", { min: -1e9 });
@@ -461,6 +476,16 @@ export function calculateEstimate(quote) {
     sheetM2,
     materialM2,
     itemSubtotal,
+    itemGrossSubtotal: money(
+      items.reduce((sum, item) => sum + item.subtotalBeforeDiscount, 0),
+    ),
+    itemDiscount: money(
+      items.reduce((sum, item) => sum + item.itemDiscountAmount, 0),
+    ),
+    totalDiscount: money(
+      discount + items.reduce((sum, item) => sum + item.itemDiscountAmount, 0),
+    ),
+    proposalRows: items.map((item) => groupedProposalItem(item, { brl })),
     materialTotal: money(
       items.reduce(
         (sum, item) =>

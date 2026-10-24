@@ -787,3 +787,145 @@ test("laser duration accepts minute-second shorthand and clock syntax without ch
   near(result.items[0].totalMinutes, 120);
   near(JSON.parse(JSON.stringify(quote)).items[0].minutes, 1.5);
 });
+
+test("per-item minute price and discounts are isolated, then the global discount and taxes apply to the remaining sale", () => {
+  const q = newEstimate();
+  q.calculationVersion = 2;
+  q.pricing.laserSaleHour = 85;
+  q.pricing.taxPercent = 10;
+  const first = {
+    ...newEstimateItem("laser"),
+    description: "Peças com material",
+    quantity: 80,
+    minutes: 1.5,
+    materialMode: "included",
+    materialQuantity: 1,
+    material: { name: "MDF 3 mm", unit: "unidade", price: 8, salePrice: 13 },
+    laserMinutePrice: 1.25,
+    discountType: "percent",
+    discount: 10,
+  };
+  const second = {
+    ...newEstimateItem("laser"),
+    description: "Outro serviço",
+    quantity: 80,
+    minutes: 1.5,
+    materialMode: "none",
+  };
+  q.items = [first, second];
+  q.setupPrice = 20;
+  q.shipping = 10;
+  q.discountType = "percent";
+  q.discount = 10;
+  const before = JSON.stringify(q);
+  const r = calculateEstimate(q);
+  assert.equal(r.items[0].ratePerMinute, 1.25);
+  near(r.items[1].ratePerMinute, 85 / 60);
+  assert.equal(r.items[0].serviceAmount, 150);
+  assert.equal(r.items[0].materialAmount, 13);
+  assert.equal(r.items[0].subtotalBeforeDiscount, 163);
+  assert.equal(r.items[0].itemDiscountAmount, 16.3);
+  assert.equal(r.items[0].subtotal, 146.7);
+  assert.equal(r.items[1].subtotal, 170);
+  assert.equal(r.itemSubtotal, 316.7);
+  assert.equal(r.discount, 33.67);
+  assert.equal(r.totalDiscount, 49.97);
+  assert.equal(r.total, 313.03);
+  assert.equal(r.tax, 30.3);
+  near(
+    r.items.reduce((sum, item) => sum + item.includedTax, 0) + r.setupTax,
+    r.tax,
+  );
+  near(
+    r.items[0].invoiceRows.reduce((sum, row) => sum + row.subtotal, 0),
+    146.7,
+  );
+  assert.equal(r.proposalRows.length, 2);
+  assert.ok(r.proposalRows[0].compositionLines.includes("Serviço + Material"));
+  assert.equal(JSON.stringify(q), before);
+  q.items[0].discountType = "amount";
+  q.items[0].discount = 200;
+  assert.throws(() => calculateEstimate(q), /desconto do item/);
+  q.items[0].discountType = "percent";
+  q.items[0].discount = 101;
+  assert.throws(() => calculateEstimate(q), /Desconto do item/);
+  q.items[0].discount = 0;
+  q.items[0].laserMinutePrice = 0;
+  assert.equal(calculateEstimate(q).items[0].serviceAmount, 0);
+  q.items[0].laserMinutePrice = null;
+  assert.equal(calculateEstimate(q).items[0].serviceAmount, 170);
+});
+test("item discounts work in 3D and legacy quotes without changing internal costs or global settings", () => {
+  const q = newEstimate();
+  q.calculationVersion = 2;
+  q.items = [
+    {
+      ...newEstimateItem("print"),
+      printInputMode: "piece",
+      materialMode: "included",
+      material: { name: "PLA", price: 200 },
+      grams: 100,
+      hours: 2,
+      quantity: 2,
+    },
+  ];
+  const before = calculateEstimate(q);
+  q.items[0].discountType = "percent";
+  q.items[0].discount = 100;
+  const free = calculateEstimate(q);
+  assert.equal(free.total, 0);
+  assert.equal(free.cost, before.cost);
+  assert.equal(free.itemDiscount, before.total);
+  assert.ok(free.warnings.length);
+  assert.equal(
+    free.invoiceRows.reduce((sum, row) => sum + row.subtotal, 0),
+    0,
+  );
+  const old = newEstimate();
+  old.items[0].minutes = 10;
+  old.items[0].quantity = 2;
+  const original = calculateEstimate(old);
+  old.items[0].laserMinutePrice = 2;
+  old.items[0].discount = 5;
+  const changed = calculateEstimate(old);
+  assert.equal(changed.items[0].subtotalBeforeDiscount, 40);
+  assert.equal(changed.total, 35);
+  assert.equal(changed.cost, original.cost);
+});
+test("PDF groups a service and its material into one numbered item, shows discounts and no repeating monetary decimals", async () => {
+  const q = newEstimate();
+  q.calculationVersion = 2;
+  q.pricing.laserSaleHour = 85;
+  Object.assign(q.items[0], {
+    description: "Árvore de Natal personalizada",
+    minutes: 1.5,
+    quantity: 80,
+    materialMode: "included",
+    materialQuantity: 1,
+    material: { name: "MDF 3 mm", unit: "unidade", price: 8, salePrice: 13 },
+    discountType: "percent",
+    discount: 10,
+  });
+  q.discount = 5;
+  const file = await estimatePDF(q, {
+    logoData: new Uint8Array(
+      await readFile(new URL("../public/papeled-logo.png", import.meta.url)),
+    ),
+  });
+  await writeFile("/tmp/papeled-item-pricing.pdf", new Uint8Array(file.bytes));
+  const text = execFileSync(
+    "pdftotext",
+    ["-layout", "/tmp/papeled-item-pricing.pdf", "-"],
+    { encoding: "utf8" },
+  );
+  assert.match(text, /1\. Árvore de Natal personalizada/);
+  assert.doesNotMatch(text, /2\. MDF/);
+  assert.match(text, /Serviço \+ Material/);
+  assert.match(text, /Material: MDF 3 mm/);
+  assert.match(text, /170,00/);
+  assert.match(text, /13,00/);
+  assert.match(text, /Desconto deste item/);
+  assert.match(text, /18,30/);
+  assert.match(text, /159,70/);
+  assert.doesNotMatch(text, /R\$\s*[\d.]+,\d{3,}/);
+});

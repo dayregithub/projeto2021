@@ -1062,3 +1062,16 @@ button.danger {
 input[data-item="minutes"][aria-invalid="true"] {
   border-color: #a52a2a;
 }
+.item-commercial {
+  border-top: 1px solid #dfd1c8;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.item-commercial h4 {
+  margin: 0 0 8px;
+}
+.item-commercial small {
+  display: block;
+  margin-top: 6px;
+  font-weight: 400;
+}

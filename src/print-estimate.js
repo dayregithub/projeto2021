@@ -80,7 +80,7 @@ export function calculatePrintItem(
       quantity: qty,
       unitPrice: serviceAmount / qty,
       subtotal: serviceAmount,
-      technical: `${grams.toLocaleString("pt-BR")} g e ${hours.toLocaleString("pt-BR")} horas no lote de ${qty} peça(s).`,
+      technical: `${grams.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} g e ${hours.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} horas no lote de ${qty} peça(s).`,
       unit: "un.",
       process: "print",
       preciseUnitPrice: true,
