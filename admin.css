@@ -1050,3 +1050,15 @@ button.danger {
     gap: 8px;
   }
 }
+.laser-time-help,
+[data-laser-time-feedback] {
+  display: block;
+  line-height: 1.45;
+  margin-top: 6px;
+}
+.laser-time-help {
+  font-weight: 400;
+}
+input[data-item="minutes"][aria-invalid="true"] {
+  border-color: #a52a2a;
+}

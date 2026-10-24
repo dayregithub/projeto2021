@@ -765,3 +765,25 @@ test("separate customer contact fields preserve older combined contacts and vali
   q.customerEmail = "inválido";
   assert.throws(() => validateEstimate(q), /E-mail do cliente/);
 });
+
+test("laser duration accepts minute-second shorthand and clock syntax without changing stored decimal minutes", async () => {
+  const { parseLaserTime } = await import("../src/laser-time.js");
+  near(parseLaserTime("1,30"), 1.5);
+  near(parseLaserTime("00:01:30"), 1.5);
+  near(parseLaserTime("1:30"), 1.5);
+  near(parseLaserTime("01:02:03"), 62.05);
+  near(parseLaserTime("90"), 90);
+  near(parseLaserTime("0,05"), 5 / 60);
+  for (const bad of ["1,60", "00:60:00", "1:90", "1,5", "-1", "abc", ""])
+    assert.ok(Number.isNaN(parseLaserTime(bad)), bad);
+  const quote = newEstimate();
+  quote.calculationVersion = 2;
+  const item = newEstimateItem("laser");
+  item.quantity = 80;
+  item.minutes = parseLaserTime("1,30");
+  item.materialMode = "none";
+  quote.items = [item];
+  const result = calculateEstimate(quote);
+  near(result.items[0].totalMinutes, 120);
+  near(JSON.parse(JSON.stringify(quote)).items[0].minutes, 1.5);
+});

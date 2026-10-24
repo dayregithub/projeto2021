@@ -143,7 +143,7 @@ test("continue editing returns to an unsaved draft restored outside the editor w
   await expect(page.locator('#estimate-form [name="customer"]')).toHaveValue(
     "Rascunho a continuar",
   );
-  await expect(page.locator('[data-item="minutes"]')).toHaveValue("37");
+  await expect(page.locator('[data-item="minutes"]')).toHaveValue("00:37:00");
   expect(
     await page.evaluate(
       () => JSON.parse(localStorage.getItem("papeled-estimate-draft-v1")).id,
