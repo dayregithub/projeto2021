@@ -146,7 +146,7 @@ test("existing quote shows its saved tax and can explicitly adopt the current co
   await expect(page.locator("[data-project-cost-result]")).toContainText(
     "7,00",
   );
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "70,00",
   );
   await page.locator("#estimate-save").click();

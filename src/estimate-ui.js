@@ -1,5 +1,5 @@
 import { assignEstimateNumber } from "./estimate-number.js";
-import { laserMinuteReference } from "./item-pricing.js";
+import { laserMinuteReference, estimateDiscountBreakdown } from "./item-pricing.js";
 import { parseLaserTime, LASER_TIME_HELP } from "./laser-time.js";
 import {
   windowsArchiveEnabled,
@@ -498,8 +498,8 @@ export function initEstimates({ getState, navigate }) {
       const result = calculateEstimate(quote);
       $("estimate-summary").innerHTML =
         quote.calculationVersion === 2
-          ? `<div class="metrics"><div class="metric">Valor do material<strong>${brl(result.materialTotal)}</strong></div><div class="metric">Valor do serviço<strong>${brl(result.serviceTotal)}</strong></div><div class="metric">Total geral<strong>${brl(result.total)}</strong></div></div><p class="muted">Serviços adicionais: ${brl(result.additionalTotal)} · Descontos totais: ${brl(result.totalDiscount)} (itens ${brl(result.itemDiscount)} + geral ${brl(result.discount)}) · Frete: ${brl(quote.shipping)}.</p>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`
-          : `<div class="metrics"><div class="metric">Subtotal<strong>${brl(result.subtotal)}</strong></div><div class="metric">Descontos totais<strong>${brl(result.totalDiscount)}</strong></div><div class="metric">Total ao cliente<strong>${brl(result.total)}</strong></div></div><details class="item-extra"><summary>Conferir custos e resultado interno</summary><p>Custo total: ${brl(result.cost)} · Resultado estimado após impostos: ${brl(result.profit)}.</p><p class="muted">${processes.has("laser") ? `Laser: custo interno ${brl(result.laser.hour)}/hora. ` : ""}Impostos inclusos: ${brl(result.tax)}. Frete é repasse.</p></details>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`;
+          ? `<div class="metrics"><div class="metric">Valor do material<strong>${brl(result.materialTotal)}</strong></div><div class="metric">Valor do serviço<strong>${brl(result.serviceTotal)}</strong></div><div class="metric">Descontos totais<strong>${brl(result.totalDiscount)}</strong></div><div class="metric" data-estimate-total>Total geral<strong>${brl(result.total)}</strong></div></div><p class="muted">Serviços adicionais: ${brl(result.additionalTotal)} · Frete: ${brl(quote.shipping)}.</p>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`
+          : `<div class="metrics"><div class="metric">Subtotal<strong>${brl(result.subtotal)}</strong></div><div class="metric">Descontos totais<strong>${brl(result.totalDiscount)}</strong></div><div class="metric" data-estimate-total>Total ao cliente<strong>${brl(result.total)}</strong></div></div><details class="item-extra"><summary>Conferir custos e resultado interno</summary><p>Custo total: ${brl(result.cost)} · Resultado estimado após impostos: ${brl(result.profit)}.</p><p class="muted">${processes.has("laser") ? `Laser: custo interno ${brl(result.laser.hour)}/hora. ` : ""}Impostos inclusos: ${brl(result.tax)}. Frete é repasse.</p></details>${result.warnings.map((w) => `<p class="estimate-warning">${esc(w)}</p>`).join("")}`;
       try {
         validateEstimate(quote);
         store("papeled-estimate-draft-v1", quote);
@@ -547,7 +547,12 @@ export function initEstimates({ getState, navigate }) {
       });
       $("estimate-summary").insertAdjacentHTML(
         "beforeend",
-        `<p class="muted" data-discount-summary>Descontos por item: ${brl(result.itemDiscount)} · Desconto geral: ${brl(result.discount)} · Total de descontos: ${brl(result.totalDiscount)}.</p>`,
+        `<details class="item-extra estimate-discounts" data-discount-summary ${result.totalDiscount ? "open" : ""}><summary>Total de descontos: ${brl(result.totalDiscount)} · conferir todos os itens</summary>
+          <dl class="machine-cost-breakdown">${estimateDiscountBreakdown(result).map((entry) => `<div data-discount-item><dt>${esc(entry.label)}${entry.percentage != null ? ` (${entry.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%)` : ""}</dt><dd>${brl(entry.amount)}</dd></div>`).join("")}
+          <div class="machine-cost-total"><dt>Soma dos descontos dos itens</dt><dd>${brl(result.itemDiscount)}</dd></div>
+          <div><dt>Desconto geral</dt><dd>${brl(result.discount)}</dd></div>
+          <div class="machine-cost-total"><dt>Total de descontos</dt><dd data-discount-total>${brl(result.totalDiscount)}</dd></div></dl>
+          <p class="muted">Os descontos dos itens já foram abatidos de seus subtotais. O desconto geral é aplicado depois, sobre os itens já descontados e a preparação. A tarifa personalizada do laser define o preço do serviço; não é contabilizada novamente como desconto.</p></details>`,
       );
       $("estimate-summary").insertAdjacentHTML(
         "beforeend",
@@ -952,6 +957,7 @@ export function initEstimates({ getState, navigate }) {
     await refresh();
     readForm();
     cleanSnapshot = quoteFingerprint(quote);
+    store("papeled-estimate-draft-v1", quote);
     message(
       cloud
         ? "Orçamento salvo no Supabase."

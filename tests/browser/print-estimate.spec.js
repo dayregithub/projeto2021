@@ -55,11 +55,11 @@ test("3D project form matches spreadsheet and separates fixed settings from edit
     .click();
   await expect(page.locator("[data-print-cost-result]")).toContainText("20,95");
   await page.locator('[data-item="quantity"]').fill("2");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "104,76",
   );
   await page.locator('[data-item="printInputMode"]').selectOption("batch");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "52,38",
   );
   await expect(page.locator("[data-time-result]")).toContainText("100 g");
@@ -74,11 +74,11 @@ test("3D project form matches spreadsheet and separates fixed settings from edit
   await expect(page.locator('[data-item="printInputMode"]')).toHaveValue(
     "batch",
   );
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "52,38",
   );
   await page.locator("[data-material-cost]").fill("250");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "64,88",
   );
   await page.locator('[data-item="grams"]').fill("0");

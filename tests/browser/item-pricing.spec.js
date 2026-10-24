@@ -71,3 +71,31 @@ test("item discounts and minute overrides persist independently and leave global
     ),
   ).toBe(true);
 });
+
+test('discount summary shows every item and reconciles percentage, amount and general discounts',async({page})=>{
+  await page.goto('/admin.html');
+  await page.locator('#local-preview').click();
+  await page.locator('[data-tab="estimates"]').click();
+  await page.locator('#new-laser-estimate').click();
+  const rows=page.locator('#estimate-items [data-row]');
+  await rows.nth(0).locator('[data-item="minutes"]').fill('10');
+  await rows.nth(0).locator('[data-item="laserMinutePrice"]').fill('2');
+  await rows.nth(0).locator('[data-item="discountType"]').selectOption('percent');
+  await rows.nth(0).locator('[data-item="discount"]').fill('10');
+  await rows.nth(0).locator('[data-copy]').click();
+  await rows.nth(1).locator('[data-item="discountType"]').selectOption('amount');
+  await rows.nth(1).locator('[data-item="discount"]').fill('5');
+  await page.locator('#estimate-commercial').evaluate(e=>e.open=true);
+  await page.locator('#estimate-form [name="discount"]').fill('3');
+  const summary=page.locator('[data-discount-summary]');
+  await expect(summary.locator('[data-discount-item]')).toHaveCount(2);
+  await expect(summary.locator('[data-discount-item]').nth(0)).toContainText('R$ 2,00');
+  await expect(summary.locator('[data-discount-item]').nth(1)).toContainText('R$ 5,00');
+  await expect(summary).toContainText('Soma dos descontos dos itensR$ 7,00');
+  await expect(summary).toContainText('Desconto geralR$ 3,00');
+  await expect(summary.locator('[data-discount-total]')).toHaveText('R$ 10,00');
+  await expect(page.locator('#estimate-summary [data-estimate-total]')).toContainText('R$ 30,00');
+  await page.setViewportSize({width:390,height:844});
+  await expect(summary.locator('[data-discount-total]')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+});

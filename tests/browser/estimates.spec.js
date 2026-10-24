@@ -39,7 +39,7 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.locator('#estimate-form [name="discount"]').fill("10");
   await page.locator('#estimate-form [name="adjustment"]').fill("-6");
   await page.locator('#estimate-form [name="shipping"]').fill("10");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "130,00",
   );
   await page.locator("#estimate-save").click();
@@ -74,7 +74,7 @@ test("laser and 3D estimates calculate, export PDF and preserve history on mobil
   await page.locator('[data-item="materialMode"]').selectOption("included");
   await page.locator('[data-item="grams"]').fill("110");
   await page.locator('[data-item="hours"]').fill("5");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "38,96",
   );
   await page.locator("#estimate-preview-button").click();

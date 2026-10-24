@@ -31,10 +31,11 @@ test("material and service registry feeds quotes with independent prices and sna
   await page.locator("[data-service-pick]").selectOption("0");
   await page.locator("[data-service-add]").click();
   await expect(page.locator("[data-service-quantity]")).toHaveValue("1");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "68,00",
   );
   await page.locator("#estimate-save").click();
+  await expect(page.locator("#estimate-status")).toContainText("Orçamento salvo");
   await page.reload();
   await page.locator('[data-tab="estimates"]').click();
   await expect(page.locator("[data-material-summary]")).toContainText("400,00");
@@ -200,21 +201,21 @@ test("separate settings affect new quotes only and history reopens original pric
     "Configurações salvas",
   );
   await page.locator('[data-tab="estimates"]').click();
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "70,00",
   );
   await expect(page.locator("#estimate-form [data-pricing]")).toHaveCount(0);
   await expect(page.locator("#estimate-form [data-layout]")).toHaveCount(0);
   await page.locator("#new-laser-estimate").click();
   await page.locator('[data-item="minutes"]').fill("60");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "120,00",
   );
   await page.locator('[data-tab="estimate-history"]').click();
   await page.locator("#estimate-leave-discard").click();
   await page.locator("#estimate-history-search").fill("Cliente histórico");
   await page.locator("#estimate-history-list [data-open-estimate]").click();
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "70,00",
   );
   await page.screenshot({
@@ -274,13 +275,13 @@ test("spreadsheet workflow bills laser, material and extras with independent qua
   await expect(page.locator("#estimate-summary .metric").nth(1)).toContainText(
     "566,67",
   );
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "1.066,67",
   );
   await page.locator("[data-service-pick]").selectOption("0");
   await page.locator("[data-new-service-quantity]").fill("7");
   await page.locator("[data-service-add]").click();
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "1.136,67",
   );
   await page.locator('[data-item="quantity"]').fill("80");
@@ -288,7 +289,7 @@ test("spreadsheet workflow bills laser, material and extras with independent qua
     "500,00",
   );
   await expect(page.locator("[data-service-quantity]")).toHaveValue("7");
-  await expect(page.locator("#estimate-summary .metric").nth(2)).toContainText(
+  await expect(page.locator("#estimate-summary [data-estimate-total]")).toContainText(
     "1.703,33",
   );
   await page.locator('#estimate-form [name="customer"]').fill("Ana");

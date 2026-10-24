@@ -77,3 +77,13 @@ export function groupedProposalItem(item, { brl }) {
     );
   return { ...item, compositionLines: lines };
 }
+
+// Both the editor and proposal use the calculated amounts, never the raw
+// percentage inputs, so mixed R$/percentage discounts reconcile to the cent.
+export function estimateDiscountBreakdown(result) {
+  return result.items.map((item, index) => ({
+    label: `Item ${index + 1} — ${item.description || "Sem descrição"}`,
+    amount: item.itemDiscountAmount,
+    percentage: item.discountType === "percent" ? item.discount : null,
+  }));
+}

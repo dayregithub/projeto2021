@@ -1075,3 +1075,11 @@ input[data-item="minutes"][aria-invalid="true"] {
   margin-top: 6px;
   font-weight: 400;
 }
+
+.estimate-discounts dt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.estimate-discounts summary {
+  font-weight: 700;
+}

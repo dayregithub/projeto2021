@@ -974,3 +974,48 @@ test("new quote numbers remain drafts until a successful shared reservation", as
   assert.equal(quote.number,'PM-20261024-000001');
   assert.equal(quote.numberPending,false);
 });
+
+test("all item discounts reconcile with the general discount and are listed individually in the PDF", async () => {
+  const q = newEstimate();
+  q.calculationVersion = 2;
+  Object.assign(q.pricing, {printMarkup:0, printEnergy:0});
+  const laser = (description, minutes, discountType, discount) => ({
+    ...newEstimateItem('laser'), description, quantity:1, minutes,
+    laserMinutePrice:10, materialMode:'none', discountType, discount,
+  });
+  q.items = [
+    laser('Primeiro projeto',10,'percent',10),
+    laser('Segundo projeto',20,'amount',20),
+    {...newEstimateItem('print'),description:'Terceiro projeto 3D',quantity:1,
+      printInputMode:'piece', materialMode:'included',
+      material:{name:'PLA',price:100}, grams:100,hours:1,
+      discountType:'amount',discount:2},
+    laser('Projeto sem desconto',5,'amount',0),
+  ];
+  q.discountType='percent'; q.discount=10;
+  const result=calculateEstimate(q);
+  assert.deepEqual(result.items.map(i=>i.itemDiscountAmount),[10,20,2,0]);
+  assert.equal(result.itemGrossSubtotal,360);
+  assert.equal(result.itemDiscount,32);
+  assert.equal(result.discount,32.8);
+  assert.equal(result.totalDiscount,64.8);
+  assert.equal(result.total,295.2);
+  assert.equal(result.total,result.itemGrossSubtotal-result.totalDiscount);
+  const {estimateDiscountBreakdown}=await import('../src/item-pricing.js');
+  const entries=estimateDiscountBreakdown(result);
+  assert.equal(entries.length,4);
+  assert.deepEqual(entries.map(e=>e.amount),[10,20,2,0]);
+  assert.equal(entries[0].percentage,10);
+  assert.equal(entries[1].percentage,null);
+  const file=await estimatePDF(q,{logoData:new Uint8Array(await readFile(new URL('../public/papeled-logo.png',import.meta.url)))});
+  await writeFile('/tmp/papeled-all-discounts.pdf',new Uint8Array(file.bytes));
+  const text=execFileSync('pdftotext',['-layout','/tmp/papeled-all-discounts.pdf','-'],{encoding:'utf8'});
+  assert.match(text,/Detalhamento dos descontos/);
+  assert.match(text,/Item 1 - Primeiro projeto \(10%\): R\$ 10,00/);
+  assert.match(text,/Item 2 - Segundo projeto: R\$ 20,00/);
+  assert.match(text,/Item 3 - Terceiro projeto 3D: R\$ 2,00/);
+  assert.match(text,/Soma dos descontos dos itens: R\$ 32,00/);
+  assert.match(text,/Desconto geral: R\$ 32,80/);
+  assert.match(text,/Descontos totais\s+-R\$ 64,80/);
+  assert.match(text,/TOTAL\s+R\$ 295,20/);
+});

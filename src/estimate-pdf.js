@@ -1,3 +1,4 @@
+import { estimateDiscountBreakdown } from "./item-pricing.js";
 import { customerContacts } from "./customer-contacts.js";
 import { companyLinks } from "./company-links.js";
 import { jsPDF } from "jspdf";
@@ -206,6 +207,14 @@ export async function estimatePDF(quote, { logoData } = {}) {
     8,
   );
   y += 8;
+  if (result.totalDiscount) {
+    const discounts = estimateDiscountBreakdown(result)
+      .filter((entry) => entry.amount > 0)
+      .map((entry) => `${entry.label}${entry.percentage != null ? ` (${entry.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%)` : ""}: ${brl(entry.amount)}`);
+    discounts.push(`Soma dos descontos dos itens: ${brl(result.itemDiscount)}`);
+    discounts.push(`Desconto geral: ${brl(result.discount)}`);
+    block("Detalhamento dos descontos", discounts.join("\n"));
+  }
   const totals = [
     ...(quote.calculationVersion === 2
       ? [
@@ -217,10 +226,7 @@ export async function estimatePDF(quote, { logoData } = {}) {
         ]
       : [["Itens", result.itemGrossSubtotal]]),
     ...(quote.setupPrice ? [["Preparação / projeto", quote.setupPrice]] : []),
-    ...(result.itemDiscount
-      ? [["Descontos por item", -result.itemDiscount]]
-      : []),
-    ...(result.discount ? [["Desconto geral", -result.discount]] : []),
+    ["Descontos totais", -result.totalDiscount],
     ...(quote.adjustment ? [["Ajuste comercial", quote.adjustment]] : []),
     ...(quote.shipping ? [["Frete", quote.shipping]] : []),
   ];
