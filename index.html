@@ -432,6 +432,21 @@
                     step="0.5"
                 /></label>
               </div>
+              <label id="hinge-lid-gap-field" hidden
+                >Folga lateral adicional da tampa (mm, total)
+                <input
+                  id="hingeLidGap"
+                  type="number"
+                  min="0"
+                  max="3"
+                  step="0.1"
+                />
+                <small
+                  >Experimente 0,5 a 1,5 mm no total. 1 mm abre 0,5 mm de cada
+                  lado; aumenta a tampa e os eixos, mantendo o corpo da caixa.
+                  Não altera o diâmetro do pivô.</small
+                >
+              </label>
               <label id="lid-opening-label" class="range-label" hidden
                 >Abertura na prévia <output id="lid-opening-value"></output
                 ><input id="lidOpening" type="range" min="0" max="110" step="1"

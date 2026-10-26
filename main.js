@@ -307,6 +307,7 @@ function syncFields() {
     "fingerSize",
     "drawerGripWidth",
     "lidHeight",
+    "hingeLidGap",
     "pivotDiameter",
     "lidOpening",
     "decorationSize",
@@ -606,6 +607,8 @@ function renderEditor() {
     tslot:
       "Abas e canais T com conjuntos M3 nas ligações. Veja a quantidade calculada no resumo. Ajuste o comprimento dos parafusos à chapa e aos canais.",
   }[jointType(state)];
+  $("#hinge-lid-gap-field").hidden =
+    lid !== "hinged" || hingeType(state) !== "reference";
   $("#hinge-fields").hidden = lid !== "hinged";
   $("#hinge-mechanism").hidden = lid !== "hinged";
   $("#hinge-guide").hidden =
@@ -649,7 +652,7 @@ function renderEditor() {
   if (lid === "hinged" && hingeType(state) === "reference") {
     const hd = hingeDimensions(state);
     $("#lid-hint").textContent =
-      `Modelo do SVG: altura total ${fmt(state.height)} mm = corpo ${fmt(hd.bodyHeight)} mm + moldura ${fmt(state.lidHeight)} mm. Braços por fora das paredes, tampa completa e faixa traseira curta de ${fmt(hd.rearStripHeight)} mm. Sem recortes nos cantos da traseira e sem eixo comprado.`;
+      `Modelo do SVG: altura total ${fmt(state.height)} mm = corpo ${fmt(hd.bodyHeight)} mm + moldura ${fmt(state.lidHeight)} mm. Braços por fora das paredes, tampa completa e faixa traseira curta de ${fmt(hd.rearStripHeight)} mm. Folga lateral adicional: ${fmt(state.hingeLidGap ?? 0)} mm no total (${fmt((state.hingeLidGap ?? 0) / 2)} mm por lado). Largura da tampa: ${fmt(state.width + (state.hingeLidGap ?? 0))} mm. Sem recortes nos cantos da traseira e sem eixo comprado.`;
   }
   if (lid === "hinged" && hingeType(state) === "profile")
     $("#lid-hint").textContent =
@@ -1154,6 +1157,7 @@ for (const key of [
   "fingerSize",
   "drawerGripWidth",
   "lidHeight",
+  "hingeLidGap",
   "pivotDiameter",
   "lidOpening",
   "decorationSize",

@@ -134,7 +134,8 @@ export function hingeDimensions(s) {
       discRadius: s.pivotDiameter / 2,
       keyWidth: t,
       keyHeight: Math.max(t, s.pivotDiameter / 2),
-      shaftLength: 2 * t + Math.max(0, wallInset(s) - t),
+      shaftLength:
+        2 * t + Math.max(0, wallInset(s) - t) + (s.hingeLidGap ?? 0) / 2,
       swingSafety,
     };
   }
@@ -682,6 +683,8 @@ export function buildBoxPanels(s) {
 }
 function buildReferenceHinge(s) {
   const { width: w, depth: d, height: h, thickness: t, clearance: c } = s;
+  const gap = s.hingeLidGap ?? 0,
+    halfGap = gap / 2;
   const hd = hingeDimensions(s),
     r = hd.radius,
     bh = hd.bodyHeight;
@@ -709,24 +712,24 @@ function buildReferenceHinge(s) {
     band = s.lidHeight - t;
   const lid = add(
     "Tampa do SVG · painel superior",
-    rect(0, 0, w, d),
-    basePose(0, 0, z),
+    rect(0, 0, w + gap, d),
+    basePose(-halfGap, 0, z),
     {
       group: "lid",
       role: "lid-panel",
-      coverArea: { x: 0, y: 0, width: w, height: d },
+      coverArea: { x: 0, y: 0, width: w + gap, height: d },
     },
   );
   const front = add(
     "Tampa do SVG · frente",
-    rect(0, 0, w - 2 * t, band),
-    frontPose(t, d - t, z),
+    rect(0, 0, w - 2 * t + gap, band),
+    frontPose(t - halfGap, d - t, z),
     { group: "lid", role: "lid-front" },
   );
   const rear = add(
     "Tampa do SVG · traseira curta",
-    rect(0, 0, w - 2 * t, hd.rearStripHeight),
-    frontPose(t, 0, z),
+    rect(0, 0, w - 2 * t + gap, hd.rearStripHeight),
+    frontPose(t - halfGap, 0, z),
     { group: "lid", role: "lid-back" },
   );
   const tangent = r + r / Math.SQRT2,
@@ -747,8 +750,8 @@ function buildReferenceHinge(s) {
   );
   const arms = [];
   for (const [label, armX, keyX] of [
-    ["esquerdo", 0, 0],
-    ["direito", w - t, w - t - hd.shaftLength + t],
+    ["esquerdo", -halfGap, -halfGap],
+    ["direito", w - t + halfGap, w + halfGap - hd.shaftLength],
   ]) {
     const arm = add(`Braço do SVG ${label}`, armShape, sidePose(armX, 0, bh), {
       group: "lid",
@@ -773,8 +776,8 @@ function buildReferenceHinge(s) {
   }
   const joint = resolvedJoint(s, "lidJoint");
   for (const [arm, x] of [
-    [arms[0], t / 2],
-    [arms[1], w - t / 2],
+    [arms[0], t / 2 - halfGap],
+    [arms[1], w - t / 2 + halfGap],
   ]) {
     joinContact(lid, arm, [x, 0, z], [x, d, z], [0, 0, 1], joint, s);
   }
@@ -782,7 +785,15 @@ function buildReferenceHinge(s) {
     [front, d - t / 2],
     [rear, t / 2],
   ]) {
-    joinContact(lid, part, [t, y, z], [w - t, y, z], [0, 0, 1], joint, s);
+    joinContact(
+      lid,
+      part,
+      [t - halfGap, y, z],
+      [w - t + halfGap, y, z],
+      [0, 0, 1],
+      joint,
+      s,
+    );
   }
   // The end bands butt against the side arms, as on the supplied cut sheet.
   // Their upper edges carry the selected lid joints; no extra rear-corner relief.
@@ -924,7 +935,7 @@ export function constructionNotes(s) {
     sliding: ` Fixe os quatro trilhos nas laterais internas com união ${JOINTS[resolvedJoint(s, "railJoint")]}. A tampa entra pela frente; as divisórias ficam abaixo do canal.`,
     hinged:
       hingeType(s) === "reference"
-        ? ` Tampa com moldura baseada no SVG: a altura informada inclui corpo e tampa. Corpo de ${Number((s.height - s.lidHeight).toFixed(3))} mm; moldura de ${s.lidHeight} mm. Braços externos com ombro diagonal e pivôs dentro do perfil lateral, paredes traseiras sem alívios. Corte os 2 discos e 2 eixos junto com a caixa. A aba traseira é encurtada para liberar o giro. Cole as faixas frontal/traseira entre os braços e fixe somente os rasgos retangulares dos eixos; não cole os braços aos discos. Teste a folga na chapa real.`
+        ? ` Tampa com moldura baseada no SVG: folga lateral adicional total de ${s.hingeLidGap ?? 0} mm (${(s.hingeLidGap ?? 0) / 2} mm por lado); tampa com ${s.width + (s.hingeLidGap ?? 0)} mm de largura. A altura informada inclui corpo e tampa. Corpo de ${Number((s.height - s.lidHeight).toFixed(3))} mm; moldura de ${s.lidHeight} mm. Braços externos com ombro diagonal e pivôs dentro do perfil lateral, paredes traseiras sem alívios. Corte os 2 discos e 2 eixos junto com a caixa. A aba traseira é encurtada para liberar o giro. Cole as faixas frontal/traseira entre os braços e fixe somente os rasgos retangulares dos eixos; não cole os braços aos discos. Teste a folga na chapa real.`
         : hingeType(s) === "profile"
           ? ` Tampa articulada alinhada ao perfil: braços internos e pivôs dentro do contorno lateral, sem orelhas traseiras. Corte 2 discos-pivô e 2 eixos retangulares junto com as placas; fixe os rasgos retangulares, sem colar os discos aos braços móveis. Os alívios nos cantos da traseira permitem o giro. A prévia abre até 100°; confira a folga em um protótipo antes de produzir.`
           : hingeType(s) === "tabbed"

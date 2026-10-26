@@ -18,6 +18,9 @@ test("SVG-based variant exposes the measured frame, total height and fourteen pi
   await expect(page.locator("#lidHeight")).toHaveValue("9");
   await expect(page.locator("#part-count")).toHaveText("14");
   await expect(page.locator("#reference-guide")).toBeVisible();
+  await expect(page.locator("#hingeLidGap")).toBeVisible();
+  await page.locator("#hingeLidGap").fill("1.5");
+  await expect(page.locator("#lid-hint")).toContainText("107,5 mm");
   await expect(page.locator("#lid-hint")).toContainText("corpo 41 mm");
   await expect(page.locator("#parts-list")).toContainText("traseira curta");
   await expect(page.locator("#validation")).toBeHidden();
@@ -31,6 +34,7 @@ test("SVG-based variant exposes the measured frame, total height and fourteen pi
   await page.reload();
   await expect(page.locator("#model-variation")).toHaveValue("referencehinge");
   await expect(page.locator("#hinge-type")).toHaveValue("reference");
+  await expect(page.locator("#hingeLidGap")).toHaveValue("1.5");
   await page.selectOption("#hinge-type", "profile");
   await expect(page.locator("#profile-guide")).toBeVisible();
   await page.selectOption("#hinge-type", "reference");

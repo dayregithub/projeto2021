@@ -1964,3 +1964,54 @@ test("educational gears have conjugate involute teeth, synchronized phases, shaf
   normalizeMakerDimensions(thin);
   assert.ok(validate(thin).length);
 });
+
+test("reference lid lateral clearance widens only the moving frame and extends the pivot keys", () => {
+  const original = defaults("referencehinge");
+  const zero = panels(original);
+  for (const gap of [0.5, 1, 1.5]) {
+    for (const joint of ["straight", "finger", "tslot"]) {
+      const s = {
+        ...original,
+        hingeLidGap: gap,
+        lidJoint: joint,
+        lidHeight: joint === "tslot" ? 22 : 9,
+        height: 80,
+      };
+      assert.deepEqual(validate(s), []);
+      const ps = panels(s);
+      assert.equal(ps.length, 14);
+      for (const p of ps) assert.equal(p.shape.length, 1, p.name);
+      near(
+        ps.find((p) => p.role === "lid-panel").width,
+        panels({ ...s, hingeLidGap: 0 }).find((p) => p.role === "lid-panel")
+          .width + gap,
+      );
+      near(ps.find((p) => p.role === "lid-left").pose.origin[0], -gap / 2);
+      near(
+        ps.find((p) => p.role === "lid-right").pose.origin[0],
+        s.width - s.thickness + gap / 2,
+      );
+      near(
+        hingeDimensions(s).shaftLength,
+        hingeDimensions(original).shaftLength + gap / 2,
+      );
+      near(hingeDimensions(s).holeRadius, hingeDimensions(original).holeRadius);
+      assert.equal(readProject(JSON.stringify(s)).hingeLidGap, gap);
+      assert.match(exportSVG(s), /folga lateral adicional total/);
+      assert.ok(exportDXF(s).includes("LWPOLYLINE"));
+    }
+    const adjusted = panels({ ...original, hingeLidGap: gap });
+    for (const role of ["base", "front", "back", "side"]) {
+      assert.deepEqual(
+        adjusted.filter((p) => p.role === role),
+        zero.filter((p) => p.role === role),
+      );
+    }
+  }
+  const legacy = { ...original };
+  delete legacy.hingeLidGap;
+  assert.equal(readProject(JSON.stringify(legacy)).hingeLidGap, 0);
+  assert.deepEqual(panels(legacy), zero);
+  for (const gap of [-1, 3.1, "1", NaN])
+    assert.ok(validate({ ...original, hingeLidGap: gap }).length);
+});

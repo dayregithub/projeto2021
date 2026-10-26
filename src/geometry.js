@@ -292,6 +292,12 @@ export function validate(s) {
   }
   if (lidType(s) === "hinged" && hingeType(s) === "reference") {
     const hd = hingeDimensions(s);
+    if (
+      !Number.isFinite(s.hingeLidGap ?? 0) ||
+      (s.hingeLidGap ?? 0) < 0 ||
+      (s.hingeLidGap ?? 0) > 3
+    )
+      errors.push("Folga lateral da tampa: use entre 0 e 3 mm no total.");
     if (s.lidOpening > 100)
       errors.push(
         "A tampa do SVG permite abertura de até 100° nesta versão, para preservar a passagem da faixa traseira.",

@@ -602,6 +602,7 @@ export function defaults(id = "grid") {
     signJoin: false,
     signSpacing: 0,
     hingeType: "laser",
+    hingeLidGap: 0,
     lidCutout: "none",
     decorationSize: 50,
     engraveName: "",
