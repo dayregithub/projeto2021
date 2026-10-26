@@ -1,4 +1,11 @@
 import {
+  isMakerProduct,
+  normalizeMakerDimensions,
+  makerDetails,
+  gearMetrics,
+  TOY_FIGURES,
+} from "./src/maker-products.js";
+import {
   isEducational,
   isBlankPuzzle,
   educationalKind,
@@ -23,7 +30,7 @@ import { LETTER_FONTS, letterContours, signMetrics } from "./src/lettering.js";
 import { brushOpenings } from "./src/print3d.js";
 import { drawerGripDimensions } from "./src/assemblies.js";
 import { createViewport } from "./src/viewport.js";
-import { PRINT_LIDS, printDimensions } from "./src/print3d.js";
+import { PRINT_LIDS, printDimensions, printParts } from "./src/print3d.js";
 import { DECORATIONS } from "./src/decoration.js";
 import { JOINT_GROUPS, resolvedJoint } from "./src/joinery.js";
 import {
@@ -275,6 +282,19 @@ function syncFields() {
     "cols",
     "rows",
     "ratio",
+    "makerTextHeight",
+    "makerRelief",
+    "makerStroke",
+    "makerBorderWidth",
+    "makerHandleHeight",
+    "makerBoreDiameter",
+    "makerPatternSpacing",
+    "makerGearCount",
+    "makerGearTeeth",
+    "makerGearTeeth2",
+    "makerGearModule",
+    "makerGearBacklash",
+    "makerTurn",
     "toyCols",
     "toyRows",
     "toyGap",
@@ -302,6 +322,22 @@ function syncFields() {
   ])
     $("#" + k).value =
       k === "slotWidth" ? (state.slotWidth ?? state.thickness) : state[k];
+  $("#makerText").value = state.makerText;
+  $("#maker-clearance").value = state.clearance;
+  for (const [id, key, bool] of [
+    ["maker-font", "makerFont"],
+    ["maker-figure", "makerFigure"],
+    ["maker-shape", "makerShape"],
+    ["maker-content", "makerContent"],
+    ["maker-pattern", "makerPattern"],
+    ["maker-hole-position", "makerHolePosition"],
+    ["maker-border", "makerBorder", true],
+    ["maker-mirror", "makerMirror", true],
+    ["maker-handle", "makerHandle", true],
+    ["maker-hole", "makerHole", true],
+    ["maker-gear-base", "makerGearBase", true],
+  ])
+    $("#" + id).value = bool ? (state[key] ? "yes" : "no") : state[key];
   $("#toy-theme").value = state.toyTheme;
   $("#toy-piece-style").value = state.toyPieceStyle;
   $("#toy-engraving").value = state.toyEngraving;
@@ -354,6 +390,32 @@ function renderEditor() {
     errors = validate(state),
     valid = !errors.length,
     parts = valid ? panels(state) : [];
+  const isMaker = isMakerProduct(state),
+    makerKind = familyFor(state);
+  $("#maker-options").hidden = !isMaker;
+  $("#maker-decoration-controls").hidden = !["stamp", "relief"].includes(
+    makerKind,
+  );
+  $("#maker-stamp-controls").hidden = makerKind !== "stamp";
+  $("#maker-roller-controls").hidden = makerKind !== "roller";
+  $("#maker-gears-controls").hidden = makerKind !== "gears";
+  $("#maker-hole-controls").hidden = !["relief", "roller", "gears"].includes(
+    makerKind,
+  );
+  $("#maker-hole-position-control").hidden = makerKind !== "relief";
+  $("#maker-hole").closest("label").hidden = makerKind === "gears";
+  $("#maker-relief-control").hidden = makerKind === "gears";
+  $("#maker-text-controls").hidden = state.makerContent === "figure";
+  $("#maker-figure-control").hidden = state.makerContent === "text";
+  $("#maker-turn-value").textContent = state.makerTurn + "°";
+  $("#makerBoreDiameter").min = makerKind === "relief" ? 3 : 4;
+  $("#makerBoreDiameter").max =
+    makerKind === "gears" ? 10 : makerKind === "roller" ? 12 : 8;
+  $("#maker-hint").textContent =
+    isMaker && valid
+      ? makerDetails(state).join(" ") +
+        " Confira o STL no fatiador e teste encaixes e material antes do uso. Partes soltas exigem supervisão no uso infantil."
+      : "";
   const isToy = isEducational(state),
     blankPuzzle = isBlankPuzzle(state);
   $("#toy-options").hidden = !isToy;
@@ -378,34 +440,66 @@ function renderEditor() {
   $("#toy-hint").textContent = isToy
     ? `${toyMetrics(state).count} peças removíveis. Cole a moldura sobre a base; não cole as peças do jogo. A elevação só altera a prévia, não os arquivos.`
     : "";
-  $("#height").disabled = isToy;
-  $("#width").min = $("#depth").min = isToy ? 100 : 40;
+  $("#height").disabled = isToy || makerKind === "roller";
+  $("#height").step = isMaker ? 0.1 : 1;
+  $("#width").min = isMaker
+    ? makerKind === "roller"
+      ? 40
+      : 30
+    : isToy
+      ? 100
+      : 40;
+  $("#depth").min = isMaker ? 20 : isToy ? 100 : 40;
   $("#thickness").min = isToy ? 2 : 1;
   $("#thickness").max = isToy ? 6 : 12;
-  $("#dimension-hint").textContent = isToy
-    ? "Medidas externas da base. Altura montada = duas camadas da espessura escolhida."
-    : "Medidas externas do corpo. A tampa e os suportes podem ampliar as dimensões finais.";
+  $("#dimension-hint").textContent = isMaker
+    ? makerKind === "gears"
+      ? "As medidas da base acompanham a quantidade, os dentes e o módulo."
+      : makerKind === "roller"
+        ? "Comprimento e diâmetro do corpo; a textura é somada ao diâmetro externo."
+        : "Medidas da base; o relevo é somado à espessura."
+    : isToy
+      ? "Medidas externas da base. Altura montada = duas camadas da espessura escolhida."
+      : "Medidas externas do corpo. A tampa e os suportes podem ampliar as dimensões finais.";
   const isBrush = familyFor(state) === "toothbrush",
     isSign = familyFor(state) === "lettering";
   $("#brush-options").hidden = !isBrush;
   $("#sign-options").hidden = !isSign;
   $("#brush-lid-options").hidden = !isBrush || state.printLid === "none";
-  $("#depth").disabled = isBrush;
-  $("#width-title").textContent = isBrush
-    ? state.brushShape === "round"
-      ? "Diâmetro"
-      : "Lado"
-    : "Largura";
-  $("#height-title").textContent = isToy
-    ? "Altura montada"
-    : isSign
-      ? state.signOrientation === "standing"
-        ? "Espessura das letras"
-        : "Altura total"
-      : lidType(state) === "hinged" && hingeType(state) === "reference"
-        ? "Altura total com tampa"
-        : "Altura";
-  $("#height").min = isToy ? 4 : isSign ? 3 : 15;
+  $("#depth").disabled =
+    isBrush ||
+    makerKind === "gears" ||
+    (isMaker &&
+      ["stamp", "relief"].includes(makerKind) &&
+      state.makerShape === "round");
+  $("#width").disabled = makerKind === "gears";
+  $("#depth-title").textContent =
+    makerKind === "roller" ? "Diâmetro do corpo" : "Profundidade";
+  $("#width-title").textContent =
+    makerKind === "roller"
+      ? "Comprimento"
+      : isBrush
+        ? state.brushShape === "round"
+          ? "Diâmetro"
+          : "Lado"
+        : "Largura";
+  $("#height-title").textContent = isMaker
+    ? {
+        stamp: "Espessura da matriz",
+        relief: "Espessura da base",
+        roller: "Diâmetro com textura",
+        gears: "Espessura das engrenagens",
+      }[makerKind]
+    : isToy
+      ? "Altura montada"
+      : isSign
+        ? state.signOrientation === "standing"
+          ? "Espessura das letras"
+          : "Altura total"
+        : lidType(state) === "hinged" && hingeType(state) === "reference"
+          ? "Altura total com tampa"
+          : "Altura";
+  $("#height").min = isMaker ? 2 : isToy ? 4 : isSign ? 3 : 15;
   for (const option of $("#print-lid").options)
     option.disabled = option.hidden =
       isBrush && !["none", "outer"].includes(option.value);
@@ -462,7 +556,7 @@ function renderEditor() {
     lid = lidType(state);
   const canJoin = supportsJoinery(state);
   $("#construction-section").hidden = !canJoin;
-  $("#print-options").hidden = !isPrint || isSign;
+  $("#print-options").hidden = !isPrint || isSign || isMaker;
   $("#print-opening-label").hidden =
     !isPrint || (state.printLid === "none" && !(isBrush && state.brushCover));
   $("#print-opening-value").textContent =
@@ -563,22 +657,28 @@ function renderEditor() {
   if (lid === "hinged" && hingeType(state) === "laser")
     $("#lid-hint").textContent =
       "Sem eixos comprados: dois discos e dois eixos retangulares são recortados na chapa. Os braços giram ao redor dos discos. Consulte a montagem abaixo.";
-  $("#slot-width-label").hidden = isPrint || isToy;
+  $("#slot-width-label").hidden = isPrint || isToy || isMaker;
   $("#clearance-label").hidden =
     familyFor(state) !== "drawers" &&
     lid === "none" &&
     !(isPrint && (state.printLid !== "none" || (isBrush && state.brushCover)));
-  $("#thickness-title").textContent = isSign
-    ? "Espessura da base (mm)"
-    : "Espessura (mm)";
-  $("#thickness").closest("label").hidden = isSign && !state.signBase;
-  $("#material-hint").textContent = isSign
-    ? state.signOrientation === "standing"
-      ? "A espessura define a profundidade das letras em pé. A altura das letras é ajustada abaixo."
-      : "A altura total inclui base e relevo do texto. Sem base, define a espessura das letras."
-    : isPrint
-      ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
-      : "Use a espessura real da chapa. Cor apenas ilustrativa.";
+  $("#thickness-title").textContent =
+    makerKind === "gears"
+      ? "Espessura da base (mm)"
+      : isSign
+        ? "Espessura da base (mm)"
+        : "Espessura (mm)";
+  $("#thickness").closest("label").hidden =
+    (isSign && !state.signBase) || (isMaker && makerKind !== "gears");
+  $("#material-hint").textContent = isMaker
+    ? "STL em milímetros. Relevo, base e furos são calculados separadamente; confira medidas, material e orientação no fatiador."
+    : isSign
+      ? state.signOrientation === "standing"
+        ? "A espessura define a profundidade das letras em pé. A altura das letras é ajustada abaixo."
+        : "A altura total inclui base e relevo do texto. Sem base, define a espessura das letras."
+      : isPrint
+        ? "Espessura aplicada às paredes, divisórias e fundo. Cor apenas ilustrativa."
+        : "Use a espessura real da chapa. Cor apenas ilustrativa.";
   $("#finish-name").textContent = FINISHES[state.finish].label;
   if (supportsGrid(state) && valid) {
     if (familyFor(state) === "drawers") {
@@ -671,6 +771,24 @@ function renderEditor() {
             `<li><span class="part-index">${i + 1}</span><div><strong>${esc(p.name)}</strong><small>${fmt(p.width)} × ${fmt(p.height)} mm</small></div><span>1×</span></li>`,
         )
         .join("");
+  if (isMaker) {
+    const pieces = printParts(state),
+      volume = pieces.reduce((sum, p) => sum + p.volume, 0) / 1000;
+    $("#summary-metrics").innerHTML =
+      `<dl><div><dt>Fabricação</dt><dd>Impressão 3D</dd></div><div><dt>Arquivos de peças</dt><dd>${pieces.length}</dd></div><div><dt>Volume estimado</dt><dd>${fmt(volume)} cm³</dd></div><div><dt>Cor de referência</dt><dd>${FINISHES[state.finish].label}</dd></div></dl>`;
+    $("#project-stats").innerHTML =
+      `<div><strong>${fmt(state.width)} × ${fmt(state.depth)} mm</strong><small>dimensões nominais</small></div><div><strong>${pieces.length} peças</strong><small>STLs separados no ZIP</small></div><div><strong>${fmt(volume)} cm³</strong><small>volume sólido, sem infill</small></div>`;
+    $("#assembly-title").textContent = model.name;
+    $("#assembly-text").textContent = makerDetails(state).join(" ");
+    $("#parts-title").textContent = "Peças para imprimir";
+    $("#part-count").textContent = pieces.length;
+    $("#parts-list").innerHTML = pieces
+      .map(
+        (p, i) =>
+          `<li><span class="part-index">${i + 1}</span><div><strong>${esc(p.name)}</strong><small>${fmt(p.volume / 1000)} cm³ · STL individual</small></div></li>`,
+      )
+      .join("");
+  }
   if (isToy) {
     const m = toyMetrics(state);
     $("#project-stats").innerHTML =
@@ -978,7 +1096,7 @@ $("#quote-project").onclick = async () => {
       .join(" · ");
   const m = modelById(state.model);
   $("#quote-message").value =
-    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${m.category === "laser" && !isEducational(state) ? `Encaixes: ${state.slotWidth ?? state.thickness} mm\n` : ""}${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" && !isEducational(state) ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}${extraProductQuote(state)}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
+    `Olá, Papeled Maker! Quero um orçamento para este projeto:\n\n${state.name}\nModelo: ${m.name}\nMedidas externas: ${state.width} × ${state.depth} × ${state.height} mm\nEspessura: ${state.thickness} mm\n${m.category === "laser" && !isEducational(state) ? `Encaixes: ${state.slotWidth ?? state.thickness} mm\n` : ""}${supportsGrid(state) ? `${state.cols} colunas × ${state.rows} linhas\n` : ""}${familyFor(state) === "custom" ? `Primeiro compartimento: ${state.ratio}%\n` : ""}${familyFor(state) === "drawers" || lidType(state) !== "none" || (m.category === "print" && state.printLid !== "none") ? `Folga: ${state.clearance} mm por lado\n` : ""}Fabricação: ${m.category === "print" ? "Impressão 3D" : "Corte a laser"}\n${m.category === "print" && !isMakerProduct(state) ? `Cantos: raio ${state.cornerRadius} mm\nTampa: ${PRINT_LIDS[state.printLid]}\n` : ""}${m.category === "laser" && !isEducational(state) ? `União: ${JOINTS[jointType(state)]}\nTampa: ${LIDS[lidType(state)]}\n${jointType(state) === "finger" ? `Dedo alvo: ${state.fingerSize} mm\n` : ""}${lidType(state) === "hinged" ? `Mecanismo: ${HINGES[hingeType(state)]}\nAba: ${state.lidHeight} mm · pivô: Ø${state.pivotDiameter} mm\n` : ""}` : ""}\n${supportsJoinery(state) ? `Uniões por conjunto: tampa ${JOINT_GROUPS[resolvedJoint(state, "lidJoint")] || "Cruzada"}, divisórias ${JOINT_GROUPS[resolvedJoint(state, "dividerJoint")] || "Cruzada"}, trilhos ${JOINT_GROUPS[resolvedJoint(state, "railJoint")] || "Cruzada"}, gavetas ${JOINT_GROUPS[resolvedJoint(state, "drawerJoint")] || "Cruzada"}\n` : ""}${state.lidCutout !== "none" ? `Recorte: ${DECORATIONS[state.lidCutout]}\n` : ""}${state.engraveName ? `Gravação: ${state.engraveName} (traço simples)\n` : ""}${familyFor(state) === "drawers" ? `Puxador: recorte superior com ${fmt(drawerGripDimensions(state, drawerDimensions(state)).width)} mm de largura\n` : ""}${familyFor(state) === "toothbrush" ? `Porta-escovas: ${state.brushShape === "round" ? "redondo" : "quadrado"}; aberturas na tampa: ${state.printLid === "none" ? "sem tampa" : state.brushHoles === 0 ? "tampa fechada" : state.brushHoles + " aberturas de " + fmt(brushOpenings(state).radius * 2) + " mm"}\n` : ""}${familyFor(state) === "lettering" ? `Texto: ${state.signText}\nFonte: ${LETTER_FONTS.find((f) => f.id === state.signFont).label}\nTexto final: ${fmt(letterContours(state).width)} × ${fmt(letterContours(state).height)} mm\nBase: ${state.signBase ? "sim" : "não"}\n` : ""}${extraProductQuote(state)}Referência de cor: ${FINISHES[state.finish].label}\n\nQuantidade: \nComo vou usar: `;
   updateQuote();
   $("#quote-package-status").textContent = "Preparando arquivos do projeto…";
   $("#quote-package").hidden = true;
@@ -1048,6 +1166,19 @@ for (const key of [
   "brushCoverHeight",
   "brushDrainDiameter",
   "signSpacing",
+  "makerTextHeight",
+  "makerRelief",
+  "makerStroke",
+  "makerBorderWidth",
+  "makerHandleHeight",
+  "makerBoreDiameter",
+  "makerPatternSpacing",
+  "makerGearCount",
+  "makerGearTeeth",
+  "makerGearTeeth2",
+  "makerGearModule",
+  "makerGearBacklash",
+  "makerTurn",
   "toyCols",
   "toyRows",
   "toyGap",
@@ -1059,6 +1190,10 @@ for (const key of [
 ])
   $("#" + key).addEventListener("input", (e) => {
     state[key] = e.target.value === "" ? NaN : Number(e.target.value);
+    if (isMakerProduct(state)) {
+      normalizeMakerDimensions(state);
+      for (const k of ["width", "depth", "height"]) $("#" + k).value = state[k];
+    }
     if (key === "thickness" && isEducational(state)) {
       state.height = 2 * state.thickness;
       $("#height").value = state.height;
@@ -1119,6 +1254,42 @@ for (const [id, key] of [
     renderEditor();
     persistDraft();
   };
+for (const [id, key, bool] of [
+  ["maker-font", "makerFont"],
+  ["maker-figure", "makerFigure"],
+  ["maker-shape", "makerShape"],
+  ["maker-content", "makerContent"],
+  ["maker-pattern", "makerPattern"],
+  ["maker-hole-position", "makerHolePosition"],
+  ["maker-border", "makerBorder", true],
+  ["maker-mirror", "makerMirror", true],
+  ["maker-handle", "makerHandle", true],
+  ["maker-hole", "makerHole", true],
+  ["maker-gear-base", "makerGearBase", true],
+])
+  $("#" + id).onchange = (e) => {
+    state[key] = bool ? e.target.value === "yes" : e.target.value;
+    normalizeMakerDimensions(state);
+    syncFields();
+    renderEditor();
+    persistDraft();
+  };
+$("#makerText").oninput = (e) => {
+  state.makerText = e.target.value;
+  renderEditor();
+  persistDraft();
+};
+$("#maker-clearance").oninput = (e) => {
+  state.clearance = Number(e.target.value);
+  renderEditor();
+  persistDraft();
+};
+$("#maker-gear-step").onclick = () => {
+  state.makerTurn = (state.makerTurn + 15) % 360;
+  $("#makerTurn").value = state.makerTurn;
+  renderEditor();
+  persistDraft();
+};
 function updateToyImageControls() {
   const m = toyMetrics(state);
   $("#toy-image-scale-value").textContent = state.toyImageScale + "%";
@@ -1465,6 +1636,12 @@ for (const key of ["lidJoint", "dividerJoint", "railJoint", "drawerJoint"])
     (key === "dividerJoint"
       ? '<option value="cross">Meio encaixe (projeto anterior)</option>'
       : "");
+$("#maker-font").innerHTML = LETTER_FONTS.map(
+  (f) => `<option value="${f.id}">${f.label}</option>`,
+).join("");
+$("#maker-figure").innerHTML = Object.entries(TOY_FIGURES)
+  .map(([id, name]) => `<option value="${id}">${name}</option>`)
+  .join("");
 initExternalFiles({ captureCustomer });
 mountIcons();
 $('[data-filter="all"] span').textContent = CATALOG_GROUPS.length;
@@ -1480,6 +1657,7 @@ window.addEventListener("hashchange", route);
 route();
 
 function extraProductQuote(s) {
+  if (isMakerProduct(s)) return makerDetails(s).join("\n") + "\n";
   if (isEducational(s))
     return `Brinquedo pedagógico: ${toyMetrics(s).count} peças removíveis\n${educationalKind(s) === "picture" ? `Figura: ${TOY_THEMES[s.toyTheme]} · ${s.toyCols} colunas × ${s.toyRows} linhas\nEncaixe: ${s.toyPieceStyle === "jigsaw" ? "tradicional" : "reto"}\nGravação: ${isBlankPuzzle(s) ? "nenhuma · para adesivar" : s.toyEngraving === "line" ? "linha simples" : `borda dupla ${s.toyBorderWidth} mm${s.toyEngraving === "fill" ? " preenchida" : ""}`}\n` : ""}Folga por borda: ${s.toyGap} mm\n${!isBlankPuzzle(s) && educationalKind(s) === "picture" ? `Figura: ${s.toyImageScale}% · posição ${s.toyImageX}% / ${s.toyImageY}%\n` : ""}Guia gravado: ${s.toyGuide && !isBlankPuzzle(s) ? "sim" : "não"}\n${isBlankPuzzle(s) ? `Área da imagem para adesivar: ${toyMetrics(s).innerWidth} × ${toyMetrics(s).innerDepth} mm\n` : ""}Montagem: base e moldura coladas; peças soltas.\n`;
   if (familyFor(s) === "toothbrush")

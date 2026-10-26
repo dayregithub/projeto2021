@@ -802,7 +802,7 @@ import {
   findCatalogGroups,
 } from "../src/models.js";
 test("catalog groups share construction and preserve every distinct preset ID", () => {
-  assert.equal(CATALOG_GROUPS.length, 6);
+  assert.equal(CATALOG_GROUPS.length, 10);
   assert.equal(variationsFor("laser-education").length, 3);
   assert.equal(variationsFor("laser-boxes").length, 16);
   assert.equal(variationsFor("laser-drawers").length, 2);
@@ -819,7 +819,7 @@ test("catalog groups share construction and preserve every distinct preset ID", 
     findCatalogGroups({ term: "coração" })[0].matches[0].id,
     "heartbox",
   );
-  assert.equal(findCatalogGroups({ category: "print" }).length, 3);
+  assert.equal(findCatalogGroups({ category: "print" }).length, 7);
   assert.equal(findCatalogGroups({ term: "xyzsemresultado" }).length, 0);
 });
 
@@ -1827,4 +1827,140 @@ test("ten vector figures share scalable, movable art with millimetre border widt
     { toyImageY: -51 },
   ])
     assert.ok(validate({ ...sample, ...change }).length);
+});
+
+import {
+  isMakerProduct,
+  gearMetrics,
+  gearOutline,
+  normalizeMakerDimensions,
+  MAKER_PATTERNS,
+} from "../src/maker-products.js";
+test("new maker products export closed connected printable solids and separate part STLs with persistent parameters", () => {
+  for (const id of [
+    "stamp",
+    "textureroller",
+    "reliefplaque",
+    "keychain",
+    "gears",
+  ]) {
+    const s = defaults(id);
+    assert.ok(isMakerProduct(s));
+    assert.deepEqual(validate(s), []);
+    const ps = printParts(s);
+    assert.equal(ps.length, id === "stamp" ? 2 : id === "gears" ? 4 : 1);
+    for (const p of ps) {
+      assert.equal(p.componentCount, 1, p.name);
+      assert.ok(checkManifold(p.triangles) > 0);
+    }
+    const file = unzipSync(projectPackage(s).data),
+      stls = Object.keys(file).filter(
+        (k) => k.startsWith("pecas/") && k.endsWith(".stl"),
+      );
+    assert.equal(stls.length, ps.length);
+    assert.equal(readProject(s).makerContent, s.makerContent);
+    assert.equal(readProject(s).makerGearTeeth, 20);
+  }
+});
+test("stamps mirror relief without changing the base; plaques keep real bores, fonts and relief attached", () => {
+  const stamp = defaults("stamp"),
+    mirrored = printParts(stamp)[0],
+    normal = printParts({ ...stamp, makerMirror: false })[0];
+  near(mirrored.volume, normal.volume);
+  assert.notDeepEqual(mirrored.triangles, normal.triangles);
+  assert.equal(printParts({ ...stamp, makerHandle: false }).length, 1);
+  const tag = defaults("keychain"),
+    full = printParts({ ...tag, makerHole: false })[0],
+    drilled = printParts(tag)[0];
+  assert.ok(drilled.volume < full.volume);
+  for (const makerShape of ["rounded", "round", "oval", "heart"]) {
+    const s = { ...tag, makerShape, makerHolePosition: "left" };
+    normalizeMakerDimensions(s);
+    assert.deepEqual(validate(s), []);
+    assert.equal(printParts(s)[0].componentCount, 1);
+    assert.ok(checkManifold(printParts(s)[0].triangles) > 0);
+  }
+  for (const { id: makerFont } of LETTER_FONTS.slice(0, 3)) {
+    const s = { ...defaults("reliefplaque"), makerFont };
+    assert.deepEqual(validate(s), []);
+    assert.equal(printParts(s)[0].componentCount, 1);
+  }
+  assert.ok(
+    validate({
+      ...tag,
+      makerText: "Texto muito longo com muitas letras demais",
+    }).length,
+  );
+  assert.ok(validate({ ...tag, makerBoreDiameter: 30 }).length);
+});
+test("all roller patterns wrap into a connected closed body, with a real optional axial bore and a flat print orientation", () => {
+  const volumes = [];
+  for (const makerPattern of Object.keys(MAKER_PATTERNS)) {
+    const s = { ...defaults("textureroller"), makerPattern },
+      p = printParts(s)[0];
+    assert.equal(p.componentCount, 1);
+    assert.ok(checkManifold(p.triangles) > 0);
+    volumes.push(p.volume);
+    const pierced = printParts({ ...s, makerHole: true })[0];
+    assert.ok(pierced.volume < p.volume);
+    assert.equal(pierced.componentCount, 1);
+    const layout = printLayout(s)[0],
+      points = layout.triangles.flat();
+    near(
+      points.reduce((n, p) => Math.min(n, p[2]), Infinity),
+      0,
+    );
+    near(
+      points.reduce((n, p) => Math.max(n, p[2]), -Infinity),
+      s.width,
+    );
+  }
+  assert.equal(new Set(volumes.map((v) => v.toFixed(1))).size, 4);
+});
+test("educational gears have conjugate involute teeth, synchronized phases, shaft clearances and no overlap through rotation", () => {
+  for (const [makerGearTeeth, makerGearTeeth2] of [
+    [20, 28],
+    [18, 36],
+    [36, 18],
+    [24, 24],
+  ]) {
+    const s = { ...defaults("gears"), makerGearTeeth, makerGearTeeth2 };
+    normalizeMakerDimensions(s);
+    assert.deepEqual(validate(s), []);
+    const m = gearMetrics(s);
+    near(s.makerBoreDiameter / 2 - m.shaftRadius, s.clearance);
+    for (let deg = 0; deg <= 180; deg += 10) {
+      const rings = m.teeth.map((z, i) =>
+        gearOutline(
+          z,
+          s.makerGearModule,
+          s.makerGearBacklash,
+          m.phases[i] +
+            ((((i % 2 ? -1 : 1) * m.teeth[0]) / z) * deg * Math.PI) / 180,
+        ).map(([x, y]) => [x + m.centers[i][0], y + m.centers[i][1]]),
+      );
+      for (let i = 0; i < rings.length - 1; i++)
+        assert.ok(
+          materialArea(clipping.intersection([[rings[i]]], [[rings[i + 1]]])) <
+            1e-5,
+        );
+    }
+  }
+  const s = defaults("gears");
+  assert.equal(
+    projectSTL(s),
+    projectSTL({ ...s, makerTurn: 90 }),
+    "preview motion never changes print layout",
+  );
+  assert.notEqual(previewSVG(s), previewSVG({ ...s, makerTurn: 20 }));
+  assert.equal(printParts({ ...s, makerGearBase: false }).length, 3);
+  const thin = {
+    ...s,
+    makerGearTeeth: 18,
+    makerGearTeeth2: 18,
+    makerGearModule: 1.2,
+    makerGearBacklash: 0.7,
+  };
+  normalizeMakerDimensions(thin);
+  assert.ok(validate(thin).length);
 });

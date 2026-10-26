@@ -10,12 +10,12 @@
     />
     <title>Papeled Maker — seu espaço maker online</title>
     <link rel="icon" type="image/png" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/main-CYC2a8Ck.js"></script>
+    <script type="module" crossorigin src="./assets/main-Dar-2yw7.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-StUL75fX.js">
     <link rel="modulepreload" crossorigin href="./assets/_commonjsHelpers-Cpj98o6Y.js">
     <link rel="modulepreload" crossorigin href="./assets/browser-eqoWqH1V.js">
-    <link rel="modulepreload" crossorigin href="./assets/geometry-4C_M7mXx.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-2N-_UMYi.js">
+    <link rel="modulepreload" crossorigin href="./assets/geometry-BkMJCUGJ.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-7NgIXReC.js">
     <link rel="stylesheet" crossorigin href="./assets/main-BbaFFtPR.css">
   </head>
   <body>
@@ -491,6 +491,227 @@
                   peça retangular recortada, sem rosca.
                 </p>
               </details>
+            </div>
+            <div class="control-section" id="maker-options" hidden>
+              <h3>Personalize sua impressão 3D</h3>
+              <div id="maker-decoration-controls">
+                <label class="field-label"
+                  >Formato<select class="text-input" id="maker-shape">
+                    <option value="rounded">Retangular arredondado</option>
+                    <option value="round">Redondo</option>
+                    <option value="oval">Oval</option>
+                    <option value="heart">Coração</option>
+                  </select></label
+                >
+                <label class="field-label"
+                  >Conteúdo<select class="text-input" id="maker-content">
+                    <option value="text">Texto</option>
+                    <option value="figure">Figura</option>
+                    <option value="both">Texto e figura</option>
+                  </select></label
+                >
+                <div id="maker-text-controls">
+                  <label class="field-label"
+                    >Texto<input
+                      class="text-input"
+                      id="makerText"
+                      maxlength="24" /></label
+                  ><label class="field-label"
+                    >Fonte<select
+                      class="text-input"
+                      id="maker-font"
+                    ></select></label
+                  ><label class="field-label"
+                    >Altura máxima do texto (mm)<input
+                      class="text-input"
+                      id="makerTextHeight"
+                      type="number"
+                      min="5"
+                      max="35"
+                      step="0.5"
+                  /></label>
+                </div>
+                <label class="field-label" id="maker-figure-control"
+                  >Figura<select class="text-input" id="maker-figure"></select
+                ></label>
+                <label class="field-label"
+                  >Largura dos traços da figura (mm)<input
+                    class="text-input"
+                    id="makerStroke"
+                    type="number"
+                    min="0.8"
+                    max="3"
+                    step="0.1"
+                /></label>
+                <label class="field-label"
+                  >Borda elevada<select class="text-input" id="maker-border">
+                    <option value="yes">Sim</option>
+                    <option value="no">Não</option>
+                  </select></label
+                >
+                <label class="field-label"
+                  >Largura da borda (mm)<input
+                    class="text-input"
+                    id="makerBorderWidth"
+                    type="number"
+                    min="0.8"
+                    max="3"
+                    step="0.1"
+                /></label>
+              </div>
+              <label class="field-label" id="maker-relief-control"
+                >Altura do relevo / textura (mm)<input
+                  class="text-input"
+                  id="makerRelief"
+                  type="number"
+                  min="0.6"
+                  max="3"
+                  step="0.1"
+              /></label>
+              <div id="maker-stamp-controls">
+                <label class="field-label"
+                  >Espelhar para carimbar<select
+                    class="text-input"
+                    id="maker-mirror"
+                  >
+                    <option value="yes">Sim</option>
+                    <option value="no">Não</option>
+                  </select></label
+                ><label class="field-label"
+                  >Cabo separado para colar<select
+                    class="text-input"
+                    id="maker-handle"
+                  >
+                    <option value="yes">Incluir cabo</option>
+                    <option value="no">Sem cabo</option>
+                  </select></label
+                ><label class="field-label"
+                  >Altura do cabo (mm)<input
+                    class="text-input"
+                    id="makerHandleHeight"
+                    type="number"
+                    min="12"
+                    max="35"
+                    step="1"
+                /></label>
+              </div>
+              <div id="maker-roller-controls">
+                <label class="field-label"
+                  >Textura<select class="text-input" id="maker-pattern">
+                    <option value="dots">Pontos</option>
+                    <option value="stripes">Listras</option>
+                    <option value="chevron">Zigue-zague</option>
+                    <option value="hearts">Corações</option>
+                  </select></label
+                ><label class="field-label"
+                  >Espaçamento da textura (mm)<input
+                    class="text-input"
+                    id="makerPatternSpacing"
+                    type="number"
+                    min="8"
+                    max="22"
+                    step="1"
+                /></label>
+              </div>
+              <div id="maker-hole-controls">
+                <label class="field-label" id="maker-hole-title"
+                  >Furo<select class="text-input" id="maker-hole">
+                    <option value="yes">Com furo</option>
+                    <option value="no">Sem furo</option>
+                  </select></label
+                ><label class="field-label"
+                  >Diâmetro do furo (mm)<input
+                    class="text-input"
+                    id="makerBoreDiameter"
+                    type="number"
+                    min="3"
+                    max="12"
+                    step="0.1" /></label
+                ><label class="field-label" id="maker-hole-position-control"
+                  >Posição do furo<select
+                    class="text-input"
+                    id="maker-hole-position"
+                  >
+                    <option value="left">Esquerda</option>
+                    <option value="right">Direita</option>
+                    <option value="top">Superior</option>
+                  </select></label
+                >
+              </div>
+              <div id="maker-gears-controls">
+                <label class="field-label"
+                  >Quantidade de engrenagens<input
+                    class="text-input"
+                    id="makerGearCount"
+                    type="number"
+                    min="2"
+                    max="5"
+                    step="1" /></label
+                ><label class="field-label"
+                  >Dentes da primeira engrenagem<input
+                    class="text-input"
+                    id="makerGearTeeth"
+                    type="number"
+                    min="18"
+                    max="36"
+                    step="1" /></label
+                ><label class="field-label"
+                  >Dentes da engrenagem alternada<input
+                    class="text-input"
+                    id="makerGearTeeth2"
+                    type="number"
+                    min="18"
+                    max="36"
+                    step="1" /></label
+                ><label class="field-label"
+                  >Módulo / tamanho do dente (mm)<input
+                    class="text-input"
+                    id="makerGearModule"
+                    type="number"
+                    min="1.2"
+                    max="3"
+                    step="0.1" /></label
+                ><label class="field-label"
+                  >Folga entre dentes (mm)<input
+                    class="text-input"
+                    id="makerGearBacklash"
+                    type="number"
+                    min="0.1"
+                    max="0.7"
+                    step="0.05" /></label
+                ><label class="field-label"
+                  >Base com eixos<select
+                    class="text-input"
+                    id="maker-gear-base"
+                  >
+                    <option value="yes">Incluir base</option>
+                    <option value="no">Sem base</option>
+                  </select></label
+                ><label class="field-label"
+                  >Folga radial dos eixos (mm)<input
+                    class="text-input"
+                    id="maker-clearance"
+                    type="number"
+                    min="0.15"
+                    max="0.6"
+                    step="0.05" /></label
+                ><label class="range-label"
+                  >Girar na prévia <output id="maker-turn-value"></output
+                  ><input
+                    id="makerTurn"
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="5" /></label
+                ><button
+                  type="button"
+                  class="button secondary full"
+                  id="maker-gear-step"
+                >
+                  Girar engrenagens
+                </button>
+              </div>
+              <p class="field-hint" id="maker-hint"></p>
             </div>
             <div class="control-section" id="toy-options" hidden>
               <h3>Brincar e descobrir</h3>

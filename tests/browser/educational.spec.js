@@ -6,6 +6,7 @@ test("educational laser catalog offers three editable models and preserves figur
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
+  await page.locator('[data-filter="laser"]').click();
   await page.selectOption("#use-filter", "education");
   await expect(page.locator(".model-card")).toHaveCount(1);
   await page.locator('[data-group="laser-education"]').click();

@@ -1,3 +1,4 @@
+import { isMakerProduct, validateMaker } from "./maker-products.js";
 import { engravingAreasSVG } from "./engraving-areas.js";
 import {
   isEducational,
@@ -72,6 +73,7 @@ export function validate(s) {
   if (!modelById(s.model)) return ["Modelo desconhecido."];
   if (!finishKeys(s).includes(s.finish))
     errors.push("Escolha uma cor disponível para este processo.");
+  if (isMakerProduct(s)) return [...errors, ...validateMaker(s)];
   if (isEducational(s)) return [...errors, ...validateEducational(s)];
   for (const [k, label, min, max] of [
     ["width", "Largura", 40, 1000],
@@ -755,6 +757,7 @@ export function stlTriangles(s) {
   if (validate(s).length || modelById(s.model).category !== "print")
     throw Error("Projeto 3D inválido.");
   if (
+    isMakerProduct(s) ||
     ["toothbrush", "lettering"].includes(familyFor(s)) ||
     s.cornerRadius > 0 ||
     s.printLid !== "none"

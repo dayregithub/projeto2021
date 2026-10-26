@@ -1,3 +1,4 @@
+import { isMakerProduct } from "./maker-products.js";
 import { simplifyArtPath } from "./toy-art.js";
 import { engravingAreasSVG } from "./engraving-areas.js";
 import { printParts, printDimensions } from "./print3d.js";
@@ -376,16 +377,27 @@ export function previewSVG(
   }
   const advancedPrint =
     modelById(s.model).category === "print" &&
-    (["toothbrush", "lettering"].includes(familyFor(s)) ||
+    (isMakerProduct(s) ||
+      ["toothbrush", "lettering"].includes(familyFor(s)) ||
       s.cornerRadius > 0 ||
       s.printLid !== "none");
   if (advancedPrint) {
     const { hingeY, hingeZ } = printDimensions(s),
       angle = (s.printOpening * Math.PI) / 180;
     for (const part of printParts(s))
-      for (const tri of part.triangles) {
+      for (const tri of part.previewTriangles || part.triangles) {
         const vs = tri.map((v) => {
           let p = [...v];
+          if (part.gearCenter) {
+            const [cx, cy] = part.gearCenter,
+              a = ((s.makerTurn || 0) * part.gearRatio * Math.PI) / 180,
+              x = p[0] - cx,
+              y = p[1] - cy;
+            p[0] = cx + x * Math.cos(a) - y * Math.sin(a);
+            p[1] = cy + x * Math.sin(a) + y * Math.cos(a);
+          }
+          if (isMakerProduct(s) && exploded && part.id !== "base-eixos")
+            p[2] += Math.min(s.width, s.depth) * 0.25;
           if (part.id === "tampa") {
             if (s.printLid === "hinged") {
               const y = p[1] - hingeY,
@@ -461,10 +473,15 @@ export function previewSVG(
     }
   }
   const pts = faces.flatMap((f) => f.world.map(project));
-  const minX = Math.min(...pts.map((p) => p[0])),
-    maxX = Math.max(...pts.map((p) => p[0])),
-    minY = Math.min(...pts.map((p) => p[1])),
-    maxY = Math.max(...pts.map((p) => p[1]));
+  const [minX, maxX, minY, maxY] = pts.reduce(
+    (a, p) => [
+      Math.min(a[0], p[0]),
+      Math.max(a[1], p[0]),
+      Math.min(a[2], p[1]),
+      Math.max(a[3], p[1]),
+    ],
+    [Infinity, -Infinity, Infinity, -Infinity],
+  );
   const scale = Math.min(430 / (maxX - minX), 290 / (maxY - minY));
   const tx = 300 - ((minX + maxX) * scale) / 2,
     ty = 197 - ((minY + maxY) * scale) / 2;

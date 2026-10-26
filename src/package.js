@@ -1,3 +1,8 @@
+import {
+  isMakerProduct,
+  makerReferenceContours,
+  makerDetails,
+} from "./maker-products.js";
 import { stickerSVG, stickerDXF } from "./sticker-layout.js";
 export { stickerSVG, stickerDXF } from "./sticker-layout.js";
 import {
@@ -37,6 +42,7 @@ export const projectFilename = (s) =>
     .replace(/^-|-$/g, "") || "projeto";
 const printed = (s) => modelById(s.model).category === "print";
 export function referenceContours(s) {
+  if (isMakerProduct(s)) return makerReferenceContours(s);
   if (familyFor(s) === "lettering")
     return [
       ...(s.signBase
@@ -258,29 +264,35 @@ export function projectPDF(s) {
                 : `Aberturas na tampa: ${s.brushHoles}`,
             ]
           : [];
-    const lines = [
-      ...special,
-      `Corpo: ${s.width} x ${s.depth} x ${s.height} mm`,
-      familyFor(s) === "lettering"
-        ? s.signBase
-          ? `Base: ${s.thickness} mm`
-          : `Letras: ${s.height} mm de espessura`
-        : `Parede / fundo: ${s.thickness} mm`,
-      `Raio dos cantos: ${s.cornerRadius} mm`,
-      `Tampa: ${PRINT_LIDS[s.printLid]}`,
-      `Folga por lado: ${s.clearance} mm`,
-      familyFor(s) === "lettering"
-        ? s.signBase
-          ? s.signOrientation === "standing"
-            ? "Letras em pe unidas a base; detalhes recebem apoios."
-            : "Letras em relevo unidas a base."
-          : s.signJoin
-            ? "Letras e acentos unidos por ligacoes de 1,2 mm."
-            : "Letras e acentos podem ser pecas independentes."
-        : "Corpo em peca unica. Tampa e pino, quando presentes, separados.",
-      "Vistas ilustrativas: dimensoes declaradas prevalecem.",
-      "Use os arquivos STL para imprimir; SVG/DXF sao referencias.",
-    ];
+    const lines = isMakerProduct(s)
+      ? [
+          ...makerDetails(s),
+          "STLs separados no ZIP; confira medidas e orientacao no fatiador.",
+          "Modelo para prototipagem. Valide material, acabamento e folgas antes do uso.",
+        ]
+      : [
+          ...special,
+          `Corpo: ${s.width} x ${s.depth} x ${s.height} mm`,
+          familyFor(s) === "lettering"
+            ? s.signBase
+              ? `Base: ${s.thickness} mm`
+              : `Letras: ${s.height} mm de espessura`
+            : `Parede / fundo: ${s.thickness} mm`,
+          `Raio dos cantos: ${s.cornerRadius} mm`,
+          `Tampa: ${PRINT_LIDS[s.printLid]}`,
+          `Folga por lado: ${s.clearance} mm`,
+          familyFor(s) === "lettering"
+            ? s.signBase
+              ? s.signOrientation === "standing"
+                ? "Letras em pe unidas a base; detalhes recebem apoios."
+                : "Letras em relevo unidas a base."
+              : s.signJoin
+                ? "Letras e acentos unidos por ligacoes de 1,2 mm."
+                : "Letras e acentos podem ser pecas independentes."
+            : "Corpo em peca unica. Tampa e pino, quando presentes, separados.",
+          "Vistas ilustrativas: dimensoes declaradas prevalecem.",
+          "Use os arquivos STL para imprimir; SVG/DXF sao referencias.",
+        ];
     lines.forEach((line, i) => doc.text(line, 15, 44 + i * 7));
     const scale = Math.min(
       175 / (2 * s.width + 20),
@@ -323,10 +335,15 @@ export function projectPackage(s, message = "") {
   files[base + ".papeled.json"] = strToU8(JSON.stringify(s, null, 2));
   if (
     printed(s) &&
-    (s.printLid !== "none" || (familyFor(s) === "toothbrush" && s.brushCover))
+    (isMakerProduct(s) ||
+      s.printLid !== "none" ||
+      (familyFor(s) === "toothbrush" && s.brushCover))
   ) {
     for (const p of printLayout(s)) {
-      const minX = Math.min(...p.triangles.flat().map((v) => v[0]));
+      const minX = p.triangles.reduce(
+        (min, tri) => Math.min(min, ...tri.map((v) => v[0])),
+        Infinity,
+      );
       const triangles = p.triangles.map((tri) =>
         tri.map((v) => [v[0] - minX, v[1], v[2]]),
       );
@@ -336,7 +353,7 @@ export function projectPackage(s, message = "") {
     }
   }
   files["LEIA-ME.txt"] = strToU8(
-    `Papeled Maker — ${s.name}\n\n${printed(s) ? "STL: modelo para impressao 3D; quando ha tampa, corpo/tampa/pino tambem tem STLs individuais. O STL principal distribui as pecas lado a lado, com base em Z=0. SVG/DXF: vistas dimensionais de referencia, nao cortar a laser. PDF: ficha do projeto." : "SVG/DXF: pecas de corte em mm; CUT vermelho e ENGRAVE azul. PDF: uma peca por pagina em escala 1:1, imprimir em tamanho real, sem ajustar. STL: referencia da montagem fechada; nao e uma peca unica para impressao."}\nJSON: projeto editavel. ${isEducational(s) ? educationalNotes(s) + "\n" : ""}Sem compensacao de kerf. Teste encaixes e folgas antes de produzir.\n\nWhatsApp: +55 61 99243-0051\npapeledmaker@gmail.com\n`,
+    `Papeled Maker — ${s.name}\n\n${printed(s) ? "STL: modelo para impressao 3D; quando ha tampa, corpo/tampa/pino tambem tem STLs individuais. O STL principal distribui as pecas lado a lado, com base em Z=0. SVG/DXF: vistas dimensionais de referencia, nao cortar a laser. PDF: ficha do projeto." : "SVG/DXF: pecas de corte em mm; CUT vermelho e ENGRAVE azul. PDF: uma peca por pagina em escala 1:1, imprimir em tamanho real, sem ajustar. STL: referencia da montagem fechada; nao e uma peca unica para impressao."}\nJSON: projeto editavel. ${isMakerProduct(s) ? makerDetails(s).join("\n") + "\nImprima as pecas separadamente. Para carimbos com tinta, teste material/flexibilidade; modelos rigidos servem a massinha. Sem certificacao de brinquedo: valide resistencia, acabamento e partes pequenas antes do uso infantil.\n" : ""}${isEducational(s) ? educationalNotes(s) + "\n" : ""}Sem compensacao de kerf. Teste encaixes e folgas antes de produzir.\n\nWhatsApp: +55 61 99243-0051\npapeledmaker@gmail.com\n`,
   );
   if (isBlankPuzzle(s)) {
     files[base + "-imagem-montada-corte.svg"] = strToU8(stickerSVG(s));

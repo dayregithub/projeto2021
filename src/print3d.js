@@ -1,3 +1,5 @@
+import { isMakerProduct } from "./maker-products.js";
+import { buildMakerParts } from "./maker-solids.js";
 import { brushDrainage, brushCoverDimensions } from "./brush-features.js";
 import { letterContours } from "./lettering.js";
 import Module from "manifold-3d";
@@ -404,36 +406,72 @@ function makeBrushCover(s, profile, r) {
 }
 const cache = new Map();
 export function printParts(s) {
-  const key = JSON.stringify([
-    s.model,
-    s.width,
-    s.depth,
-    s.height,
-    s.thickness,
-    s.cols,
-    s.rows,
-    s.clearance,
-    s.cornerRadius,
-    s.printLid,
-    s.brushShape,
-    s.brushHoles,
-    s.brushHoleDiameter,
-    s.signText,
-    s.signFont,
-    s.signTextHeight,
-    s.signBase,
-    s.signOrientation,
-    s.signSpacing,
-    s.signJoin,
-    s.brushCover,
-    s.brushCoverHeight,
-    s.brushTexture,
-    s.brushDrain,
-    s.brushDrainDiameter,
-  ]);
+  const key = isMakerProduct(s)
+    ? JSON.stringify(
+        Object.fromEntries(
+          Object.entries(s).filter(
+            ([k]) =>
+              k !== "makerTurn" &&
+              (k.startsWith("maker") ||
+                [
+                  "model",
+                  "width",
+                  "depth",
+                  "height",
+                  "thickness",
+                  "clearance",
+                ].includes(k)),
+          ),
+        ),
+      )
+    : JSON.stringify([
+        s.model,
+        s.width,
+        s.depth,
+        s.height,
+        s.thickness,
+        s.cols,
+        s.rows,
+        s.clearance,
+        s.cornerRadius,
+        s.printLid,
+        s.brushShape,
+        s.brushHoles,
+        s.brushHoleDiameter,
+        s.signText,
+        s.signFont,
+        s.signTextHeight,
+        s.signBase,
+        s.signOrientation,
+        s.signSpacing,
+        s.signJoin,
+        s.brushCover,
+        s.brushCoverHeight,
+        s.brushTexture,
+        s.brushDrain,
+        s.brushDrainDiameter,
+      ]);
   if (cache.has(key)) return cache.get(key);
   allocated = [];
   try {
+    if (isMakerProduct(s)) {
+      const parts = buildMakerParts(s, {
+        Manifold,
+        CrossSection,
+        keep,
+        union,
+        subtract,
+        intersect,
+        translate,
+        slab,
+        box,
+        meshTriangles,
+        roundedOutline,
+      });
+      cache.set(key, parts);
+      if (cache.size > 8) cache.delete(cache.keys().next().value);
+      return parts;
+    }
     if (familyFor(s) === "lettering") {
       const parts = signParts(s);
       cache.set(key, parts);
@@ -633,14 +671,19 @@ export function printParts(s) {
 export function printLayout(s) {
   let x = 0;
   return printParts(s).map((p) => {
-    const points = p.triangles.flat(),
-      min = [0, 1, 2].map((i) => Math.min(...points.map((v) => v[i]))),
-      max = [0, 1, 2].map((i) => Math.max(...points.map((v) => v[i])));
+    const source = p.printTriangles || p.triangles;
+    const points = source.flat(),
+      min = [0, 1, 2].map((i) =>
+        points.reduce((n, v) => Math.min(n, v[i]), Infinity),
+      ),
+      max = [0, 1, 2].map((i) =>
+        points.reduce((n, v) => Math.max(n, v[i]), -Infinity),
+      );
     const dx = x - min[0];
     x += max[0] - min[0] + 15;
     return {
       ...p,
-      triangles: p.triangles.map((tri) =>
+      triangles: source.map((tri) =>
         tri.map((v) => [v[0] + dx, v[1] - min[1], v[2] - min[2]]),
       ),
     };

@@ -392,6 +392,109 @@ MODELS.push(
     rows: 1,
   },
 );
+MODELS.push(
+  {
+    id: "stamp",
+    family: "stamp",
+    name: "Carimbo 3D personalizado",
+    tag: "MARQUE SUAS IDEIAS",
+    category: "print",
+    usage: "education",
+    description:
+      "Texto, figuras e dez fontes em relevo espelhado. Matriz e cabo para colar no verso.",
+    w: 80,
+    d: 50,
+    h: 4,
+    cols: 1,
+    rows: 1,
+    preset: {
+      finish: "white",
+      makerMirror: true,
+      makerHandle: true,
+      makerText: "Luna",
+      makerContent: "text",
+    },
+  },
+  {
+    id: "textureroller",
+    family: "roller",
+    name: "Rolo de textura para massinha",
+    tag: "CRIAR E EXPLORAR",
+    category: "print",
+    usage: "education",
+    description:
+      "Pontos, listras, zigue-zague ou corações em uma superfície cilíndrica imprimível.",
+    w: 90,
+    d: 30,
+    h: 32.4,
+    cols: 1,
+    rows: 1,
+    preset: { finish: "white", makerHole: false },
+  },
+  {
+    id: "reliefplaque",
+    family: "relief",
+    name: "Plaquinha em relevo",
+    tag: "NOMES E FIGURAS",
+    category: "print",
+    usage: "gifts",
+    description:
+      "Texto, figuras, fontes e bordas em volume. Quatro formatos e furo opcional.",
+    w: 100,
+    d: 55,
+    h: 3,
+    cols: 1,
+    rows: 1,
+    preset: {
+      finish: "white",
+      makerText: "Luna",
+      makerHole: false,
+      makerContent: "both",
+    },
+  },
+  {
+    id: "keychain",
+    family: "relief",
+    name: "Chaveiro personalizado",
+    tag: "LEVE SUA IDEIA",
+    category: "print",
+    usage: "gifts",
+    description:
+      "Nome ou figura em relevo, borda e furo para argola com posição ajustável.",
+    w: 75,
+    d: 35,
+    h: 3,
+    cols: 1,
+    rows: 1,
+    preset: {
+      finish: "white",
+      makerText: "Luna",
+      makerHole: true,
+      makerContent: "text",
+    },
+  },
+  {
+    id: "gears",
+    family: "gears",
+    name: "Engrenagens educativas",
+    tag: "MOVIMENTO PARA APRENDER",
+    category: "print",
+    usage: "education",
+    description:
+      "De duas a cinco engrenagens com dentes evolventes, base opcional e folgas ajustáveis.",
+    w: 156,
+    d: 76,
+    h: 6,
+    cols: 1,
+    rows: 1,
+    preset: {
+      finish: "white",
+      thickness: 3,
+      clearance: 0.3,
+      makerBoreDiameter: 6,
+    },
+  },
+);
 const baseUsages = {
   open: "home",
   grid: "workshop",
@@ -422,6 +525,31 @@ export function defaults(id = "grid") {
   const m = modelById(id);
   return {
     version: 1,
+    makerText: "Luna",
+    makerFont: "roboto",
+    makerTextHeight: 10,
+    makerContent: "both",
+    makerFigure: "butterfly",
+    makerShape: "rounded",
+    makerRelief: 1.2,
+    makerStroke: 1,
+    makerBorder: true,
+    makerBorderWidth: 1.5,
+    makerMirror: false,
+    makerHandle: false,
+    makerHandleHeight: 20,
+    makerHole: false,
+    makerBoreDiameter: 5,
+    makerHolePosition: "left",
+    makerPattern: "hearts",
+    makerPatternSpacing: 12,
+    makerGearCount: 3,
+    makerGearTeeth: 20,
+    makerGearTeeth2: 28,
+    makerGearModule: 2,
+    makerGearBacklash: 0.25,
+    makerGearBase: true,
+    makerTurn: 0,
     toyTheme: "turtle",
     toyPieceStyle: "jigsaw",
     toyEngraving: "double",
@@ -545,6 +673,41 @@ export const CATALOG_GROUPS = [
     description:
       "Personalize nomes e frases. Escolha fontes comuns, formais ou manuscritas.",
   },
+  {
+    id: "print-stamps",
+    name: "Carimbos 3D",
+    category: "print",
+    defaultModel: "stamp",
+    tag: "TEXTO E FIGURAS",
+    description: "Crie uma matriz espelhada com texto, figura e cabo separado.",
+  },
+  {
+    id: "print-rollers",
+    name: "Rolos de textura 3D",
+    category: "print",
+    defaultModel: "textureroller",
+    tag: "QUATRO TEXTURAS",
+    description:
+      "Ajuste comprimento, diâmetro, relevo e espaçamento para explorar a massinha.",
+  },
+  {
+    id: "print-relief",
+    name: "Plaquinhas e chaveiros 3D",
+    category: "print",
+    defaultModel: "reliefplaque",
+    tag: "PERSONALIZE EM RELEVO",
+    description:
+      "Nomes e figuras com fontes, formatos, bordas e furos ajustáveis.",
+  },
+  {
+    id: "print-gears",
+    name: "Engrenagens educativas 3D",
+    category: "print",
+    defaultModel: "gears",
+    tag: "CRIE MOVIMENTO",
+    description:
+      "Escolha dentes, quantidade, tamanho e folgas. Base e peças separadas no STL.",
+  },
 ];
 export const catalogGroupFor = (id) => {
   const m = modelById(typeof id === "string" ? id : id.model);
@@ -553,17 +716,24 @@ export const catalogGroupFor = (id) => {
     : CATALOG_GROUPS.find(
         (g) =>
           g.id ===
-          (m.family === "education"
-            ? "laser-education"
-            : m.family === "toothbrush"
-              ? "toothbrushes"
-              : m.family === "lettering"
-                ? "lettering"
-                : m.category === "print"
-                  ? "printed-boxes"
-                  : m.family === "drawers"
-                    ? "laser-drawers"
-                    : "laser-boxes"),
+          (["stamp", "roller", "relief", "gears"].includes(m.family)
+            ? {
+                stamp: "print-stamps",
+                roller: "print-rollers",
+                relief: "print-relief",
+                gears: "print-gears",
+              }[m.family]
+            : m.family === "education"
+              ? "laser-education"
+              : m.family === "toothbrush"
+                ? "toothbrushes"
+                : m.family === "lettering"
+                  ? "lettering"
+                  : m.category === "print"
+                    ? "printed-boxes"
+                    : m.family === "drawers"
+                      ? "laser-drawers"
+                      : "laser-boxes"),
       );
 };
 export const variationsFor = (group) =>

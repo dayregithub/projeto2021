@@ -1,3 +1,4 @@
+import { isMakerProduct } from "./maker-products.js";
 import { isEducational, educationalNotes } from "./educational.js";
 import {
   joinContact,
@@ -30,9 +31,11 @@ export const LIDS = {
   hinged: "Dobradiça integrada",
 };
 export const supportsJoinery = (s) =>
+  !isMakerProduct(s) &&
   !isEducational(s) &&
   !["print", "printgrid", "toothbrush", "lettering"].includes(familyFor(s));
 export const supportsConstruction = (s) =>
+  !isMakerProduct(s) &&
   !isEducational(s) &&
   !["drawers", "print", "printgrid", "toothbrush", "lettering"].includes(
     familyFor(s),
