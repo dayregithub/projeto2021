@@ -352,7 +352,7 @@ MODELS.push(
     category: "laser",
     usage: "education",
     description:
-      "Peixe, tartaruga ou borboleta gravados em peças retas. Ajuste de 4 a 16 peças, base e folga.",
+      "Animais em estilo infantil, borda dupla ajustável e peças com encaixe tradicional ou corte reto.",
     w: 240,
     d: 180,
     h: 6,
@@ -423,6 +423,9 @@ export function defaults(id = "grid") {
   return {
     version: 1,
     toyTheme: "turtle",
+    toyPieceStyle: "jigsaw",
+    toyEngraving: "double",
+    toyBorderWidth: 1.2,
     toyCols: 3,
     toyRows: 2,
     toyShapeCount: 4,

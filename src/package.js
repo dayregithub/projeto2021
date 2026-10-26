@@ -214,6 +214,18 @@ export function projectPDF(s) {
       for (const r of panelContours(p)) lineRing(doc, r, 10, 23);
       doc.setDrawColor(0, 0, 255);
       for (const r of p.engravingPaths || []) lineRing(doc, r, 10, 23, false);
+      for (const poly of p.engravingAreas || []) {
+        const operations = poly.flatMap((ring) => [
+          { op: "m", c: [ring[0][0] + 10, ring[0][1] + 23] },
+          ...ring.slice(1).map(([x, y]) => ({ op: "l", c: [x + 10, y + 23] })),
+          { op: "h", c: [] },
+        ]);
+        doc.path(operations);
+        if (p.engravingFilled) {
+          doc.setFillColor(0, 0, 255);
+          doc.fillEvenOdd();
+        } else doc.stroke();
+      }
     }
   } else {
     doc = new jsPDF({ unit: "mm", format: "a4" });

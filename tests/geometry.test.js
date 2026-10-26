@@ -1486,7 +1486,8 @@ test("educational parameters preserve fabrication gaps, reject undersized parts 
         assert.ok(
           panels(s)
             .slice(2)
-            .flatMap((p) => p.engravingPaths).length > 20,
+            .flatMap((p) => p.engravingAreas || [])
+            .flat(2).length > 20,
         );
         const withoutGuide = panels({ ...s, toyGuide: false });
         assert.equal(withoutGuide[0].engravingPaths, undefined);
@@ -1550,4 +1551,153 @@ test("educational ZIPs keep real cut and engraving files, editable settings and 
       "%PDF",
     );
   }
+});
+
+import { pictureTileShapes, pictureArtwork } from "../src/educational.js";
+import { strokeAreas } from "../src/vector-offset.js";
+const materialArea = (shape) =>
+  shape.reduce(
+    (sum, poly) =>
+      sum +
+      poly.reduce(
+        (a, r, i) =>
+          a +
+          (i ? -1 : 1) *
+            Math.abs(
+              r.reduce((v, p, j) => {
+                const q = r[(j + 1) % r.length];
+                return v + p[0] * q[1] - p[1] * q[0];
+              }, 0) / 2,
+            ),
+        0,
+      ),
+    0,
+  );
+test("traditional jigsaw tabs partition the board and remain complementary, connected and clear after offset", () => {
+  for (const toyCols of [2, 3, 4])
+    for (const toyRows of [2, 3, 4]) {
+      const s = { ...defaults("picturepuzzle"), toyCols, toyRows },
+        m = toyMetrics(s),
+        raw = pictureTileShapes(s);
+      assert.equal(raw.length, toyCols * toyRows);
+      near(materialArea(clipping.union(...raw)), m.innerWidth * m.innerDepth);
+      near(
+        raw.reduce((sum, shape) => sum + materialArea(shape), 0),
+        m.innerWidth * m.innerDepth,
+      );
+      for (let i = 0; i < raw.length; i++)
+        for (let j = i + 1; j < raw.length; j++)
+          assert.ok(materialArea(clipping.intersection(raw[i], raw[j])) < 1e-6);
+      const cut = panels(s).slice(2);
+      assert.ok(
+        cut.some(
+          (p) => p.width > m.pieceWidth + 2 || p.height > m.pieceDepth + 2,
+        ),
+      );
+      for (const p of cut) {
+        assert.equal(p.shape.length, 1);
+        assert.ok(materialArea(p.shape) > 100);
+      }
+      const loose = panels({ ...s, toyGap: 0.6 }).slice(2);
+      assert.ok(
+        loose.every(
+          (p, i) => materialArea(p.shape) < materialArea(cut[i].shape),
+        ),
+      );
+      const rect = panels({ ...s, toyPieceStyle: "straight" }).slice(2);
+      assert.ok(
+        rect.every((p) => p.width < m.pieceWidth && p.height < m.pieceDepth),
+      );
+    }
+  assert.ok(
+    validate({
+      ...defaults("picturepuzzle"),
+      width: 180,
+      depth: 180,
+      thickness: 4,
+      height: 8,
+      toyCols: 4,
+      toyRows: 4,
+      toyGap: 1.5,
+    }).length,
+  );
+  const legacy = defaults("picturepuzzle");
+  delete legacy.toyPieceStyle;
+  assert.equal(readProject(legacy).toyPieceStyle, "straight");
+});
+test("double engraving borders have true millimetre thickness and closed fillable regions in every manufacturing format", () => {
+  const band = strokeAreas(
+    [
+      [
+        [0, 0],
+        [20, 0],
+      ],
+    ],
+    2,
+  );
+  const points = band.flat(2);
+  near(
+    Math.max(...points.map((p) => p[1])) - Math.min(...points.map((p) => p[1])),
+    2,
+  );
+  assert.ok(Math.abs(materialArea(band) - (40 + Math.PI)) < 0.15);
+  const s = defaults("picturepuzzle"),
+    art = pictureArtwork(s);
+  assert.ok(art.paths.length > 15);
+  assert.ok(
+    art.paths.flat().length > 300,
+    "smooth curve samples, not coarse geometric primitives",
+  );
+  assert.ok(
+    materialArea(pictureArtwork({ ...s, toyBorderWidth: 2 }).areas) >
+      materialArea(art.areas),
+  );
+  for (const toyEngraving of ["line", "double", "fill"]) {
+    const current = { ...s, toyEngraving, toyBorderWidth: 1.8 },
+      ps = panels(current),
+      svg = exportSVG(current),
+      dxf = exportDXF(current);
+    assert.deepEqual(
+      ps.map((p) => p.shape),
+      panels(s).map((p) => p.shape),
+      "engraving does not change cutting",
+    );
+    if (toyEngraving === "line") {
+      assert.ok(ps.slice(2).some((p) => p.engravingPaths.length));
+      assert.ok(ps.every((p) => !p.engravingAreas));
+    } else {
+      assert.match(
+        svg,
+        new RegExp(
+          `id="ENGRAVE_${toyEngraving === "fill" ? "FILL" : "OUTLINE"}"`,
+        ),
+      );
+      assert.match(svg, /fill-rule="evenodd"/);
+      assert.match(
+        dxf,
+        new RegExp(
+          `ENGRAVE_${toyEngraving === "fill" ? "FILL" : "OUTLINE"}\\n62\\n5`,
+        ),
+      );
+      for (const p of ps.slice(2))
+        for (const poly of p.engravingAreas || []) {
+          assert.ok(
+            materialArea(clipping.difference([poly], p.shape)) < 1e-7,
+            "fillable border is clipped to the actual piece, including sockets (floating point area tolerance)",
+          );
+          assert.ok(poly.every((r) => r.length >= 3));
+        }
+      assert.ok(projectPDF(current).byteLength > 1000);
+    }
+    assert.equal(readProject(current).toyBorderWidth, 1.8);
+    assert.equal(readProject(current).toyEngraving, toyEngraving);
+  }
+  for (const change of [
+    { toyBorderWidth: 0 },
+    { toyBorderWidth: 10 },
+    { toyBorderWidth: "1.2" },
+    { toyPieceStyle: "unknown" },
+    { toyEngraving: "unknown" },
+  ])
+    assert.ok(validate({ ...s, ...change }).length);
 });

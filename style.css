@@ -3234,3 +3234,23 @@ button[aria-busy="true"] {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+.toy-art-card {
+  margin: 14px 0;
+  padding: 12px;
+  background: white;
+  border: 1px solid #dfd1c8;
+  border-radius: 12px;
+}
+.toy-art-card img {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+}
+.toy-art-card figcaption {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #684b43;
+}

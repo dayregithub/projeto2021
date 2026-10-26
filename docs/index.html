@@ -10,12 +10,13 @@
     />
     <title>Papeled Maker — seu espaço maker online</title>
     <link rel="icon" type="image/png" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/main-BvZRHayt.js"></script>
+    <script type="module" crossorigin src="./assets/main-C0DRFsAj.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-StUL75fX.js">
+    <link rel="modulepreload" crossorigin href="./assets/_commonjsHelpers-Cpj98o6Y.js">
     <link rel="modulepreload" crossorigin href="./assets/browser-eqoWqH1V.js">
-    <link rel="modulepreload" crossorigin href="./assets/geometry-eBsM7VRh.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-0UxX-6jK.js">
-    <link rel="stylesheet" crossorigin href="./assets/main-CpAQ_kdE.css">
+    <link rel="modulepreload" crossorigin href="./assets/geometry-J2nRBYbM.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-1hN0cUHB.js">
+    <link rel="stylesheet" crossorigin href="./assets/main-r3YXzcAk.css">
   </head>
   <body>
     <header class="site-header">
@@ -502,6 +503,50 @@
                   <option value="turtle">Tartaruga</option>
                   <option value="butterfly">Borboleta</option>
                 </select>
+                <figure class="toy-art-card">
+                  <img
+                    id="toy-art-preview"
+                    alt="Figura inteira com a gravação selecionada"
+                    width="240"
+                    height="180"
+                  />
+                  <figcaption>Figura inteira · prévia da gravação</figcaption>
+                </figure>
+                <label class="field-label" for="toy-piece-style"
+                  >Tipo de encaixe das peças</label
+                >
+                <select class="text-input" id="toy-piece-style">
+                  <option value="jigsaw">
+                    Tradicional · saliências e cavidades
+                  </option>
+                  <option value="straight">Reto · peças em grade</option>
+                </select>
+                <label class="field-label" for="toy-engraving"
+                  >Gravação da figura</label
+                >
+                <select class="text-input" id="toy-engraving">
+                  <option value="line">Linha simples</option>
+                  <option value="double">Borda dupla · duas linhas</option>
+                  <option value="fill">Borda dupla preenchida</option>
+                </select>
+                <label
+                  class="field-label"
+                  id="toy-border-control"
+                  for="toyBorderWidth"
+                  >Distância entre as linhas (mm)<input
+                    class="text-input"
+                    id="toyBorderWidth"
+                    type="number"
+                    min="0.3"
+                    max="3"
+                    step="0.1"
+                /></label>
+                <p class="field-hint" id="toy-border-hint">
+                  A distância define a largura da faixa ao redor dos traços. É
+                  independente da espessura do MDF e da folga dos encaixes.
+                  Borda dupla exporta contornos fechados; preenchida também
+                  mostra essa faixa na prévia.
+                </p>
                 <div class="split-fields">
                   <label
                     >Colunas de peças<input
@@ -522,8 +567,8 @@
                   /></label>
                 </div>
                 <p class="field-hint">
-                  Figura gravada em peças retas removíveis. As divisões definem
-                  de 4 a 16 peças; aumente a base para usar mais peças.
+                  Figura gravada em peças removíveis. As divisões definem de 4 a
+                  16 peças; aumente a base para usar mais peças.
                 </p>
               </div>
               <label id="toy-shapes-control" class="field-label"

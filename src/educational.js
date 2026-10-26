@@ -1,3 +1,6 @@
+import { engravingAreasSVG } from "./engraving-areas.js";
+import { cartoonPaths } from "./toy-art.js";
+import { insetPolygon, strokeAreas } from "./vector-offset.js";
 import clipping from "polygon-clipping";
 import { modelById } from "./models.js";
 import { makePanel, reshape, rectangle, rectanglePose } from "./joinery.js";
@@ -172,6 +175,18 @@ export function validateEducational(s) {
     errors.push("Encaixe: escolha de 3 a 6 formas.");
   if (!Object.hasOwn(TOY_THEMES, s.toyTheme))
     errors.push("Escolha uma figura disponível.");
+  if (educationalKind(s) === "picture") {
+    if (!["straight", "jigsaw"].includes(s.toyPieceStyle))
+      errors.push("Escolha corte reto ou encaixe tradicional.");
+    if (!["line", "double", "fill"].includes(s.toyEngraving))
+      errors.push("Escolha o tipo de gravação da figura.");
+    if (
+      !Number.isFinite(s.toyBorderWidth) ||
+      s.toyBorderWidth < 0.3 ||
+      s.toyBorderWidth > 3
+    )
+      errors.push("Distância entre as linhas: use de 0,3 a 3 mm.");
+  }
   if (typeof s.toyGuide !== "boolean")
     errors.push("Escolha se deseja gravar o guia na base.");
   if (errors.length) return errors;
@@ -196,107 +211,16 @@ export function validateEducational(s) {
     Math.min(m.innerWidth, m.innerDepth) / 4 - 2 * s.toyGap < 25
   )
     errors.push("Aumente a base do tangram para preservar as sete peças.");
+  if (
+    kind === "picture" &&
+    s.toyPieceStyle === "jigsaw" &&
+    Math.min(m.pieceWidth, m.pieceDepth) * 0.168 - 2 * s.toyGap <
+      Math.max(3, s.thickness)
+  )
+    errors.push(
+      "Os pescoços dos encaixes ficaram estreitos. Aumente a base, reduza a quantidade de peças ou a folga.",
+    );
   return errors;
-}
-function illustration(theme) {
-  if (theme === "fish")
-    return [
-      closed([
-        [15, 50],
-        [3, 28],
-        [3, 72],
-        [15, 50],
-        [30, 25],
-        [65, 25],
-        [88, 50],
-        [65, 75],
-        [30, 75],
-        [15, 50],
-      ]),
-      closed(ellipse(68, 43, 3, 3)),
-      [
-        [40, 28],
-        [47, 50],
-        [40, 72],
-      ],
-      [
-        [33, 37],
-        [25, 50],
-        [33, 63],
-      ],
-      [
-        [51, 34],
-        [58, 50],
-        [51, 66],
-      ],
-    ];
-  if (theme === "turtle")
-    return [
-      closed(ellipse(50, 52, 29, 30)),
-      closed(ellipse(50, 12, 10, 9)),
-      closed(ellipse(15, 32, 9, 6)),
-      closed(ellipse(15, 75, 9, 6)),
-      closed(ellipse(85, 32, 9, 6)),
-      closed(ellipse(85, 75, 9, 6)),
-      [
-        [47, 83],
-        [50, 95],
-        [53, 83],
-      ],
-      closed([
-        [40, 37],
-        [60, 37],
-        [67, 53],
-        [60, 68],
-        [40, 68],
-        [33, 53],
-      ]),
-      [
-        [40, 37],
-        [32, 26],
-      ],
-      [
-        [60, 37],
-        [68, 26],
-      ],
-      [
-        [67, 53],
-        [79, 53],
-      ],
-      [
-        [60, 68],
-        [68, 78],
-      ],
-      [
-        [40, 68],
-        [32, 78],
-      ],
-      [
-        [33, 53],
-        [21, 53],
-      ],
-    ];
-  return [
-    closed(ellipse(28, 32, 22, 26)),
-    closed(ellipse(72, 32, 22, 26)),
-    closed(ellipse(30, 73, 19, 20)),
-    closed(ellipse(70, 73, 19, 20)),
-    closed(ellipse(50, 55, 5, 35)),
-    [
-      [48, 20],
-      [40, 7],
-      [35, 5],
-    ],
-    [
-      [52, 20],
-      [60, 7],
-      [65, 5],
-    ],
-    closed(ellipse(27, 31, 9, 12)),
-    closed(ellipse(73, 31, 9, 12)),
-    closed(ellipse(30, 73, 7, 8)),
-    closed(ellipse(70, 73, 7, 8)),
-  ];
 }
 const insideRing = (p, r) => {
   let inside = false;
@@ -348,6 +272,88 @@ export function clipToyEngraving(paths, shape) {
     }
   return result;
 }
+const artCache = new Map();
+export function pictureArtwork(s) {
+  const m = toyMetrics(s),
+    key = JSON.stringify([
+      s.toyTheme,
+      m.margin,
+      m.innerWidth,
+      m.innerDepth,
+      s.toyBorderWidth,
+      s.toyEngraving,
+    ]);
+  if (artCache.has(key)) return artCache.get(key);
+  const paths = cartoonPaths(s.toyTheme, {
+    width: m.innerWidth - 8,
+    height: m.innerDepth - 8,
+    x: m.margin + 4,
+    y: m.margin + 4,
+  });
+  const result = {
+    paths,
+    areas:
+      s.toyEngraving === "line" ? [] : strokeAreas(paths, s.toyBorderWidth),
+  };
+  artCache.set(key, result);
+  if (artCache.size > 8) artCache.delete(artCache.keys().next().value);
+  return result;
+}
+// Every tab is one shared contour: union on the male and subtraction on its
+// neighbour produce a complementary socket. Only after this partition is
+// complete is the material clearance inset on every edge.
+export function pictureTileShapes(s) {
+  const m = toyMetrics(s),
+    tiles = [];
+  for (let row = 0; row < m.rows; row++)
+    for (let col = 0; col < m.cols; col++)
+      tiles.push(
+        rectangle(
+          m.margin + col * m.pieceWidth,
+          m.margin + row * m.pieceDepth,
+          m.pieceWidth,
+          m.pieceDepth,
+        ),
+      );
+  if (s.toyPieceStyle !== "jigsaw") return tiles;
+  const r = Math.min(m.pieceWidth, m.pieceDepth) * 0.14;
+  const tab = (a, b, x, y, vertical, sign) => {
+    const shape = ringShape(
+      ellipse(
+        x + (vertical ? sign * 0.8 * r : 0),
+        y + (vertical ? 0 : sign * 0.8 * r),
+        r,
+        r,
+        64,
+      ),
+    );
+    const male = sign > 0 ? a : b,
+      female = sign > 0 ? b : a;
+    tiles[male] = clipping.union(tiles[male], shape);
+    tiles[female] = clipping.difference(tiles[female], shape);
+  };
+  for (let row = 0; row < m.rows; row++)
+    for (let col = 0; col < m.cols - 1; col++)
+      tab(
+        row * m.cols + col,
+        row * m.cols + col + 1,
+        m.margin + (col + 1) * m.pieceWidth,
+        m.margin + (row + 0.5) * m.pieceDepth,
+        true,
+        (row + col) % 2 ? 1 : -1,
+      );
+  for (let row = 0; row < m.rows - 1; row++)
+    for (let col = 0; col < m.cols; col++)
+      tab(
+        row * m.cols + col,
+        (row + 1) * m.cols + col,
+        m.margin + (col + 0.5) * m.pieceWidth,
+        m.margin + (row + 1) * m.pieceDepth,
+        false,
+        (row + col) % 2 ? -1 : 1,
+      );
+  return tiles;
+}
 export function buildEducationalPanels(s) {
   const m = toyMetrics(s),
     kind = educationalKind(s),
@@ -369,7 +375,7 @@ export function buildEducationalPanels(s) {
   );
   const parts = [base, frame],
     guides = [];
-  const addPiece = (name, shape, engraving = []) => {
+  const addPiece = (name, shape, engraving = [], engravingAreas = []) => {
     const p = reshape(
       makePanel(name, 1, 1, rectanglePose(0, 0, t), { group: "toy-piece" }),
       shape,
@@ -377,36 +383,50 @@ export function buildEducationalPanels(s) {
     p.engravingPaths = engraving.map((path) =>
       path.map(([x, y]) => [x - p.pose.origin[0], y - p.pose.origin[1]]),
     );
+    if (engravingAreas.length) {
+      p.engravingAreas = engravingAreas.map((poly) =>
+        poly.map((ring) =>
+          ring.map(([x, y]) => [x - p.pose.origin[0], y - p.pose.origin[1]]),
+        ),
+      );
+      p.engravingFilled = s.toyEngraving === "fill";
+    }
     parts.push(p);
   };
   const remove = (shape) =>
     reshape(frame, clipping.difference(frame.shape, shape));
   const grip = (x, y, r = 5) => ringShape(ellipse(x, y, r, r, 32));
   if (kind === "picture") {
-    const image = illustration(s.toyTheme).map((path) =>
-      path.map(([x, y]) => [
-        m.margin + (x / 100) * m.innerWidth,
-        m.margin + (y / 100) * m.innerDepth,
-      ]),
+    const art = pictureArtwork(s),
+      tiles = pictureTileShapes(s);
+    const window = rectangle(m.margin, m.margin, m.innerWidth, m.innerDepth);
+    remove(
+      s.toyPieceStyle === "jigsaw"
+        ? clipping.union(window, grip(m.margin + m.pieceWidth / 2, m.margin))
+        : window,
     );
-    remove(rectangle(m.margin, m.margin, m.innerWidth, m.innerDepth));
     for (let row = 0; row < m.rows; row++)
       for (let col = 0; col < m.cols; col++) {
-        const x = m.margin + col * m.pieceWidth + c,
-          y = m.margin + row * m.pieceDepth + c,
-          w = m.pieceWidth - 2 * c,
-          h = m.pieceDepth - 2 * c;
-        const shape = clipping.difference(
-          rectangle(x, y, w, h),
-          grip(x + w / 2, y),
-        );
+        const raw = tiles[row * m.cols + col];
+        let shape = insetPolygon(raw, c);
+        if (s.toyPieceStyle === "straight") {
+          const x = m.margin + col * m.pieceWidth + c,
+            y = m.margin + row * m.pieceDepth + c,
+            w = m.pieceWidth - 2 * c;
+          shape = clipping.difference(shape, grip(x + w / 2, y));
+        }
+        if (shape.length !== 1)
+          throw Error(
+            "O encaixe ficou frágil ou desconectado. Aumente as peças ou reduza a folga.",
+          );
         addPiece(
           `Figura · linha ${row + 1}, coluna ${col + 1}`,
           shape,
-          clipToyEngraving(image, shape),
+          s.toyEngraving === "line" ? clipToyEngraving(art.paths, shape) : [],
+          art.areas.length ? clipping.intersection(art.areas, shape) : [],
         );
       }
-    guides.push(...image);
+    guides.push(...art.paths);
   } else if (kind === "tangram") {
     const side = Math.min(m.innerWidth, m.innerDepth),
       x = (s.width - side) / 2,
@@ -472,5 +492,28 @@ export function buildEducationalPanels(s) {
   return parts;
 }
 export function educationalNotes(s) {
-  return `Duas camadas de ${s.thickness} mm: cole somente a moldura na base; mantenha as ${toyMetrics(s).count} peças soltas. ${educationalKind(s) === "picture" ? "Figura gravada em peças retas, com recortes para retirada. " : ""}Vermelho = corte; azul = gravação. Folga de ${s.toyGap} mm por borda, sem compensação automática do kerf. Faça um teste de corte e ajuste a folga. Arredonde/lixe arestas e valide o material e o acabamento antes do uso infantil. Protótipo sem certificação de brinquedo; contém peças soltas, não destinado a menores de 3 anos. Supervisão de adulto.`;
+  return `Duas camadas de ${s.thickness} mm: cole somente a moldura na base; mantenha as ${toyMetrics(s).count} peças soltas. ${educationalKind(s) === "picture" ? `Figura com ${s.toyPieceStyle === "jigsaw" ? "encaixes tradicionais complementares" : "cortes retos"}. ${s.toyEngraving === "line" ? "Gravação por linha simples." : `Borda dupla com ${s.toyBorderWidth} mm entre as linhas; ${s.toyEngraving === "fill" ? "faixa preenchida" : "contornos fechados para preencher no software do laser"}.`} ` : ""}Vermelho = corte; azul = gravação. As camadas ENGRAVE_FILL e ENGRAVE_OUTLINE são gravação, nunca corte. No DXF, selecione preenchimento da faixa no software do laser; o arquivo fornece contornos fechados. Folga de ${s.toyGap} mm por borda, sem compensação automática do kerf. Faça um teste de corte e ajuste a folga. Arredonde/lixe arestas e valide o material e o acabamento antes do uso infantil. Protótipo sem certificação de brinquedo; contém peças soltas, não destinado a menores de 3 anos. Supervisão de adulto.`;
+}
+
+export function pictureArtSVG(s) {
+  const m = toyMetrics(s),
+    art = pictureArtwork(s),
+    content =
+      s.toyEngraving === "line"
+        ? art.paths
+            .map(
+              (path) =>
+                `<path d="${path.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ")}" fill="none" stroke="#684b43" stroke-width=".35" stroke-linejoin="round" stroke-linecap="round"/>`,
+            )
+            .join("")
+        : engravingAreasSVG(
+            {
+              engravingAreas: art.areas,
+              engravingFilled: s.toyEngraving === "fill",
+            },
+            0,
+            0,
+            { color: "#684b43", strokeWidth: 0.45 },
+          );
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${m.margin} ${m.margin} ${m.innerWidth} ${m.innerDepth}">${content}</svg>`;
 }

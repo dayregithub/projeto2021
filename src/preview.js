@@ -1,3 +1,5 @@
+import { simplifyArtPath } from "./toy-art.js";
+import { engravingAreasSVG } from "./engraving-areas.js";
 import { printParts, printDimensions } from "./print3d.js";
 import { familyFor } from "./models.js";
 import earcut from "earcut";
@@ -223,7 +225,40 @@ function panelFaces(s, { exploded = false, opened = 0.35 } = {}) {
       }
       return a;
     };
-    for (const line of p.engravingPaths || [])
+    const borderLines = p.engravingFilled
+      ? []
+      : (p.engravingAreas || [])
+          .flat()
+          .map((r) => simplifyArtPath([...r, r[0]]));
+    if (p.engravingFilled)
+      for (const poly of p.engravingAreas || []) {
+        const points = [],
+          holes = [];
+        for (const [i, ring] of poly.entries()) {
+          if (i) holes.push(points.length / 2);
+          for (const v of simplifyArtPath([...ring, ring[0]]).slice(0, -1))
+            points.push(...v);
+        }
+        const triangles = earcut(points, holes, 2);
+        for (let i = 0; i < triangles.length; i += 3) {
+          const vs = triangles
+            .slice(i, i + 3)
+            .map((index) =>
+              world(
+                [points[index * 2], points[index * 2 + 1]],
+                s.thickness + 0.03,
+              ),
+            );
+          out.push({
+            world: vs,
+            normal,
+            original: vs,
+            ink: true,
+            kind: "engraving",
+          });
+        }
+      }
+    for (const line of [...(p.engravingPaths || []), ...borderLines])
       for (let i = 1; i < line.length; i++) {
         const a = line[i - 1],
           b = line[i],
@@ -470,7 +505,7 @@ export function cutPreviewSVG(s) {
           )
           .join(
             " ",
-          )}" fill="#e7c17c" fill-rule="evenodd" stroke="#936d36" stroke-width=".7"/><text x="${p.x + 3}" y="${p.y + Math.min(p.height - 2, 10)}" font-family="sans-serif" font-size="6" fill="#5b482f">${i + 1}</text>${(p.engravingPaths || []).map((line) => `<path d="${line.map((v, j) => `${j ? "L" : "M"}${p.x + v[0]} ${p.y + v[1]}`).join(" ")}" fill="none" stroke="#4266bd" stroke-width=".35"/>`).join("")}</g>`,
+          )}" fill="#e7c17c" fill-rule="evenodd" stroke="#936d36" stroke-width=".7"/><text x="${p.x + 3}" y="${p.y + Math.min(p.height - 2, 10)}" font-family="sans-serif" font-size="6" fill="#5b482f">${i + 1}</text>${(p.engravingPaths || []).map((line) => `<path d="${line.map((v, j) => `${j ? "L" : "M"}${p.x + v[0]} ${p.y + v[1]}`).join(" ")}" fill="none" stroke="#4266bd" stroke-width=".35"/>`).join("")}${engravingAreasSVG(p, p.x, p.y, { color: "#4266bd", strokeWidth: 0.2 })}</g>`,
     )
     .join("")}</svg>`;
 }

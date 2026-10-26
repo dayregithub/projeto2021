@@ -4,6 +4,7 @@ import {
   toyMetrics,
   educationalNotes,
   TOY_THEMES,
+  pictureArtSVG,
 } from "./src/educational.js";
 import { initCustomerCapture } from "./src/customer-projects.js";
 import { initWorkspaceCloud } from "./src/workspace-cloud.js";
@@ -276,6 +277,7 @@ function syncFields() {
     "toyCols",
     "toyRows",
     "toyGap",
+    "toyBorderWidth",
     "toyLift",
     "clearance",
     "fingerSize",
@@ -297,6 +299,8 @@ function syncFields() {
     $("#" + k).value =
       k === "slotWidth" ? (state.slotWidth ?? state.thickness) : state[k];
   $("#toy-theme").value = state.toyTheme;
+  $("#toy-piece-style").value = state.toyPieceStyle;
+  $("#toy-engraving").value = state.toyEngraving;
   $("#toy-shape-count").value = state.toyShapeCount;
   $("#toy-guide").value = state.toyGuide ? "yes" : "no";
   $("#lid-type").value = state.lidType;
@@ -351,6 +355,10 @@ function renderEditor() {
   $("#toy-picture-controls").hidden = educationalKind(state) !== "picture";
   $("#toy-shapes-control").hidden = educationalKind(state) !== "shapes";
   $("#toy-lift-value").textContent = state.toyLift + " mm";
+  if (isToy && educationalKind(state) === "picture" && valid)
+    $("#toy-art-preview").src = svgImage(pictureArtSVG(state));
+  $("#toy-border-control").hidden = state.toyEngraving === "line";
+  $("#toy-border-hint").hidden = state.toyEngraving === "line";
   $("#toy-hint").textContent = isToy
     ? `${toyMetrics(state).count} peças removíveis. Cole a moldura sobre a base; não cole as peças do jogo. A elevação só altera a prévia, não os arquivos.`
     : "";
@@ -1000,6 +1008,7 @@ for (const key of [
   "toyCols",
   "toyRows",
   "toyGap",
+  "toyBorderWidth",
   "toyLift",
 ])
   $("#" + key).addEventListener("input", (e) => {
@@ -1049,6 +1058,8 @@ for (const [id, key, boolean] of [
   };
 for (const [id, key] of [
   ["toy-theme", "toyTheme"],
+  ["toy-piece-style", "toyPieceStyle"],
+  ["toy-engraving", "toyEngraving"],
   ["toy-shape-count", "toyShapeCount"],
   ["toy-guide", "toyGuide"],
 ])
@@ -1338,7 +1349,7 @@ route();
 
 function extraProductQuote(s) {
   if (isEducational(s))
-    return `Brinquedo pedagógico: ${toyMetrics(s).count} peças removíveis\n${educationalKind(s) === "picture" ? `Figura: ${TOY_THEMES[s.toyTheme]} · ${s.toyCols} colunas × ${s.toyRows} linhas\n` : ""}Folga por borda: ${s.toyGap} mm\nGuia gravado: ${s.toyGuide ? "sim" : "não"}\nMontagem: base e moldura coladas; peças soltas.\n`;
+    return `Brinquedo pedagógico: ${toyMetrics(s).count} peças removíveis\n${educationalKind(s) === "picture" ? `Figura: ${TOY_THEMES[s.toyTheme]} · ${s.toyCols} colunas × ${s.toyRows} linhas\nEncaixe: ${s.toyPieceStyle === "jigsaw" ? "tradicional" : "reto"}\nGravação: ${s.toyEngraving === "line" ? "linha simples" : `borda dupla ${s.toyBorderWidth} mm${s.toyEngraving === "fill" ? " preenchida" : ""}`}\n` : ""}Folga por borda: ${s.toyGap} mm\nGuia gravado: ${s.toyGuide ? "sim" : "não"}\nMontagem: base e moldura coladas; peças soltas.\n`;
   if (familyFor(s) === "toothbrush")
     return `Cobertura alta: ${s.brushCover ? s.brushCoverHeight + " mm acima da borda" : "não"}\nTextura: ${BRUSH_TEXTURES[s.brushTexture]}\nDrenagem: ${s.brushDrain ? "5 furos de " + fmt(brushDrainage(s).radius * 2) + " mm e pés de 2 mm" : "não"}\n`;
   if (familyFor(s) === "lettering")

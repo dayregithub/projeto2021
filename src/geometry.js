@@ -1,3 +1,4 @@
+import { engravingAreasSVG } from "./engraving-areas.js";
 import {
   isEducational,
   validateEducational,
@@ -628,6 +629,17 @@ const esc = (s) =>
 export function exportSVG(s) {
   const l = layoutPanels(s);
   if (!l.items.length) throw Error("Sem peças para exportar.");
+  const areaLayers = [false, true]
+    .map((filled) => {
+      const content = l.items
+        .filter((p) => Boolean(p.engravingFilled) === filled)
+        .map((p) => engravingAreasSVG(p, p.x, p.y))
+        .join("");
+      return content
+        ? `<g id="${filled ? "ENGRAVE_FILL" : "ENGRAVE_OUTLINE"}">${content}</g>`
+        : "";
+    })
+    .join("");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${l.width}mm" height="${l.height}mm" viewBox="0 0 ${l.width} ${l.height}"><title>${esc(s.name)} — Papeled Maker</title><desc>${esc(constructionNotes(s))} Milímetros. Contornos de corte, sem compensação de kerf.</desc><g id="CUT" fill="none" stroke="#ff0000" stroke-width="0.1">${l.items
     .map(
       (p) =>
@@ -640,7 +652,7 @@ export function exportSVG(s) {
     )
     .join(
       "",
-    )}</g><g id="ENGRAVE" fill="none" stroke="#0000ff" stroke-width="0.15">${l.items.flatMap((p) => (p.engravingPaths || []).map((line) => `<path d="${line.map((v, i) => `${i ? "L" : "M"}${+(p.x + v[0]).toFixed(4)} ${+(p.y + v[1]).toFixed(4)}`).join(" ")}"/>`)).join("")}</g></svg>`;
+    )}</g><g id="ENGRAVE" fill="none" stroke="#0000ff" stroke-width="0.15">${l.items.flatMap((p) => (p.engravingPaths || []).map((line) => `<path d="${line.map((v, i) => `${i ? "L" : "M"}${+(p.x + v[0]).toFixed(4)} ${+(p.y + v[1]).toFixed(4)}`).join(" ")}"/>`)).join("")}</g>${areaLayers}</svg>`;
 }
 export function exportDXF(s) {
   const l = layoutPanels(s);
@@ -701,6 +713,27 @@ export function exportDXF(s) {
         String(pts.length),
         "70",
         "0",
+      );
+      for (const [x, y] of pts)
+        out.push("10", String(p.x + x), "20", String(l.height - p.y - y));
+    }
+  for (const p of l.items)
+    for (const pts of (p.engravingAreas || []).flat()) {
+      out.push(
+        "0",
+        "LWPOLYLINE",
+        "100",
+        "AcDbEntity",
+        "8",
+        p.engravingFilled ? "ENGRAVE_FILL" : "ENGRAVE_OUTLINE",
+        "62",
+        "5",
+        "100",
+        "AcDbPolyline",
+        "90",
+        String(pts.length),
+        "70",
+        "1",
       );
       for (const [x, y] of pts)
         out.push("10", String(p.x + x), "20", String(l.height - p.y - y));
@@ -837,6 +870,8 @@ export function readProject(input) {
       "Use um arquivo de projeto .papeled.json exportado por este estúdio.",
     );
   const s = defaults(raw.model);
+  if (s.model === "picturepuzzle" && raw.toyPieceStyle === undefined)
+    s.toyPieceStyle = "straight";
   for (const k of Object.keys(s)) if (k in raw) s[k] = raw[k];
   if (familyFor(s) === "toothbrush" && raw.brushDrain === undefined)
     s.brushDrain = false;
