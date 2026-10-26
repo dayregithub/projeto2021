@@ -342,6 +342,56 @@ MODELS.push(
     preset: { finish: "black" },
   },
 );
+MODELS.push(
+  {
+    id: "picturepuzzle",
+    family: "education",
+    toyKind: "picture",
+    name: "Quebra-cabeça de figuras",
+    tag: "APRENDER BRINCANDO",
+    category: "laser",
+    usage: "education",
+    description:
+      "Peixe, tartaruga ou borboleta gravados em peças retas. Ajuste de 4 a 16 peças, base e folga.",
+    w: 240,
+    d: 180,
+    h: 6,
+    cols: 1,
+    rows: 1,
+  },
+  {
+    id: "shapepuzzle",
+    family: "education",
+    toyKind: "shapes",
+    name: "Encaixe de formas geométricas",
+    tag: "FORMAS E DESCOBERTAS",
+    category: "laser",
+    usage: "education",
+    description:
+      "De três a seis formas removíveis, com base de apoio, moldura e folga ajustável.",
+    w: 300,
+    d: 220,
+    h: 6,
+    cols: 1,
+    rows: 1,
+  },
+  {
+    id: "tangram",
+    family: "education",
+    toyKind: "tangram",
+    name: "Tangram com base",
+    tag: "SETE PEÇAS, MUITAS IDEIAS",
+    category: "laser",
+    usage: "education",
+    description:
+      "Tangram clássico de sete peças, com moldura e guia gravado opcional para montar e criar figuras.",
+    w: 220,
+    d: 220,
+    h: 6,
+    cols: 1,
+    rows: 1,
+  },
+);
 const baseUsages = {
   open: "home",
   grid: "workshop",
@@ -358,6 +408,7 @@ MODELS.forEach((m) => {
   m.usage ??= baseUsages[m.id];
 });
 export const USAGES = {
+  education: "Brinquedos pedagógicos",
   home: "Casa e organização",
   desk: "Mesa e escritório",
   workshop: "Oficina maker",
@@ -371,6 +422,13 @@ export function defaults(id = "grid") {
   const m = modelById(id);
   return {
     version: 1,
+    toyTheme: "turtle",
+    toyCols: 3,
+    toyRows: 2,
+    toyShapeCount: 4,
+    toyGap: 0.3,
+    toyLift: 0,
+    toyGuide: true,
     model: id,
     name: m.name,
     width: m.w,
@@ -446,6 +504,15 @@ export const CATALOG_GROUPS = [
       "Da torre de mesa ao gaveteiro de oficina. Ajuste níveis, colunas e encaixes.",
   },
   {
+    id: "laser-education",
+    name: "Brinquedos pedagógicos a laser",
+    category: "laser",
+    defaultModel: "picturepuzzle",
+    tag: "FIGURAS, FORMAS E TANGRAM",
+    description:
+      "Três modelos para explorar: quebra-cabeça de animais, encaixe de formas e tangram. Personalize medidas, peças e gravação.",
+  },
+  {
     id: "printed-boxes",
     name: "Caixas e organizadores 3D",
     category: "print",
@@ -480,15 +547,17 @@ export const catalogGroupFor = (id) => {
     : CATALOG_GROUPS.find(
         (g) =>
           g.id ===
-          (m.family === "toothbrush"
-            ? "toothbrushes"
-            : m.family === "lettering"
-              ? "lettering"
-              : m.category === "print"
-                ? "printed-boxes"
-                : m.family === "drawers"
-                  ? "laser-drawers"
-                  : "laser-boxes"),
+          (m.family === "education"
+            ? "laser-education"
+            : m.family === "toothbrush"
+              ? "toothbrushes"
+              : m.family === "lettering"
+                ? "lettering"
+                : m.category === "print"
+                  ? "printed-boxes"
+                  : m.family === "drawers"
+                    ? "laser-drawers"
+                    : "laser-boxes"),
       );
 };
 export const variationsFor = (group) =>

@@ -205,6 +205,8 @@ function panelFaces(s, { exploded = false, opened = 0.35 } = {}) {
         (n, i) => n + pose.u[i] * u + pose.v[i] * v + pose.normal[i] * level,
       );
       if (p.role === "base") a[2] -= sep;
+      if (p.group === "toy-piece") a[2] += (s.toyLift || 0) + sep * 2;
+      if (p.group === "toy-frame") a[2] += sep;
       if (p.role === "front") a[1] += sep;
       if (p.role === "back") a[1] -= sep;
       if (p.role === "side") a[0] += pose.origin[0] < s.width / 2 ? -sep : sep;

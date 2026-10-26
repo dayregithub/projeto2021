@@ -1,3 +1,4 @@
+import { isEducational, educationalNotes } from "./educational.js";
 import {
   joinContact,
   fitWidth,
@@ -29,8 +30,10 @@ export const LIDS = {
   hinged: "Dobradiça integrada",
 };
 export const supportsJoinery = (s) =>
+  !isEducational(s) &&
   !["print", "printgrid", "toothbrush", "lettering"].includes(familyFor(s));
 export const supportsConstruction = (s) =>
+  !isEducational(s) &&
   !["drawers", "print", "printgrid", "toothbrush", "lettering"].includes(
     familyFor(s),
   );
@@ -899,6 +902,7 @@ function applyLidJoinery(s, parts) {
   }
 }
 export function constructionNotes(s) {
+  if (isEducational(s)) return educationalNotes(s);
   if (!supportsConstruction(s))
     return `Rasgos de encaixe: ${fitWidth(s)} mm para chapa de ${s.thickness} mm. Estrutura ${JOINTS[jointType(s)]}; prateleiras/separadores ${JOINTS[resolvedJoint(s, "dividerJoint")]}; gavetas ${JOINTS[resolvedJoint(s, "drawerJoint")]}. União T usa conjuntos M3. Confira as peças e a quantidade de fixações no projeto.`;
   const joints = {

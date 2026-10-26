@@ -13,7 +13,7 @@ const open = async (page, model) => {
 };
 test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(5);
+  await expect(page.locator(".model-card")).toHaveCount(6);
   await page.locator('[data-filter="print"]').click();
   await expect(page.locator(".model-card")).toHaveCount(3);
   await page.locator('[data-filter="all"]').click();
@@ -22,7 +22,7 @@ test("catalogue search, process filters and empty state", async ({ page }) => {
   await page.locator("#search").fill("semresultado");
   await expect(page.locator(".empty-state")).toBeVisible();
   await page.locator("#clear-search").click();
-  await expect(page.locator(".model-card")).toHaveCount(5);
+  await expect(page.locator(".model-card")).toHaveCount(6);
 });
 test("grid edits update geometry, panel count, validity and downloadable files", async ({
   page,
@@ -369,7 +369,7 @@ test("usage and process filters combine and reset after an empty search", async 
   await page.locator("#search").fill("semresultados");
   await page.locator("#clear-search").click();
   await expect(page.locator("#use-filter")).toHaveValue("all");
-  await expect(page.locator(".model-card")).toHaveCount(5);
+  await expect(page.locator(".model-card")).toHaveCount(6);
 });
 test("new models expose the right family controls and preserve preset identity", async ({
   page,
@@ -579,9 +579,9 @@ test("grouped catalog removes duplicate cards while variations and saved preset 
   page,
 }) => {
   await page.goto("/");
-  await expect(page.locator(".model-card")).toHaveCount(5);
+  await expect(page.locator(".model-card")).toHaveCount(6);
   await expect(page.locator("#model-count")).toHaveText(
-    "5 grupos · 23 variações",
+    "6 grupos · 26 variações",
   );
   await page.locator("#search").fill("chá");
   await expect(page.locator(".model-card")).toHaveCount(1);

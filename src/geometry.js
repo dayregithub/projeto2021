@@ -1,3 +1,8 @@
+import {
+  isEducational,
+  validateEducational,
+  buildEducationalPanels,
+} from "./educational.js";
 import { finishKeys, resolvedFinish } from "./finishes.js";
 import { validSignText, LETTER_FONTS } from "./lettering.js";
 import { PRINT_LIDS, printLayout, brushOpenings } from "./print3d.js";
@@ -66,6 +71,7 @@ export function validate(s) {
   if (!modelById(s.model)) return ["Modelo desconhecido."];
   if (!finishKeys(s).includes(s.finish))
     errors.push("Escolha uma cor disponível para este processo.");
+  if (isEducational(s)) return [...errors, ...validateEducational(s)];
   for (const [k, label, min, max] of [
     ["width", "Largura", 40, 1000],
     ["depth", "Profundidade", 40, 1000],
@@ -464,6 +470,7 @@ export function drawerDimensions(s) {
 // All dimensions are external. Laser panels are butt joints, assembled with glue.
 export function panels(s) {
   if (modelById(s.model)?.category === "print" || validate(s).length) return [];
+  if (isEducational(s)) return buildEducationalPanels(s);
   const { width: w, depth: d, height: h, thickness: t, rows, cols } = s;
   const list = [];
   const add = (name, width, height, extra = {}) =>

@@ -14,7 +14,7 @@ import {
   readProject,
   drawerDimensions,
 } from "../src/geometry.js";
-import { sceneBoxes } from "../src/preview.js";
+import { sceneBoxes, previewSVG } from "../src/preview.js";
 const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
 test("all model defaults are valid and generate their supported fabrication output", () => {
   for (const m of MODELS) {
@@ -802,7 +802,8 @@ import {
   findCatalogGroups,
 } from "../src/models.js";
 test("catalog groups share construction and preserve every distinct preset ID", () => {
-  assert.equal(CATALOG_GROUPS.length, 5);
+  assert.equal(CATALOG_GROUPS.length, 6);
+  assert.equal(variationsFor("laser-education").length, 3);
   assert.equal(variationsFor("laser-boxes").length, 16);
   assert.equal(variationsFor("laser-drawers").length, 2);
   assert.equal(variationsFor("printed-boxes").length, 3);
@@ -1029,7 +1030,9 @@ test("laser fit width adjusts only finger and T receivers, preserving cross slot
   assert.equal(fitWidth(readProject(old)), 3);
   assert.ok(validate({ ...grid, slotWidth: 0 }).length);
   assert.ok(validate({ ...grid, slotWidth: 5 }).length);
-  for (const m of MODELS.filter((m) => m.category === "laser")) {
+  for (const m of MODELS.filter(
+    (m) => m.category === "laser" && m.family !== "education",
+  )) {
     const s = { ...defaults(m.id), slotWidth: 2.9 };
     assert.deepEqual(validate(s), [], m.id);
     assert.ok(panels(s).length >= 5, m.id);
@@ -1351,4 +1354,200 @@ test("SVG reference external arms and short rear band clear the box through 100 
           }
       }
     }
+});
+
+import {
+  isEducational,
+  toyMetrics,
+  TANGRAM,
+  insetConvex,
+  clipToyEngraving,
+} from "../src/educational.js";
+test("educational laser assemblies have separate solid bases, perforated frames and nonoverlapping loose pieces", () => {
+  const ringArea = (r) =>
+    Math.abs(
+      r.reduce((sum, p, i) => {
+        const q = r[(i + 1) % r.length];
+        return sum + p[0] * q[1] - p[1] * q[0];
+      }, 0) / 2,
+    );
+  const shapeArea = (shape) =>
+    shape.reduce(
+      (sum, poly) =>
+        sum +
+        ringArea(poly[0]) -
+        poly.slice(1).reduce((a, r) => a + ringArea(r), 0),
+      0,
+    );
+  for (const id of ["picturepuzzle", "shapepuzzle", "tangram"]) {
+    const s = defaults(id),
+      ps = panels(s),
+      m = toyMetrics(s);
+    assert.equal(isEducational(s), true);
+    assert.deepEqual(validate(s), []);
+    assert.equal(ps.length, m.count + 2);
+    assert.equal(ps[0].shape.length, 1);
+    assert.equal(ps[0].shape[0].length, 1);
+    near(shapeArea(ps[0].shape), s.width * s.depth);
+    assert.ok(shapeArea(ps[1].shape) < shapeArea(ps[0].shape));
+    assert.equal(ps[1].shape.length, 1, "frame remains one connected piece");
+    for (const p of ps.slice(2)) {
+      assert.equal(p.group, "toy-piece");
+      assert.equal(p.shape.length, 1);
+      assert.ok(shapeArea(p.shape) > 100);
+      near(p.pose.origin[2], s.thickness);
+      const global = p.shape.map((poly) =>
+        poly.map((r) =>
+          r.map(([x, y]) => [x + p.pose.origin[0], y + p.pose.origin[1]]),
+        ),
+      );
+      assert.equal(
+        clipping.intersection(ps[1].shape, global).length,
+        0,
+        "piece clears the frame",
+      );
+      for (const q of ps.slice(2).filter((q) => q !== p)) {
+        const other = q.shape.map((poly) =>
+          poly.map((r) =>
+            r.map(([x, y]) => [x + q.pose.origin[0], y + q.pose.origin[1]]),
+          ),
+        );
+        assert.equal(
+          clipping.intersection(global, other).length,
+          0,
+          "pieces do not overlap",
+        );
+      }
+    }
+    assert.equal(readProject(JSON.stringify(s)).model, id);
+    assert.match(exportSVG(s), /CUT/);
+    assert.match(exportDXF(s), /ENGRAVE/);
+    const lifted = { ...s, toyLift: 40 };
+    assert.equal(
+      exportSVG(lifted),
+      exportSVG(s),
+      "preview lift never changes cut geometry",
+    );
+    assert.notEqual(previewSVG(lifted), previewSVG(s));
+  }
+  near(
+    TANGRAM.reduce((a, p) => a + ringArea(p.points), 0),
+    16,
+  );
+  assert.equal(clipping.union(...TANGRAM.map((p) => [[p.points]])).length, 1);
+  near(shapeArea(clipping.union(...TANGRAM.map((p) => [[p.points]]))), 16);
+});
+test("educational parameters preserve fabrication gaps, reject undersized parts and clip figures to actual tiles", () => {
+  const r = insetConvex(
+    [
+      [0, 0],
+      [100, 0],
+      [100, 100],
+      [0, 100],
+    ],
+    0.3,
+  );
+  r.forEach(([x, y]) => {
+    assert.ok(x >= 0.3 - 1e-8 && x <= 99.7 + 1e-8);
+    assert.ok(y >= 0.3 - 1e-8 && y <= 99.7 + 1e-8);
+  });
+  assert.deepEqual(
+    clipToyEngraving(
+      [
+        [
+          [-5, 5],
+          [15, 5],
+        ],
+      ],
+      [
+        [
+          [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 10],
+          ],
+        ],
+      ],
+    ),
+    [
+      [
+        [0, 5],
+        [10, 5],
+      ],
+    ],
+  );
+  for (const toyTheme of ["fish", "turtle", "butterfly"])
+    for (const toyCols of [2, 3, 4])
+      for (const toyRows of [2, 3, 4]) {
+        const s = { ...defaults("picturepuzzle"), toyTheme, toyCols, toyRows };
+        assert.deepEqual(validate(s), []);
+        assert.equal(panels(s).length, toyCols * toyRows + 2);
+        assert.ok(
+          panels(s)
+            .slice(2)
+            .flatMap((p) => p.engravingPaths).length > 20,
+        );
+        const withoutGuide = panels({ ...s, toyGuide: false });
+        assert.equal(withoutGuide[0].engravingPaths, undefined);
+        assert.equal(
+          exportSVG({ ...s, toyGuide: false }).includes('stroke="#0000ff"'),
+          true,
+        );
+        assert.equal(readProject(s).toyTheme, toyTheme);
+      }
+  for (const toyShapeCount of [3, 4, 5, 6]) {
+    const s = { ...defaults("shapepuzzle"), toyShapeCount };
+    assert.deepEqual(validate(s), []);
+    assert.equal(panels(s).length, toyShapeCount + 2);
+  }
+  for (const change of [
+    { width: 100, depth: 100 },
+    { toyCols: 5 },
+    { toyGap: -0.2 },
+    { toyTheme: "unknown" },
+    { height: 10 },
+    { toyLift: 999 },
+    { toyGuide: "yes" },
+  ])
+    assert.ok(
+      validate({ ...defaults("picturepuzzle"), ...change }).length,
+      JSON.stringify(change),
+    );
+  for (const thickness of [2, 3, 4, 6]) {
+    const s = { ...defaults("tangram"), thickness, height: 2 * thickness };
+    assert.deepEqual(validate(s), []);
+    assert.equal(panels(s).length, 9);
+  }
+});
+
+test("educational ZIPs keep real cut and engraving files, editable settings and closed-reference STLs", () => {
+  for (const model of ["picturepuzzle", "shapepuzzle", "tangram"]) {
+    const s = defaults(model),
+      files = unzipSync(projectPackage(s).data),
+      names = Object.keys(files);
+    for (const ext of [".svg", ".dxf", ".pdf", ".stl", ".papeled.json"])
+      assert.ok(
+        names.some((name) => name.endsWith(ext)),
+        model + ext,
+      );
+    const restored = readProject(
+      strFromU8(files[names.find((name) => name.endsWith(".papeled.json"))]),
+    );
+    assert.equal(restored.toyGap, 0.3);
+    assert.equal(restored.model, model);
+    const stl = strFromU8(files[names.find((name) => name.endsWith(".stl"))]);
+    assert.match(stl, /facet normal/);
+    assert.equal(
+      stl,
+      projectSTL({ ...s, toyLift: 30 }),
+      "reference STL always exports the seated assembly",
+    );
+    assert.match(strFromU8(files["LEIA-ME.txt"]), /cole somente a moldura/);
+    assert.match(strFromU8(files["LEIA-ME.txt"]), /sem certificação/);
+    assert.equal(
+      strFromU8(files[names.find((name) => name.endsWith(".pdf"))]).slice(0, 4),
+      "%PDF",
+    );
+  }
 });

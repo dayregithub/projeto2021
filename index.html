@@ -263,7 +263,7 @@
                     inputmode="decimal"
                 /></label>
               </div>
-              <p class="field-hint">
+              <p class="field-hint" id="dimension-hint">
                 Medidas externas do corpo. A tampa e os suportes podem ampliar
                 as dimensões finais.
               </p>
@@ -485,6 +485,78 @@
                   peça retangular recortada, sem rosca.
                 </p>
               </details>
+            </div>
+            <div class="control-section" id="toy-options" hidden>
+              <h3>Brincar e descobrir</h3>
+              <div id="toy-picture-controls">
+                <label class="field-label" for="toy-theme"
+                  >Figura para gravação</label
+                >
+                <select class="text-input" id="toy-theme">
+                  <option value="fish">Peixe</option>
+                  <option value="turtle">Tartaruga</option>
+                  <option value="butterfly">Borboleta</option>
+                </select>
+                <div class="split-fields">
+                  <label
+                    >Colunas de peças<input
+                      class="text-input"
+                      id="toyCols"
+                      type="number"
+                      min="2"
+                      max="4"
+                      step="1" /></label
+                  ><label
+                    >Linhas de peças<input
+                      class="text-input"
+                      id="toyRows"
+                      type="number"
+                      min="2"
+                      max="4"
+                      step="1"
+                  /></label>
+                </div>
+                <p class="field-hint">
+                  Figura gravada em peças retas removíveis. As divisões definem
+                  de 4 a 16 peças; aumente a base para usar mais peças.
+                </p>
+              </div>
+              <label id="toy-shapes-control" class="field-label"
+                >Quantidade de formas<select
+                  class="text-input"
+                  id="toy-shape-count"
+                >
+                  <option value="3">3 · círculo, quadrado e triângulo</option>
+                  <option value="4">4 · acrescentar hexágono</option>
+                  <option value="5">5 · acrescentar pentágono</option>
+                  <option value="6">6 · acrescentar elipse</option>
+                </select></label
+              >
+              <label class="field-label"
+                >Folga por borda (mm)<input
+                  class="text-input"
+                  id="toyGap"
+                  type="number"
+                  min="0.1"
+                  max="1.5"
+                  step="0.05"
+              /></label>
+              <label class="field-label"
+                >Guia gravado na base<select class="text-input" id="toy-guide">
+                  <option value="yes">Sim · ajuda a encontrar a posição</option>
+                  <option value="no">Não · base sem guia</option>
+                </select></label
+              >
+              <label class="range-label"
+                >Elevar peças na prévia <output id="toy-lift-value"></output
+                ><input id="toyLift" type="range" min="0" max="50" step="1"
+              /></label>
+              <p class="field-hint" id="toy-hint"></p>
+              <p class="field-hint">
+                Modelo para prototipagem. Contém peças soltas; não indicado para
+                menores de 3 anos. Valide dimensões, resistência e acabamento
+                antes do uso infantil.
+              </p>
             </div>
             <div class="control-section" id="brush-options" hidden>
               <h3><span>02</span> Porta-escovas</h3>
