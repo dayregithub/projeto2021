@@ -352,7 +352,7 @@ MODELS.push(
     category: "laser",
     usage: "education",
     description:
-      "Animais em estilo infantil, borda dupla ajustável e peças com encaixe tradicional ou corte reto.",
+      "Dez figuras infantis ou sem gravação para adesivar. Ajuste tamanho, posição, borda e encaixe das peças.",
     w: 240,
     d: 180,
     h: 6,
@@ -426,6 +426,9 @@ export function defaults(id = "grid") {
     toyPieceStyle: "jigsaw",
     toyEngraving: "double",
     toyBorderWidth: 1.2,
+    toyImageScale: 100,
+    toyImageX: 0,
+    toyImageY: 0,
     toyCols: 3,
     toyRows: 2,
     toyShapeCount: 4,

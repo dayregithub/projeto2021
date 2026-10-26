@@ -39,3 +39,33 @@ export function strokeAreas(paths, width) {
   offset.Execute(tree, (width * SCALE) / 2);
   return fromTree(tree);
 }
+
+// Integer boolean operations avoid near-coincident floating point edges when
+// translated artwork is clipped against a socket or a narrow border strip.
+export function booleanPolygons(subject, clip, operation = "intersection") {
+  if (!subject.length) return [];
+  const op = {
+    intersection: Clipper.ClipType.ctIntersection,
+    difference: Clipper.ClipType.ctDifference,
+  }[operation];
+  if (op === undefined) throw Error("Operação vetorial inválida.");
+  const cutter = new Clipper.Clipper();
+  cutter.AddPaths(
+    subject.flat().map((r) => r.map(toPoint)),
+    Clipper.PolyType.ptSubject,
+    true,
+  );
+  cutter.AddPaths(
+    clip.flat().map((r) => r.map(toPoint)),
+    Clipper.PolyType.ptClip,
+    true,
+  );
+  const tree = new Clipper.PolyTree();
+  cutter.Execute(
+    op,
+    tree,
+    Clipper.PolyFillType.pftNonZero,
+    Clipper.PolyFillType.pftNonZero,
+  );
+  return fromTree(tree);
+}

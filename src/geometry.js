@@ -629,6 +629,17 @@ const esc = (s) =>
 export function exportSVG(s) {
   const l = layoutPanels(s);
   if (!l.items.length) throw Error("Sem peças para exportar.");
+  const linePaths = l.items
+    .flatMap((p) =>
+      (p.engravingPaths || []).map(
+        (line) =>
+          `<path d="${line.map((v, i) => `${i ? "L" : "M"}${+(p.x + v[0]).toFixed(4)} ${+(p.y + v[1]).toFixed(4)}`).join(" ")}"/>`,
+      ),
+    )
+    .join("");
+  const lineLayer = linePaths
+    ? `<g id="ENGRAVE" fill="none" stroke="#0000ff" stroke-width="0.15">${linePaths}</g>`
+    : "";
   const areaLayers = [false, true]
     .map((filled) => {
       const content = l.items
@@ -650,9 +661,7 @@ export function exportSVG(s) {
           )
           .join("")}</g>`,
     )
-    .join(
-      "",
-    )}</g><g id="ENGRAVE" fill="none" stroke="#0000ff" stroke-width="0.15">${l.items.flatMap((p) => (p.engravingPaths || []).map((line) => `<path d="${line.map((v, i) => `${i ? "L" : "M"}${+(p.x + v[0]).toFixed(4)} ${+(p.y + v[1]).toFixed(4)}`).join(" ")}"/>`)).join("")}</g>${areaLayers}</svg>`;
+    .join("")}</g>${lineLayer}${areaLayers}</svg>`;
 }
 export function exportDXF(s) {
   const l = layoutPanels(s);

@@ -1,4 +1,10 @@
-import { isEducational, educationalNotes } from "./educational.js";
+import { stickerSVG, stickerDXF } from "./sticker-layout.js";
+export { stickerSVG, stickerDXF } from "./sticker-layout.js";
+import {
+  isEducational,
+  educationalNotes,
+  isBlankPuzzle,
+} from "./educational.js";
 import { BRUSH_TEXTURES, brushDrainage } from "./brush-features.js";
 import { familyFor } from "./models.js";
 import { LETTER_FONTS, signMetrics } from "./lettering.js";
@@ -332,6 +338,10 @@ export function projectPackage(s, message = "") {
   files["LEIA-ME.txt"] = strToU8(
     `Papeled Maker — ${s.name}\n\n${printed(s) ? "STL: modelo para impressao 3D; quando ha tampa, corpo/tampa/pino tambem tem STLs individuais. O STL principal distribui as pecas lado a lado, com base em Z=0. SVG/DXF: vistas dimensionais de referencia, nao cortar a laser. PDF: ficha do projeto." : "SVG/DXF: pecas de corte em mm; CUT vermelho e ENGRAVE azul. PDF: uma peca por pagina em escala 1:1, imprimir em tamanho real, sem ajustar. STL: referencia da montagem fechada; nao e uma peca unica para impressao."}\nJSON: projeto editavel. ${isEducational(s) ? educationalNotes(s) + "\n" : ""}Sem compensacao de kerf. Teste encaixes e folgas antes de produzir.\n\nWhatsApp: +55 61 99243-0051\npapeledmaker@gmail.com\n`,
   );
+  if (isBlankPuzzle(s)) {
+    files[base + "-imagem-montada-corte.svg"] = strToU8(stickerSVG(s));
+    files[base + "-imagem-montada-corte.dxf"] = strToU8(stickerDXF(s));
+  }
   if (message) files["pedido-de-orcamento.txt"] = strToU8(message);
   return {
     name: base + ".zip",

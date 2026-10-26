@@ -1554,7 +1554,7 @@ test("educational ZIPs keep real cut and engraving files, editable settings and 
 });
 
 import { pictureTileShapes, pictureArtwork } from "../src/educational.js";
-import { strokeAreas } from "../src/vector-offset.js";
+import { strokeAreas, booleanPolygons } from "../src/vector-offset.js";
 const materialArea = (shape) =>
   shape.reduce(
     (sum, poly) =>
@@ -1682,8 +1682,8 @@ test("double engraving borders have true millimetre thickness and closed fillabl
       for (const p of ps.slice(2))
         for (const poly of p.engravingAreas || []) {
           assert.ok(
-            materialArea(clipping.difference([poly], p.shape)) < 1e-7,
-            "fillable border is clipped to the actual piece, including sockets (floating point area tolerance)",
+            materialArea(booleanPolygons([poly], p.shape, "difference")) < 1e-4,
+            "fillable border is clipped to the actual piece, including sockets (0.00001 mm integer-grid boundary rounding tolerance)",
           );
           assert.ok(poly.every((r) => r.length >= 3));
         }
@@ -1700,4 +1700,131 @@ test("double engraving borders have true millimetre thickness and closed fillabl
     { toyEngraving: "unknown" },
   ])
     assert.ok(validate({ ...s, ...change }).length);
+});
+
+import { TOY_THEMES, isBlankPuzzle } from "../src/educational.js";
+import {
+  stickerLayout,
+  stickerSVG,
+  stickerDXF,
+} from "../src/sticker-layout.js";
+test("blank puzzles have no engraving even when old engraving and guide settings are retained; mounted sticker files preserve every piece position", () => {
+  for (const toyPieceStyle of ["straight", "jigsaw"])
+    for (const toyEngraving of ["line", "double", "fill"]) {
+      const blank = {
+        ...defaults("picturepuzzle"),
+        toyTheme: "none",
+        toyPieceStyle,
+        toyEngraving,
+        toyGuide: true,
+        width: 300,
+        depth: 220,
+        toyCols: 4,
+        toyRows: 3,
+      };
+      assert.ok(isBlankPuzzle(blank));
+      assert.deepEqual(validate(blank), []);
+      const p = panels(blank);
+      assert.ok(
+        p.every((p) => !p.engravingPaths?.length && !p.engravingAreas?.length),
+      );
+      assert.doesNotMatch(exportSVG(blank), /ENGRAVE|#0000ff/);
+      assert.doesNotMatch(exportDXF(blank), /ENGRAVE/);
+      const layout = stickerLayout(blank);
+      assert.equal(layout.width, 276);
+      assert.equal(layout.height, 196);
+      assert.equal(layout.pieces.length, 12);
+      layout.pieces.forEach((piece, i) =>
+        piece.contours.forEach((ring, j) =>
+          ring.forEach(([x, y], k) => {
+            const original = p[i + 2].shape.flat()[j][k];
+            near(x, original[0] + p[i + 2].pose.origin[0] - 12);
+            near(y, original[1] + p[i + 2].pose.origin[1] - 12);
+            assert.ok(x >= 0 && x <= 276 && y >= 0 && y <= 196);
+          }),
+        ),
+      );
+      assert.match(stickerSVG(blank), /width="276mm" height="196mm"/);
+      assert.doesNotMatch(stickerSVG(blank), /ENGRAVE/);
+      assert.doesNotMatch(stickerDXF(blank), /ENGRAVE/);
+      const files = unzipSync(projectPackage(blank).data);
+      assert.ok(
+        Object.keys(files).some((f) => f.endsWith("-imagem-montada-corte.svg")),
+      );
+      assert.ok(
+        Object.keys(files).some((f) => f.endsWith("-imagem-montada-corte.dxf")),
+      );
+      assert.equal(readProject(blank).toyTheme, "none");
+      assert.ok(
+        panels({ ...blank, toyTheme: "turtle" }).some(
+          (p) => p.engravingPaths?.length || p.engravingAreas?.length,
+        ),
+        "choosing an animal restores engraving",
+      );
+    }
+  assert.throws(() => stickerLayout(defaults("picturepuzzle")), /Sem figura/);
+});
+test("ten vector figures share scalable, movable art with millimetre border widths, clipped engraving and independent puzzle cuts", () => {
+  assert.equal(Object.keys(TOY_THEMES).filter((k) => k !== "none").length, 10);
+  const sample = defaults("picturepuzzle"),
+    reference = pictureArtwork(sample),
+    m = toyMetrics(sample);
+  const small = { ...sample, toyImageScale: 50, toyImageX: 20, toyImageY: -10 };
+  const moved = pictureArtwork(small);
+  near(
+    moved.paths[0][0][0],
+    sample.width / 2 +
+      (reference.paths[0][0][0] - sample.width / 2) * 0.5 +
+      m.innerWidth * 0.2,
+  );
+  near(
+    moved.paths[0][0][1],
+    sample.depth / 2 +
+      (reference.paths[0][0][1] - sample.depth / 2) * 0.5 -
+      m.innerDepth * 0.1,
+  );
+  const originalCut = panels(sample).map((p) => p.shape);
+  assert.deepEqual(
+    panels(small).map((p) => p.shape),
+    originalCut,
+  );
+  for (const toyTheme of Object.keys(TOY_THEMES).filter((k) => k !== "none")) {
+    const s = {
+      ...sample,
+      toyTheme,
+      toyEngraving: "fill",
+      toyImageScale: 180,
+      toyImageX: 30,
+      toyImageY: -25,
+    };
+    assert.deepEqual(validate(s), []);
+    const art = pictureArtwork(s);
+    assert.ok(art.paths.length >= 15);
+    assert.ok(art.areas.length);
+    const ps = panels(s);
+    assert.deepEqual(
+      ps.map((p) => p.shape),
+      originalCut,
+    );
+    for (const path of ps[0].engravingPaths || [])
+      for (const [x, y] of path) {
+        assert.ok(x >= m.margin - 1e-7 && x <= s.width - m.margin + 1e-7);
+        assert.ok(y >= m.margin - 1e-7 && y <= s.depth - m.margin + 1e-7);
+      }
+    for (const p of ps.slice(2))
+      for (const poly of p.engravingAreas || [])
+        assert.ok(
+          materialArea(booleanPolygons([poly], p.shape, "difference")) < 1e-4,
+        );
+    assert.equal(readProject(s).toyImageScale, 180);
+    assert.equal(readProject(s).toyImageX, 30);
+    assert.equal(readProject(s).toyBorderWidth, 1.2);
+  }
+  for (const change of [
+    { toyImageScale: 0 },
+    { toyImageScale: 201 },
+    { toyImageX: 51 },
+    { toyImageY: -51 },
+  ])
+    assert.ok(validate({ ...sample, ...change }).length);
 });

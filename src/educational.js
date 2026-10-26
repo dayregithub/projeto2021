@@ -1,17 +1,27 @@
 import { engravingAreasSVG } from "./engraving-areas.js";
 import { cartoonPaths } from "./toy-art.js";
-import { insetPolygon, strokeAreas } from "./vector-offset.js";
+import { insetPolygon, strokeAreas, booleanPolygons } from "./vector-offset.js";
 import clipping from "polygon-clipping";
 import { modelById } from "./models.js";
 import { makePanel, reshape, rectangle, rectanglePose } from "./joinery.js";
 
 export const TOY_THEMES = {
+  none: "Sem figura · para adesivar",
   fish: "Peixe",
   turtle: "Tartaruga",
   butterfly: "Borboleta",
+  owl: "Coruja",
+  cat: "Gatinho",
+  dog: "Cachorrinho",
+  elephant: "Elefante",
+  lion: "Leão",
+  rabbit: "Coelho",
+  dinosaur: "Dinossauro",
 };
 export const isEducational = (s) => modelById(s.model)?.family === "education";
 export const educationalKind = (s) => modelById(s.model)?.toyKind;
+export const isBlankPuzzle = (s) =>
+  educationalKind(s) === "picture" && s.toyTheme === "none";
 const area = (r) =>
   r.reduce((a, p, i) => {
     const q = r[(i + 1) % r.length];
@@ -176,14 +186,28 @@ export function validateEducational(s) {
   if (!Object.hasOwn(TOY_THEMES, s.toyTheme))
     errors.push("Escolha uma figura disponível.");
   if (educationalKind(s) === "picture") {
+    if (!isBlankPuzzle(s))
+      for (const [key, min, max] of [
+        ["toyImageScale", 30, 200],
+        ["toyImageX", -50, 50],
+        ["toyImageY", -50, 50],
+      ])
+        if (!Number.isFinite(s[key]) || s[key] < min || s[key] > max)
+          errors.push(
+            "Ajuste o tamanho da figura entre 30 e 200% e a posição entre -50 e 50%.",
+          );
     if (!["straight", "jigsaw"].includes(s.toyPieceStyle))
       errors.push("Escolha corte reto ou encaixe tradicional.");
-    if (!["line", "double", "fill"].includes(s.toyEngraving))
+    if (
+      !isBlankPuzzle(s) &&
+      !["line", "double", "fill"].includes(s.toyEngraving)
+    )
       errors.push("Escolha o tipo de gravação da figura.");
     if (
-      !Number.isFinite(s.toyBorderWidth) ||
-      s.toyBorderWidth < 0.3 ||
-      s.toyBorderWidth > 3
+      !isBlankPuzzle(s) &&
+      (!Number.isFinite(s.toyBorderWidth) ||
+        s.toyBorderWidth < 0.3 ||
+        s.toyBorderWidth > 3)
     )
       errors.push("Distância entre as linhas: use de 0,3 a 3 mm.");
   }
@@ -274,6 +298,7 @@ export function clipToyEngraving(paths, shape) {
 }
 const artCache = new Map();
 export function pictureArtwork(s) {
+  if (isBlankPuzzle(s)) return { paths: [], areas: [] };
   const m = toyMetrics(s),
     key = JSON.stringify([
       s.toyTheme,
@@ -282,6 +307,9 @@ export function pictureArtwork(s) {
       m.innerDepth,
       s.toyBorderWidth,
       s.toyEngraving,
+      s.toyImageScale,
+      s.toyImageX,
+      s.toyImageY,
     ]);
   if (artCache.has(key)) return artCache.get(key);
   const paths = cartoonPaths(s.toyTheme, {
@@ -289,7 +317,17 @@ export function pictureArtwork(s) {
     height: m.innerDepth - 8,
     x: m.margin + 4,
     y: m.margin + 4,
-  });
+    tolerance: (0.04 * 100) / s.toyImageScale,
+  }).map((path) =>
+    path.map(([x, y]) => [
+      s.width / 2 +
+        ((x - s.width / 2) * s.toyImageScale) / 100 +
+        (m.innerWidth * s.toyImageX) / 100,
+      s.depth / 2 +
+        ((y - s.depth / 2) * s.toyImageScale) / 100 +
+        (m.innerDepth * s.toyImageY) / 100,
+    ]),
+  );
   const result = {
     paths,
     areas:
@@ -423,10 +461,10 @@ export function buildEducationalPanels(s) {
           `Figura · linha ${row + 1}, coluna ${col + 1}`,
           shape,
           s.toyEngraving === "line" ? clipToyEngraving(art.paths, shape) : [],
-          art.areas.length ? clipping.intersection(art.areas, shape) : [],
+          art.areas.length ? booleanPolygons(art.areas, shape) : [],
         );
       }
-    guides.push(...art.paths);
+    guides.push(...clipToyEngraving(art.paths, window));
   } else if (kind === "tangram") {
     const side = Math.min(m.innerWidth, m.innerDepth),
       x = (s.width - side) / 2,
@@ -488,10 +526,14 @@ export function buildEducationalPanels(s) {
       guides.push(closed(ring));
     }
   }
-  if (s.toyGuide) base.engravingPaths = guides;
+  if (s.toyGuide && guides.length) base.engravingPaths = guides;
   return parts;
 }
 export function educationalNotes(s) {
+  if (isBlankPuzzle(s)) {
+    const m = toyMetrics(s);
+    return `Quebra-cabeça sem figura e sem gravação nas peças ou na base. Área da imagem: ${m.innerWidth} × ${m.innerDepth} mm. Prepare o adesivo nesta medida, sem redimensionar o arquivo de corte. O arquivo "imagem-montada-corte" contém somente as peças na posição da imagem; base e moldura ficam no arquivo principal. Duas camadas de ${s.thickness} mm: cole somente a moldura na base e mantenha as ${m.count} peças soltas. Folga de ${s.toyGap} mm por borda, sem compensação automática de kerf; os espaços entre peças recortam pequenas faixas da imagem. Faça um teste de alinhamento, material e folga antes de produzir. Use apenas adesivo e impressão compatíveis com corte laser, conforme o fornecedor; não use PVC/vinil com cloro. Lixe as arestas e valide resistência e acabamento. Protótipo sem certificação de brinquedo, com peças soltas; não destinado a menores de 3 anos.`;
+  }
   return `Duas camadas de ${s.thickness} mm: cole somente a moldura na base; mantenha as ${toyMetrics(s).count} peças soltas. ${educationalKind(s) === "picture" ? `Figura com ${s.toyPieceStyle === "jigsaw" ? "encaixes tradicionais complementares" : "cortes retos"}. ${s.toyEngraving === "line" ? "Gravação por linha simples." : `Borda dupla com ${s.toyBorderWidth} mm entre as linhas; ${s.toyEngraving === "fill" ? "faixa preenchida" : "contornos fechados para preencher no software do laser"}.`} ` : ""}Vermelho = corte; azul = gravação. As camadas ENGRAVE_FILL e ENGRAVE_OUTLINE são gravação, nunca corte. No DXF, selecione preenchimento da faixa no software do laser; o arquivo fornece contornos fechados. Folga de ${s.toyGap} mm por borda, sem compensação automática do kerf. Faça um teste de corte e ajuste a folga. Arredonde/lixe arestas e valide o material e o acabamento antes do uso infantil. Protótipo sem certificação de brinquedo; contém peças soltas, não destinado a menores de 3 anos. Supervisão de adulto.`;
 }
 
@@ -515,5 +557,5 @@ export function pictureArtSVG(s) {
             0,
             { color: "#684b43", strokeWidth: 0.45 },
           );
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${m.margin} ${m.margin} ${m.innerWidth} ${m.innerDepth}">${content}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${m.margin} ${m.margin} ${m.innerWidth} ${m.innerDepth}" overflow="hidden">${content}</svg>`;
 }

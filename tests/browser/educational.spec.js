@@ -144,3 +144,128 @@ test("cartoon figures expose real double borders, fill mode and traditional or s
   ).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("blank adhesive puzzles export cut-only files and the mounted registration layout without hidden guide engraving", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator('[data-group="laser-education"]').click();
+  await page.selectOption("#toy-theme", "none");
+  await expect(page.locator("#toy-engraving")).toBeHidden();
+  await expect(page.locator("#toy-guide")).toBeHidden();
+  await expect(page.locator("#toy-image-controls")).toBeHidden();
+  await expect(page.locator("#toy-blank-note")).toContainText("216 × 156 mm");
+  await expect(page.locator("#summary-metrics")).toContainText(
+    "Somente corte a laser",
+  );
+  await page.locator("#export-project").click();
+  const normal = page.waitForEvent("download");
+  await page.locator('[data-export="svg"]').click();
+  expect(await readFile(await (await normal).path(), "utf8")).not.toContain(
+    "ENGRAVE",
+  );
+  const mounted = page.waitForEvent("download");
+  await page.locator('[data-export="sticker-svg"]').click();
+  const svg = await readFile(await (await mounted).path(), "utf8");
+  expect(svg).toContain('width="216mm" height="156mm"');
+  expect(svg).not.toContain("ENGRAVE");
+  await page.locator("#export-dialog [data-close]").click();
+  await page.waitForTimeout(450);
+  await page.reload();
+  await expect(page.locator("#toy-theme")).toHaveValue("none");
+  await expect(page.locator("#toy-engraving")).toBeHidden();
+  await page.selectOption("#toy-theme", "turtle");
+  await expect(page.locator("#toy-engraving")).toBeVisible();
+});
+
+test("ten cartoon choices can be resized, dragged, moved by keyboard, reset and restored after reload", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/");
+  await page.locator('[data-group="laser-education"]').click();
+  await expect(page.locator("#toy-theme option")).toHaveCount(11);
+  await page.locator("#toy-engraving").selectOption("fill");
+  const cards = [];
+  for (const value of [
+    "fish",
+    "turtle",
+    "butterfly",
+    "owl",
+    "cat",
+    "dog",
+    "elephant",
+    "lion",
+    "rabbit",
+    "dinosaur",
+  ]) {
+    await page.selectOption("#toy-theme", value);
+    await expect
+      .poll(() =>
+        page
+          .locator("#toy-art-preview")
+          .evaluate((e) => e.complete && e.naturalWidth > 0),
+      )
+      .toBe(true);
+    cards.push({
+      label: await page.locator("#toy-theme option:checked").textContent(),
+      src: await page.locator("#toy-art-preview").getAttribute("src"),
+    });
+  }
+  await page.selectOption("#toy-theme", "owl");
+  const initial = await page.locator("#toy-art-preview").getAttribute("src");
+  await page.locator("#toyImageScale").fill("140");
+  await page.locator("#toyImageX").fill("20");
+  await page.locator("#toyImageY").fill("-15");
+  await expect(page.locator("#toy-image-scale-value")).toHaveText("140%");
+  expect(await page.locator("#toy-art-preview").getAttribute("src")).not.toBe(
+    initial,
+  );
+  await page.locator("#toy-art-preview").scrollIntoViewIfNeeded();
+  const box = await page.locator("#toy-art-preview").boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    box.x + box.width / 2 + 20,
+    box.y + box.height / 2 + 10,
+    { steps: 4 },
+  );
+  await page.mouse.up();
+  expect(Number(await page.locator("#toyImageX").inputValue())).toBeGreaterThan(
+    20,
+  );
+  await page.locator("#toy-art-preview").focus();
+  await page.keyboard.press("ArrowLeft");
+  const savedX = await page.locator("#toyImageX").inputValue();
+  await page.waitForTimeout(450);
+  await page.reload();
+  await expect(page.locator("#toy-theme")).toHaveValue("owl");
+  await expect(page.locator("#toyImageScale")).toHaveValue("140");
+  await expect(page.locator("#toyImageX")).toHaveValue(savedX);
+  await page.locator("#toy-image-reset").click();
+  await expect(page.locator("#toyImageScale")).toHaveValue("100");
+  await expect(page.locator("#toyImageX")).toHaveValue("0");
+  await expect(page.locator("#toyImageY")).toHaveValue("0");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+  const gallery = await page.context().newPage();
+  await gallery.setViewportSize({ width: 1000, height: 620 });
+  await gallery.setContent(
+    `<html lang="pt-BR"><head><meta charset="utf-8"><style>body{font-family:Arial;background:#f8f4f0;color:#684b43;margin:24px}h1{font-size:26px;margin:0 0 8px}p{margin:0 0 20px}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}figure{margin:0;border:1px solid #dfd1c8;background:white;border-radius:12px;padding:12px}img{width:100%;height:190px}figcaption{text-align:center;font-weight:bold;margin-top:10px}</style></head><body><h1>Papeled Maker · figuras para quebra-cabeça</h1><p>Dez desenhos vetoriais · borda dupla e preenchimento ajustáveis</p><div class="grid">${cards.map((c) => `<figure><img src="${c.src}"><figcaption>${c.label}</figcaption></figure>`).join("")}</div></body></html>`,
+  );
+  await gallery.locator("img").last().waitFor();
+  await gallery.evaluate(() =>
+    Promise.all([...document.images].map((i) => i.decode())),
+  );
+  await gallery
+    .locator("body")
+    .screenshot({ path: "/tmp/papeled-10-figures.png" });
+  await gallery.close();
+});

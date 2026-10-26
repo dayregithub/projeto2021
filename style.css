@@ -3254,3 +3254,18 @@ button[aria-busy="true"] {
   font-size: 12px;
   color: #684b43;
 }
+
+#toy-art-preview {
+  touch-action: none;
+  cursor: grab;
+  background: #fcfaf8;
+  border: 1px dashed #bfa99b;
+  border-radius: 5px;
+}
+#toy-art-preview.dragging {
+  cursor: grabbing;
+}
+#toy-art-preview:focus-visible {
+  outline: 2px solid #684b43;
+  outline-offset: 2px;
+}

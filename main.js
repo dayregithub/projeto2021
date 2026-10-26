@@ -1,5 +1,6 @@
 import {
   isEducational,
+  isBlankPuzzle,
   educationalKind,
   toyMetrics,
   educationalNotes,
@@ -278,6 +279,9 @@ function syncFields() {
     "toyRows",
     "toyGap",
     "toyBorderWidth",
+    "toyImageScale",
+    "toyImageX",
+    "toyImageY",
     "toyLift",
     "clearance",
     "fingerSize",
@@ -350,15 +354,27 @@ function renderEditor() {
     errors = validate(state),
     valid = !errors.length,
     parts = valid ? panels(state) : [];
-  const isToy = isEducational(state);
+  const isToy = isEducational(state),
+    blankPuzzle = isBlankPuzzle(state);
   $("#toy-options").hidden = !isToy;
   $("#toy-picture-controls").hidden = educationalKind(state) !== "picture";
   $("#toy-shapes-control").hidden = educationalKind(state) !== "shapes";
   $("#toy-lift-value").textContent = state.toyLift + " mm";
-  if (isToy && educationalKind(state) === "picture" && valid)
+  $("#toy-art-preview").closest("figure").hidden = blankPuzzle;
+  $("#toy-image-controls").hidden = blankPuzzle;
+  updateToyImageControls();
+  $('label[for="toy-engraving"]').hidden = blankPuzzle;
+  $("#toy-engraving").hidden = blankPuzzle;
+  $("#toy-guide").closest("label").hidden = blankPuzzle;
+  $("#toy-blank-note").hidden = !blankPuzzle;
+  if (blankPuzzle)
+    $("#toy-blank-note").textContent =
+      `Somente corte, sem gravação nas peças ou na base. Área para a imagem: ${fmt(toyMetrics(state).innerWidth)} × ${fmt(toyMetrics(state).innerDepth)} mm. Para adesivar uma imagem inteira antes do corte, use “Corte da imagem montada” na exportação. Use material adesivo próprio para laser; não use PVC/vinil com cloro.`;
+  if (isToy && educationalKind(state) === "picture" && !blankPuzzle && valid)
     $("#toy-art-preview").src = svgImage(pictureArtSVG(state));
-  $("#toy-border-control").hidden = state.toyEngraving === "line";
-  $("#toy-border-hint").hidden = state.toyEngraving === "line";
+  $("#toy-border-control").hidden =
+    blankPuzzle || state.toyEngraving === "line";
+  $("#toy-border-hint").hidden = blankPuzzle || state.toyEngraving === "line";
   $("#toy-hint").textContent = isToy
     ? `${toyMetrics(state).count} peças removíveis. Cole a moldura sobre a base; não cole as peças do jogo. A elevação só altera a prévia, não os arquivos.`
     : "";
@@ -660,7 +676,7 @@ function renderEditor() {
     $("#project-stats").innerHTML =
       `<div><strong>${state.width} × ${state.depth} mm</strong><small>base do jogo</small></div><div><strong>${m.count} peças</strong><small>removíveis</small></div><div><strong>${m.totalHeight} mm</strong><small>duas camadas montadas</small></div>`;
     $("#summary-metrics").innerHTML =
-      `<dl><div><dt>Fabricação</dt><dd>Corte e gravação a laser</dd></div><div><dt>Peças removíveis</dt><dd>${m.count}</dd></div><div><dt>Espessura da chapa</dt><dd>${state.thickness} mm</dd></div><div><dt>Folga por borda</dt><dd>${state.toyGap} mm</dd></div><div><dt>Guia na base</dt><dd>${state.toyGuide ? "Gravado" : "Sem gravação"}</dd></div><div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div></dl>`;
+      `<dl><div><dt>Fabricação</dt><dd>${blankPuzzle ? "Somente corte a laser" : "Corte e gravação a laser"}</dd></div><div><dt>Peças removíveis</dt><dd>${m.count}</dd></div><div><dt>Espessura da chapa</dt><dd>${state.thickness} mm</dd></div><div><dt>Folga por borda</dt><dd>${state.toyGap} mm</dd></div><div><dt>Guia na base</dt><dd>${state.toyGuide && !blankPuzzle ? "Gravado" : "Sem gravação"}</dd></div><div><dt>Área das peças</dt><dd>${area.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} m²</dd></div></dl>`;
     $("#assembly-title").textContent = "Base + moldura colada + peças soltas";
     $("#assembly-text").textContent = educationalNotes(state);
   }
@@ -761,6 +777,21 @@ function exportDialog() {
       "download",
     ],
   );
+  if (isBlankPuzzle(state))
+    options.push(
+      [
+        "sticker-svg",
+        "Corte da imagem montada · SVG",
+        "Somente peças na posição da imagem, escala 1:1; sem gravação.",
+        "file",
+      ],
+      [
+        "sticker-dxf",
+        "Corte da imagem montada · DXF",
+        "Mesmas posições e folgas do projeto, em milímetros.",
+        "file",
+      ],
+    );
   options.push([
     "json",
     "Projeto Papeled",
@@ -770,7 +801,7 @@ function exportDialog() {
   $("#export-options").innerHTML = options
     .map(
       ([format, label, desc, img]) =>
-        `<button class="export-option" data-export="${format}">${icon(img)}<span><strong>${label}</strong><small>${desc}</small></span><span class="extension">.${format}</span>${icon("download")}</button>`,
+        `<button class="export-option" data-export="${format}">${icon(img)}<span><strong>${label}</strong><small>${desc}</small></span><span class="extension">.${format.replace("sticker-", "")}</span>${icon("download")}</button>`,
     )
     .join("");
   $("#export-note").textContent = isPrint
@@ -783,6 +814,18 @@ function exportDialog() {
         try {
           const kind = b.dataset.export,
             name = filename();
+          if (kind === "sticker-svg")
+            download(
+              (await packageModule()).stickerSVG(state),
+              name + "-imagem-montada-corte.svg",
+              "image/svg+xml",
+            );
+          if (kind === "sticker-dxf")
+            download(
+              (await packageModule()).stickerDXF(state),
+              name + "-imagem-montada-corte.dxf",
+              "application/dxf",
+            );
           if (kind === "svg")
             download(
               (await packageModule()).projectSVG(state),
@@ -1009,6 +1052,9 @@ for (const key of [
   "toyRows",
   "toyGap",
   "toyBorderWidth",
+  "toyImageScale",
+  "toyImageX",
+  "toyImageY",
   "toyLift",
 ])
   $("#" + key).addEventListener("input", (e) => {
@@ -1073,6 +1119,92 @@ for (const [id, key] of [
     renderEditor();
     persistDraft();
   };
+function updateToyImageControls() {
+  const m = toyMetrics(state);
+  $("#toy-image-scale-value").textContent = state.toyImageScale + "%";
+  $("#toy-image-x-value").textContent =
+    fmt((m.innerWidth * state.toyImageX) / 100) + " mm";
+  $("#toy-image-y-value").textContent =
+    fmt((m.innerDepth * state.toyImageY) / 100) + " mm";
+}
+$("#toy-image-reset").onclick = () => {
+  state.toyImageScale = 100;
+  state.toyImageX = state.toyImageY = 0;
+  syncFields();
+  renderEditor();
+  persistDraft();
+};
+const toyImage = $("#toy-art-preview");
+let toyImageDrag = null,
+  toyImageFrame = 0;
+const toyPosition = (n) => Math.max(-50, Math.min(50, Math.round(n * 10) / 10));
+toyImage.onpointerdown = (e) => {
+  if (e.button !== 0 || isBlankPuzzle(state)) return;
+  const box = toyImage.getBoundingClientRect(),
+    m = toyMetrics(state),
+    scale = Math.min(box.width / m.innerWidth, box.height / m.innerDepth);
+  toyImageDrag = {
+    id: e.pointerId,
+    x: e.clientX,
+    y: e.clientY,
+    initialX: state.toyImageX,
+    initialY: state.toyImageY,
+    width: m.innerWidth * scale,
+    height: m.innerDepth * scale,
+  };
+  toyImage.setPointerCapture(e.pointerId);
+  toyImage.classList.add("dragging");
+  e.preventDefault();
+};
+toyImage.onpointermove = (e) => {
+  if (!toyImageDrag || toyImageDrag.id !== e.pointerId) return;
+  const d = toyImageDrag;
+  state.toyImageX = toyPosition(
+    d.initialX + ((e.clientX - d.x) / d.width) * 100,
+  );
+  state.toyImageY = toyPosition(
+    d.initialY + ((e.clientY - d.y) / d.height) * 100,
+  );
+  $("#toyImageX").value = state.toyImageX;
+  $("#toyImageY").value = state.toyImageY;
+  if (!toyImageFrame)
+    toyImageFrame = requestAnimationFrame(() => {
+      toyImageFrame = 0;
+      updateToyImageControls();
+      if (!validate(state).length)
+        toyImage.src = svgImage(pictureArtSVG(state));
+    });
+};
+const finishToyImageDrag = (e) => {
+  if (!toyImageDrag || toyImageDrag.id !== e.pointerId) return;
+  toyImageDrag = null;
+  cancelAnimationFrame(toyImageFrame);
+  toyImageFrame = 0;
+  toyImage.classList.remove("dragging");
+  renderEditor();
+  persistDraft();
+};
+toyImage.onpointerup =
+  toyImage.onpointercancel =
+  toyImage.onlostpointercapture =
+    finishToyImageDrag;
+toyImage.onkeydown = (e) => {
+  const direction = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1],
+  }[e.key];
+  if (!direction) return;
+  e.preventDefault();
+  const step = e.shiftKey ? 5 : 1;
+  state.toyImageX = toyPosition(state.toyImageX + direction[0] * step);
+  state.toyImageY = toyPosition(state.toyImageY + direction[1] * step);
+  $("#toyImageX").value = state.toyImageX;
+  $("#toyImageY").value = state.toyImageY;
+  renderEditor();
+  persistDraft();
+};
 $("#brush-shape").onchange = (e) => {
   state.brushShape = e.target.value;
   renderEditor();
@@ -1349,7 +1481,7 @@ route();
 
 function extraProductQuote(s) {
   if (isEducational(s))
-    return `Brinquedo pedagógico: ${toyMetrics(s).count} peças removíveis\n${educationalKind(s) === "picture" ? `Figura: ${TOY_THEMES[s.toyTheme]} · ${s.toyCols} colunas × ${s.toyRows} linhas\nEncaixe: ${s.toyPieceStyle === "jigsaw" ? "tradicional" : "reto"}\nGravação: ${s.toyEngraving === "line" ? "linha simples" : `borda dupla ${s.toyBorderWidth} mm${s.toyEngraving === "fill" ? " preenchida" : ""}`}\n` : ""}Folga por borda: ${s.toyGap} mm\nGuia gravado: ${s.toyGuide ? "sim" : "não"}\nMontagem: base e moldura coladas; peças soltas.\n`;
+    return `Brinquedo pedagógico: ${toyMetrics(s).count} peças removíveis\n${educationalKind(s) === "picture" ? `Figura: ${TOY_THEMES[s.toyTheme]} · ${s.toyCols} colunas × ${s.toyRows} linhas\nEncaixe: ${s.toyPieceStyle === "jigsaw" ? "tradicional" : "reto"}\nGravação: ${isBlankPuzzle(s) ? "nenhuma · para adesivar" : s.toyEngraving === "line" ? "linha simples" : `borda dupla ${s.toyBorderWidth} mm${s.toyEngraving === "fill" ? " preenchida" : ""}`}\n` : ""}Folga por borda: ${s.toyGap} mm\n${!isBlankPuzzle(s) && educationalKind(s) === "picture" ? `Figura: ${s.toyImageScale}% · posição ${s.toyImageX}% / ${s.toyImageY}%\n` : ""}Guia gravado: ${s.toyGuide && !isBlankPuzzle(s) ? "sim" : "não"}\n${isBlankPuzzle(s) ? `Área da imagem para adesivar: ${toyMetrics(s).innerWidth} × ${toyMetrics(s).innerDepth} mm\n` : ""}Montagem: base e moldura coladas; peças soltas.\n`;
   if (familyFor(s) === "toothbrush")
     return `Cobertura alta: ${s.brushCover ? s.brushCoverHeight + " mm acima da borda" : "não"}\nTextura: ${BRUSH_TEXTURES[s.brushTexture]}\nDrenagem: ${s.brushDrain ? "5 furos de " + fmt(brushDrainage(s).radius * 2) + " mm e pés de 2 mm" : "não"}\n`;
   if (familyFor(s) === "lettering")

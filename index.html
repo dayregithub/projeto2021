@@ -490,22 +490,79 @@
               <h3>Brincar e descobrir</h3>
               <div id="toy-picture-controls">
                 <label class="field-label" for="toy-theme"
-                  >Figura para gravação</label
+                  >Personalização da imagem</label
                 >
                 <select class="text-input" id="toy-theme">
+                  <option value="none">Sem figura · para adesivar</option>
                   <option value="fish">Peixe</option>
                   <option value="turtle">Tartaruga</option>
                   <option value="butterfly">Borboleta</option>
+                  <option value="owl">Coruja</option>
+                  <option value="cat">Gatinho</option>
+                  <option value="dog">Cachorrinho</option>
+                  <option value="elephant">Elefante</option>
+                  <option value="lion">Leão</option>
+                  <option value="rabbit">Coelho</option>
+                  <option value="dinosaur">Dinossauro</option>
                 </select>
+                <p class="field-hint" id="toy-blank-note" hidden></p>
                 <figure class="toy-art-card">
                   <img
                     id="toy-art-preview"
+                    draggable="false"
+                    tabindex="0"
+                    aria-label="Arraste a figura para reposicionar ou use as setas do teclado"
                     alt="Figura inteira com a gravação selecionada"
                     width="240"
                     height="180"
                   />
-                  <figcaption>Figura inteira · prévia da gravação</figcaption>
+                  <figcaption>
+                    Arraste para posicionar · prévia da gravação
+                  </figcaption>
                 </figure>
+                <div id="toy-image-controls">
+                  <label class="range-label"
+                    >Tamanho da figura
+                    <output id="toy-image-scale-value"></output
+                    ><input
+                      type="range"
+                      id="toyImageScale"
+                      min="30"
+                      max="200"
+                      step="1"
+                  /></label>
+                  <label class="range-label"
+                    >Posição horizontal <output id="toy-image-x-value"></output
+                    ><input
+                      type="range"
+                      id="toyImageX"
+                      min="-50"
+                      max="50"
+                      step="0.1"
+                  /></label>
+                  <label class="range-label"
+                    >Posição vertical <output id="toy-image-y-value"></output
+                    ><input
+                      type="range"
+                      id="toyImageY"
+                      min="-50"
+                      max="50"
+                      step="0.1"
+                  /></label>
+                  <button
+                    type="button"
+                    class="button secondary full"
+                    id="toy-image-reset"
+                  >
+                    Centralizar e restaurar tamanho
+                  </button>
+                  <p class="field-hint">
+                    Arraste a figura acima ou use os controles. A área acima
+                    representa a imagem do quebra-cabeça; o que sair dela será
+                    recortado da gravação. O desenho muda sem alterar os
+                    encaixes nem a largura da borda em milímetros.
+                  </p>
+                </div>
                 <label class="field-label" for="toy-piece-style"
                   >Tipo de encaixe das peças</label
                 >
