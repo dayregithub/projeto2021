@@ -1,0 +1,20 @@
+PAPELED MAKER — ATIVAÇÃO DE maker.papeled.com.br
+
+Estado: endereço preparado no arquivador Windows. A inclusão na Vercel e o DNS precisam ser feitos nas contas do proprietário; não foram executados por este arquivo.
+
+1. Na Vercel, abra o projeto que publica papeledmaker.vercel.app.
+2. Settings > Domains > Add Domain: maker.papeled.com.br.
+3. Vincule à produção. Mantenha papeledmaker.vercel.app durante a transição; não crie um redirecionamento antes de validar o novo endereço.
+4. Copie o tipo/nome/valor de DNS indicado pela Vercel. Use o destino específico exibido no projeto.
+5. No Registro.br, abra papeled.com.br > DNS. Confira quais servidores DNS estão em uso. Se forem do Registro.br, abra Configurar zona DNS (Modo avançado, se necessário).
+6. Adicione somente o registro do subdomínio maker, tipo CNAME, com o destino mostrado pela Vercel. O nome pode ser mostrado como maker ou maker.papeled.com.br, conforme o formulário. Não adicione https:// ou caminhos ao destino.
+7. Se os servidores DNS forem de outra empresa, faça o passo anterior no painel dessa empresa. Não troque os servidores DNS do domínio só para esta mudança.
+8. Preserve os registros de www, domínio principal e e-mails (MX/TXT). Caso já exista um registro maker, confira sua finalidade antes de substituir; CNAME não pode coexistir com outros registros no mesmo nome.
+9. Aguarde a Vercel mostrar Valid Configuration e HTTPS ativo. O tempo depende da propagação do DNS. Teste o site e o painel no novo endereço.
+
+PAINEL E ARQUIVADOR WINDOWS
+O novo endereço tem armazenamento local próprio no navegador. Faça login novamente e vincule o arquivador com seu código, usando a versão 1.3 ou posterior. Os dados na nuvem continuam no mesmo Supabase e as pastas existentes permanecem no computador. Cópias locais e preferências de visita não se transferem automaticamente entre domínios.
+
+Se usar links de recuperação de senha ou confirmação por e-mail no Supabase, inclua o novo endereço e o caminho correspondente nas URLs autorizadas de Authentication > URL Configuration antes de utilizá-los.
+
+Só atualize links comerciais e redirecionamentos depois de confirmar o funcionamento do domínio.

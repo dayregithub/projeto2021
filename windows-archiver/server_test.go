@@ -70,6 +70,10 @@ func TestAuthorizationAndOrigins(t *testing.T) {
 		{"GET", "/status", "https://papeledmaker.vercel.app", "wrong", 401},
 		{"GET", "/status", "https://papeledmaker.vercel.app", a.cfg.Token, 200},
 		{"OPTIONS", "/archive", "https://papeledmaker.vercel.app", "", 204},
+		{"GET", "/status", "https://maker.papeled.com.br", a.cfg.Token, 200},
+		{"OPTIONS", "/archive", "https://maker.papeled.com.br", "", 204},
+		{"GET", "/status", "https://maker.papeled.com.br.evil.example", a.cfg.Token, 403},
+		{"GET", "/status", "http://maker.papeled.com.br", a.cfg.Token, 403},
 		{"OPTIONS", "/archive", "https://evil.example", "", 403},
 		{"POST", "/stop", "https://papeledmaker.vercel.app", a.cfg.Token, 403},
 	} {

@@ -80,7 +80,7 @@ func atomicWrite(path string, data []byte) error {
 	return os.Rename(name, path)
 }
 func allowedOrigin(origin string) bool {
-	return origin == localOrigin || origin == "https://papeledmaker.vercel.app" || origin == "https://dayregithub.github.io"
+	return origin == localOrigin || origin == "https://papeledmaker.vercel.app" || origin == "https://maker.papeled.com.br" || origin == "https://dayregithub.github.io"
 }
 func respond(w http.ResponseWriter, code int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

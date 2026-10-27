@@ -1,4 +1,4 @@
-PAPELED MAKER - ARQUIVADOR WINDOWS 1.2
+PAPELED MAKER - ARQUIVADOR WINDOWS 1.3
 Windows 10/11, 64 bits (x64). Nao precisa instalar Node, Python ou Go.
 
 INSTALACAO
@@ -59,7 +59,7 @@ CONEXAO
 O aplicativo usa apenas 127.0.0.1:47831, sem acesso pela rede de outros PCs.
 O codigo de vinculacao e uma credencial local: nao publique nem envie a terceiros.
 A vinculacao e feita por navegador; ela nao vai para backups ou banco de dados.
-Sites autorizados: papeledmaker.vercel.app e dayregithub.github.io.
+Sites autorizados: maker.papeled.com.br, papeledmaker.vercel.app e dayregithub.github.io.
 Dominios novos exigem uma atualizacao do aplicativo.
 Se houver falha, abra o atalho Papeled Maker Arquivador no menu Iniciar.
 Nao e necessario escolher uma pasta pelo navegador.
