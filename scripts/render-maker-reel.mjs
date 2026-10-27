@@ -13,8 +13,16 @@ await page.route('https://*.supabase.co/**',r=>r.abort());
 await page.goto('http://127.0.0.1:5173/');
 const art=await page.evaluate(async()=>{
  const {defaults}=await import('/src/models.js'); const {previewSVG}=await import('/src/preview.js');
+ const {FINISHES}=await import('/src/finishes.js');
  const render=(id,changes={},view={})=>previewSVG({...defaults(id),...changes},{dimensions:false,angle:32,...view});
- return {hero:render('referencehinge',{lidOpening:70,engraveName:'SUA IDEIA',hingeLidGap:1}),box:render('grid'),drawers:render('drawers'),slide:render('sliding'),puzzle:render('picturepuzzle',{toyTheme:'butterfly',toyPieceStyle:'jigsaw'}),gears:render('gears',{finish:'black'}),tag:render('keychain',{makerText:'Luna',finish:'black'}),stamp:render('stamp',{makerText:'FEITO POR MIM',finish:'black'}),letters:render('lettering',{signText:'Crie',finish:'black',signBase:true})};
+ // Promotional colors are scoped to this isolated rendering page only.
+ // Restore the shared swatch immediately; the live catalog remains black/white.
+ const promoRender=(id,color,changes={})=>{
+  const original=FINISHES.black.color;
+  try { FINISHES.black.color=color; return render(id,{...changes,finish:'black'}); }
+  finally { FINISHES.black.color=original; }
+ };
+ return {hero:render('referencehinge',{lidOpening:70,engraveName:'SUA IDEIA',hingeLidGap:1}),box:render('grid'),drawers:render('drawers'),slide:render('sliding'),puzzle:render('picturepuzzle',{toyTheme:'butterfly',toyPieceStyle:'jigsaw'}),gears:promoRender('gears','#35b76c'),tag:promoRender('keychain','#ef554d',{makerText:'Luna'}),stamp:promoRender('stamp','#ef554d',{makerText:'FEITO POR MIM'}),letters:promoRender('lettering','#35b76c',{signText:'Crie',signBase:true})};
 });
 const logo='data:image/png;base64,'+(await readFile('public/papeled-logo.png')).toString('base64');
 const font='data:font/woff2;base64,'+(await readFile('node_modules/@fontsource/montserrat/files/montserrat-latin-800-normal.woff2')).toString('base64');
