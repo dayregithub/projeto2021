@@ -28,7 +28,7 @@ const scenes=[
  {dark:true,kicker:'IMPRESSÃO 3D',title:'IDEIAS EM<br><em>OUTRA<br>DIMENSÃO.</em>',body:product(art.gears,'medium light-stage')+'<div class="mini-grid">'+product(art.tag)+product(art.letters)+'</div>',foot:'Engrenagens, chaveiros e letreiros.',tag:'DÊ RELEVO'},
  {kicker:'PERSONALIZAÇÃO DE VERDADE',title:'NÃO É SÓ<br>ESCOLHER.<br><em>É CRIAR.</em>',body:product(art.stamp,'hero')+'<div class="pill">TEXTO · FIGURA · BORDA · RELEVO</div>',foot:'Um detalhe muda tudo.',tag:'FAÇA SEU'},
  {dark:true,kicker:'DA TELA AO PRÓXIMO PASSO',title:'MONTE.<br>VISUALIZE.<br><em>VAMOS FAZER?</em>',body:'<div class="steps"><div><i>01</i><b>Escolha seu modelo</b></div><div><i>02</i><b>Personalize em 3D</b></div><div><i>03</i><b>Baixe ou peça orçamento</b></div></div>',foot:'Sua próxima criação começa no site.',tag:'TIRE DO PAPEL'},
- {kicker:'PAPELED MAKER',title:'BORA CRIAR<br>ALGO<br><em>SEU?</em>',body:`<div class="closing-logo"><img src="${logo}"></div><div class="cta">ACESSE E EXPLORE</div><div class="url">papeledmaker.vercel.app</div><div class="handle">@papeledmaker</div>`,foot:'ESPAÇO MAKER ONLINE',tag:'SUA IDEIA GANHA FORMA'},
+ {kicker:'PAPELED MAKER',title:'BORA CRIAR<br>ALGO<br><em>SEU?</em>',body:`<div class="closing-logo"><img src="${logo}"></div><div class="cta">ACESSE E EXPLORE</div><div class="url">maker.papeled.com.br</div><div class="handle">@papeledmaker</div>`,foot:'ESPAÇO MAKER ONLINE',tag:'SUA IDEIA GANHA FORMA'},
 ];
 for(let i=0;i<scenes.length;i++){
  const s=scenes[i];
