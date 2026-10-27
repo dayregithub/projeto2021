@@ -1083,3 +1083,15 @@ input[data-item="minutes"][aria-invalid="true"] {
 .estimate-discounts summary {
   font-weight: 700;
 }
+
+#estimate-windows-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #684b43;
+  color: white;
+  border: 1px solid #684b43;
+  border-radius: 9px;
+  padding: 11px 18px;
+  text-decoration: none;
+}

@@ -1,5 +1,8 @@
 import { assignEstimateNumber } from "./estimate-number.js";
-import { laserMinuteReference, estimateDiscountBreakdown } from "./item-pricing.js";
+import {
+  laserMinuteReference,
+  estimateDiscountBreakdown,
+} from "./item-pricing.js";
 import { parseLaserTime, LASER_TIME_HELP } from "./laser-time.js";
 import {
   windowsArchiveEnabled,
@@ -548,7 +551,12 @@ export function initEstimates({ getState, navigate }) {
       $("estimate-summary").insertAdjacentHTML(
         "beforeend",
         `<details class="item-extra estimate-discounts" data-discount-summary ${result.totalDiscount ? "open" : ""}><summary>Total de descontos: ${brl(result.totalDiscount)} · conferir todos os itens</summary>
-          <dl class="machine-cost-breakdown">${estimateDiscountBreakdown(result).map((entry) => `<div data-discount-item><dt>${esc(entry.label)}${entry.percentage != null ? ` (${entry.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%)` : ""}</dt><dd>${brl(entry.amount)}</dd></div>`).join("")}
+          <dl class="machine-cost-breakdown">${estimateDiscountBreakdown(result)
+            .map(
+              (entry) =>
+                `<div data-discount-item><dt>${esc(entry.label)}${entry.percentage != null ? ` (${entry.percentage.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%)` : ""}</dt><dd>${brl(entry.amount)}</dd></div>`,
+            )
+            .join("")}
           <div class="machine-cost-total"><dt>Soma dos descontos dos itens</dt><dd>${brl(result.itemDiscount)}</dd></div>
           <div><dt>Desconto geral</dt><dd>${brl(result.discount)}</dd></div>
           <div class="machine-cost-total"><dt>Total de descontos</dt><dd data-discount-total>${brl(result.totalDiscount)}</dd></div></dl>
@@ -678,6 +686,16 @@ export function initEstimates({ getState, navigate }) {
   }
   $("estimate-close").onclick = () => requestTransition(closeEditor);
   const windowsStatus = $("windows-archive-status");
+  function showWindowsState() {
+    $("estimate-windows-state").textContent = windowsArchiveEnabled()
+      ? "Aplicativo vinculado neste navegador. Ao salvar, o sistema tentará gravar os arquivos no Windows e confirmará o resultado."
+      : "Aplicativo não vinculado neste endereço e navegador: salvar guarda o orçamento no sistema, mas não cria uma pasta no Windows. Baixe o aplicativo atualizado e vincule em Configurar aplicativo e pasta.";
+  }
+  showWindowsState();
+  $("estimate-windows-setup").onclick = () => {
+    $("windows-archive-status").closest("details").open = true;
+    navigate("brand");
+  };
   let windowsBusy = false;
   async function windowsAction(action) {
     if (windowsBusy) return;
@@ -697,6 +715,7 @@ export function initEstimates({ getState, navigate }) {
       windowsStatus.textContent = error.message;
     } finally {
       windowsBusy = false;
+      showWindowsState();
       controls.forEach((id) => ($(id).disabled = false));
     }
   }
@@ -731,6 +750,7 @@ export function initEstimates({ getState, navigate }) {
     });
   $("windows-archive-disconnect").onclick = () => {
     disconnectWindowsArchive();
+    showWindowsState();
     $("windows-archive-token").value = "";
     $("windows-archive-root").value = "";
     windowsStatus.textContent =
@@ -915,7 +935,9 @@ export function initEstimates({ getState, navigate }) {
     };
   async function ensureNumber() {
     if (getState().client && !getState().local && !cloud)
-      throw Error("Conecte aos orçamentos no banco antes de reservar um número.");
+      throw Error(
+        "Conecte aos orçamentos no banco antes de reservar um número.",
+      );
     await assignEstimateNumber(quote, cloud ? getState().client : null);
     form.elements.number.value = quote.number;
     $("estimate-editor-title").textContent = `Orçamento ${quote.number}`;
@@ -966,10 +988,39 @@ export function initEstimates({ getState, navigate }) {
     return structuredClone(quote);
   }
   $("estimate-save").onclick = async () => {
+    if (pdfBusy) return;
+    pdfBusy = true;
+    renderSummary();
+    let saved = false;
     try {
-      await save();
+      const snapshot = await save();
+      saved = true;
+      if (windowsArchiveEnabled()) {
+        message(
+          "Orçamento salvo no sistema. Gravando PDF e cópia editável no Windows…",
+        );
+        await windowsArchiveStatus();
+        const { estimatePDF } = await import("./estimate-pdf.js");
+        const result = await sendWindowsArchive(
+          archiveFiles(snapshot, await estimatePDF(snapshot)),
+        );
+        message(
+          `Orçamento salvo e pasta atualizada no Windows: ${result.path}`,
+        );
+      } else {
+        message(
+          `${cloud ? "Orçamento salvo no Supabase." : "Orçamento salvo somente neste navegador."} Pasta do Windows não criada: vincule o aplicativo em ‘Configurar aplicativo e pasta’.`,
+        );
+      }
     } catch (e) {
-      message(e.message);
+      message(
+        saved
+          ? `Orçamento salvo no sistema, mas os arquivos NÃO foram gravados no Windows: ${e.message} A edição permanece aberta. Corrija a conexão e clique em Salvar orçamento novamente.`
+          : e.message,
+      );
+    } finally {
+      pdfBusy = false;
+      renderSummary();
     }
   };
   async function pdf(preview) {

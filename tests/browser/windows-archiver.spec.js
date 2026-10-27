@@ -149,6 +149,8 @@ test("history and Kanban open the matching folder and give feedback on missing f
         capabilities: ["open-folder"],
         root: "C:\\Orcamentos",
       };
+    else if (route.request().url().endsWith("/archive"))
+      body = { path: "C:\\Orcamentos\\PM-EXEMPLO" };
     else {
       opened.push(route.request().postDataJSON());
       body = missing
@@ -168,6 +170,7 @@ test("history and Kanban open the matching folder and give feedback on missing f
   await brand(page);
   await quote(page);
   await page.locator("#estimate-save").click();
+  await expect(page.locator("#estimate-save")).toBeEnabled();
   const number = await page.evaluate(
     () =>
       JSON.parse(localStorage.getItem("papeled-issued-estimates-v1"))[0].number,
@@ -223,6 +226,7 @@ test("opening a folder explains when the installed helper needs updating", async
   await brand(page);
   await quote(page);
   await page.locator("#estimate-save").click();
+  await expect(page.locator("#estimate-save")).toBeEnabled();
   await page.locator('[data-tab="estimate-history"]').click();
   await page
     .locator("#estimate-history-list [data-open-folder]")
@@ -256,6 +260,8 @@ test("confirmed cancellation and deletion rename by number, and offline rename c
         capabilities: ["open-folder", "rename-folder"],
         root: "C:\\Orcamentos",
       };
+    else if (route.request().url().endsWith("/archive"))
+      body = { path: "C:\\Orcamentos\\PM-EXEMPLO" };
     else {
       const request = route.request().postDataJSON();
       states.push(request);
@@ -272,6 +278,7 @@ test("confirmed cancellation and deletion rename by number, and offline rename c
   await brand(page);
   await quote(page);
   await page.locator("#estimate-save").click();
+  await expect(page.locator("#estimate-save")).toBeEnabled();
   const number = await page.evaluate(
     () =>
       JSON.parse(localStorage.getItem("papeled-issued-estimates-v1"))[0].number,
@@ -319,4 +326,72 @@ test("confirmed cancellation and deletion rename by number, and offline rename c
       JSON.parse(localStorage.getItem("papeled-windows-folder-pending-v1")),
     ),
   ).toEqual([]);
+});
+
+test("quote screen exposes the app and ordinary save writes the Windows folder with explicit failure recovery", async ({
+  page,
+}) => {
+  await page.goto("/admin.html");
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="estimates"]').click();
+  await expect(
+    page.getByRole("link", { name: "Baixar aplicativo Windows", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("#estimate-windows-state")).toContainText(
+    "não vinculado",
+  );
+  await page.locator("#estimate-windows-setup").click();
+  await expect(page.locator("#windows-archive-token")).toBeVisible();
+  let fail = false;
+  const archives = [];
+  await page.route("http://127.0.0.1:47831/**", async (route) => {
+    const status = route.request().url().endsWith("/status");
+    if (!status) archives.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: !status && fail ? 400 : 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        status
+          ? {
+              name: "Papeled Maker Arquivador",
+              version: 1,
+              root: "C:\\Orcamentos",
+            }
+          : fail
+            ? { error: "Disco cheio" }
+            : { path: "C:\\Orcamentos\\PM-TESTE" },
+      ),
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  });
+  await page.locator("#windows-archive-token").fill(token);
+  await page.locator("#windows-archive-connect").click();
+  await expect(page.locator("#windows-archive-status")).toContainText(
+    "Aplicativo vinculado",
+  );
+  await quote(page);
+  await page.locator("#estimate-save").click();
+  await expect(page.locator("#estimate-status")).toContainText(
+    "pasta atualizada no Windows",
+  );
+  await expect(page.locator("#estimate-editor")).toBeVisible();
+  expect(archives.length).toBe(1);
+  expect(Buffer.from(archives[0].pdf, "base64").subarray(0, 5).toString()).toBe(
+    "%PDF-",
+  );
+  fail = true;
+  await page.locator("#estimate-save").click();
+  await expect(page.locator("#estimate-status")).toContainText(
+    "NÃO foram gravados no Windows",
+  );
+  await expect(page.locator("#estimate-status")).toContainText("Disco cheio");
+  await expect(page.locator("#estimate-save")).toBeEnabled();
+  await expect(page.locator("#estimate-editor")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("papeled-issued-estimates-v1")).length,
+    ),
+  ).toBe(1);
+  expect(archives[0].number).toBe(archives[1].number);
 });
