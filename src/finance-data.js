@@ -1,3 +1,4 @@
+import { profitabilityReport } from "./finance-analytics.js";
 import { calculateEstimate, money } from "./estimate-calculations.js";
 export const COMMITTED_STAGES = [
   "approved",
@@ -8,7 +9,7 @@ export const COMMITTED_STAGES = [
 export function financeReport(
   quotes,
   expenses,
-  { from = "", to = "", group = "month" } = {},
+  { from = "", to = "", group = "month", basis = "issued" } = {},
 ) {
   const includes = (date) =>
     (!from && !to) ||
@@ -101,6 +102,7 @@ export function financeReport(
   metrics.balance = money(metrics.received - metrics.paid);
   rows.sort((a, b) => b.date.localeCompare(a.date));
   return {
+    analytics: profitabilityReport(quotes, { from, to, group, basis }),
     metrics,
     rows,
     invalid,

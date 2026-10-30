@@ -206,3 +206,119 @@ test("database diagnostics do not pretend local preview confirms a live database
     "login de administrador",
   );
 });
+
+test("profit dashboard filters services, preserves saved snapshots and exports full Excel/PDF on mobile", async ({
+  page,
+}) => {
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/admin.html");
+  await page.evaluate(async () => {
+    const { newEstimate, newEstimateItem } =
+      await import("/src/estimate-calculations.js");
+    const make = (process, name) => {
+      const q = newEstimate();
+      q.number = `PM-20260110-${process}`;
+      q.issuedOn = "2026-01-10";
+      q.status = "approved";
+      q.customer = "João da Silva";
+      q.title = "Peças personalizadas";
+      q.pricing.taxPercent = 4;
+      q.items = [newEstimateItem(process)];
+      q.items[0].description = name;
+      if (process === "laser") q.items[0].minutes = 60;
+      else {
+        q.items[0].grams = 100;
+        q.items[0].hours = 2;
+      }
+      return q;
+    };
+    localStorage.setItem(
+      "papeled-issued-estimates-v1",
+      JSON.stringify([
+        make("laser", "Corte de caixas"),
+        make("print", "Impressão de suporte"),
+      ]),
+    );
+  });
+  await page.locator("#local-preview").click();
+  await page.locator('[data-tab="finance"]').click();
+  await page.locator("#finance-period").selectOption("all");
+  await expect(page.locator("#finance-profit-summary")).toContainText(
+    "Impostos estimados",
+  );
+  await expect(page.locator("#finance-services")).toContainText(
+    "Impressão de suporte",
+  );
+  await expect(page.locator("#finance-profit-chart svg")).toBeVisible();
+  await page.locator("#finance-service-process").selectOption("laser");
+  await expect(page.locator("#finance-services")).not.toContainText(
+    "Impressão de suporte",
+  );
+  await expect(page.locator("#finance-services")).toContainText(
+    "Corte de caixas",
+  );
+  await page.locator("#finance-service-search").fill("inexistente");
+  await expect(page.locator("#finance-services")).toContainText(
+    "Nenhum serviço",
+  );
+  await page.locator("#finance-service-search").fill("");
+  await page.locator("#finance-report-title").fill("Fechamento janeiro");
+  await page.locator("#finance-save-report").click();
+  await expect(page.locator("#finance-report-status")).toContainText(
+    "somente neste navegador",
+  );
+  const saved = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("papeled-finance-reports-v1"))[0],
+  );
+  expect(saved.data.report.analytics.details.length).toBe(2);
+  expect(saved.data.report.analytics.totals.tax).toBeGreaterThan(0);
+  let pending = page.waitForEvent("download");
+  await page.locator("#finance-excel").click();
+  const files = unzipSync(
+    new Uint8Array(await readFile(await (await pending).path())),
+  );
+  expect(strFromU8(files["xl/workbook.xml"])).toContain("Serviços");
+  expect(strFromU8(files["xl/worksheets/sheet3.xml"])).toContain(
+    "Corte de caixas",
+  );
+  await page.evaluate(() => {
+    const qs = JSON.parse(localStorage.getItem("papeled-issued-estimates-v1"));
+    qs[0].items[0].minutes = 900;
+    localStorage.setItem("papeled-issued-estimates-v1", JSON.stringify(qs));
+  });
+  await page.reload();
+  await page.locator('[data-tab="finance"]').click();
+  await page.locator("#finance-period").selectOption("all");
+  await expect(page.locator("#finance-saved-reports")).toContainText(
+    "Fechamento janeiro",
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("papeled-finance-reports-v1"))[0].data
+          .report.analytics.totals,
+    ),
+  ).toEqual(saved.data.report.analytics.totals);
+  pending = page.waitForEvent("download");
+  await page.locator("[data-saved-finance]").first().click();
+  const pdf = await readFile(await (await pending).path());
+  expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
+  await expect(page.locator("#finance-report-status")).toContainText(
+    "sem recalcular",
+  );
+  await page.locator("#finance-period").selectOption("month");
+  await page.locator("#finance-month").fill("2026-02");
+  await page.locator("#finance-save-report").click();
+  const feb = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("papeled-finance-reports-v1"))[0],
+  );
+  expect(feb.period_to).toBe("2026-02-28");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});

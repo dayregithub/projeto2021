@@ -16,6 +16,7 @@ export const DATABASE_CHECKS = [
     "database-update.sql",
   ],
   ["finance_expenses", "Despesas financeiras", "finance-update.sql"],
+  ["finance_reports", "Fechamentos financeiros", "finance-reports-update.sql"],
 ];
 export function classifyDatabaseError(error) {
   const code = String(error?.code || "");

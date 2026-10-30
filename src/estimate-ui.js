@@ -74,12 +74,14 @@ export function initEstimates({ getState, navigate }) {
   const finance = initFinance({
     getState,
     getQuotes: () => records,
+    getBrand: () => profile.layout || {},
     isQuoteSourceReady: () => getState().local || cloud,
     openQuote: (id) => requestTransition(() => openQuote(id)),
   });
   $("finance-refresh").onclick = () => refresh();
   const workReports = initWorkReports({
     getQuotes: () => records,
+    getBrand: () => profile.layout || {},
     isQuoteSourceReady: () => getState().local || cloud,
     openQuote: (id) => requestTransition(() => openQuote(id)),
   });

@@ -1,3 +1,5 @@
+import { initFinanceDashboard } from "./finance-dashboard.js";
+import { financeChart } from "./finance-charts.js";
 import { brl, localDate } from "./estimate-calculations.js";
 import { financeReport, validateExpense, loadAllRows } from "./finance-data.js";
 const KEY = "papeled-finance-expenses-v1";
@@ -23,6 +25,7 @@ export function initFinance({
   getQuotes,
   openQuote,
   isQuoteSourceReady = () => true,
+  getBrand = () => ({}),
 }) {
   const $ = (id) => document.getElementById(id),
     form = $("finance-expense-form");
@@ -40,8 +43,12 @@ export function initFinance({
     let from = "",
       to = "";
     if (type === "month") {
-      from = `${$("finance-month").value}-01`;
-      to = `${$("finance-month").value}-31`;
+      const month = $("finance-month").value;
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+        throw Error("Selecione um mês válido.");
+      from = `${month}-01`;
+      const [year, m] = month.split("-").map(Number);
+      to = new Date(Date.UTC(year, m, 0)).toISOString().slice(0, 10);
     }
     if (type === "day") from = to = $("finance-day").value;
     if (type === "year") {
@@ -54,12 +61,28 @@ export function initFinance({
     }
     if (type !== "all" && (!from || !to || from > to))
       throw Error("Selecione um período válido para consultar.");
-    return { from, to, group: $("finance-group").value };
+    return {
+      from,
+      to,
+      group: $("finance-group").value,
+      basis: $("finance-basis").value,
+    };
   }
+  const advanced = initFinanceDashboard({
+    getState,
+    getReport: () => report,
+    getFilters: filters,
+    getBrand,
+    ready: () => canWrite && isQuoteSourceReady(),
+  });
   function render() {
     for (const field of document.querySelectorAll("[data-finance-period]"))
       field.hidden = field.dataset.financePeriod !== $("finance-period").value;
     try {
+      if (!isQuoteSourceReady())
+        throw Error(
+          "Orçamentos indisponíveis no banco. Atualize a conexão antes de consultar o financeiro.",
+        );
       report = financeReport(getQuotes(), expenses, filters());
     } catch (e) {
       report = null;
@@ -69,6 +92,7 @@ export function initFinance({
       $("finance-period-table").replaceChildren();
       $("finance-rows").replaceChildren();
       message(e.message);
+      advanced.render();
       return;
     }
     $("finance-csv").disabled = $("finance-pdf").disabled =
@@ -89,18 +113,7 @@ export function initFinance({
           `<div class="metric"><span>${label}</span><strong>${!isQuoteSourceReady() || (!canWrite && ["Despesas pagas", "Despesas pendentes", "Saldo realizado"].includes(label)) ? "Indisponível" : brl(value)}</strong></div>`,
       )
       .join("");
-    const max = Math.max(
-      1,
-      ...report.periods.flatMap((p) => [p.received, p.paid]),
-    );
-    $("finance-chart").innerHTML = report.periods.length
-      ? report.periods
-          .map(
-            (p) =>
-              `<div class="finance-chart-row"><strong>${esc(p.period)}</strong><div><div class="finance-bar received" style="width:${(p.received / max) * 100}%" title="Recebido: ${brl(p.received)}"></div><span>Recebido ${brl(p.received)}</span><div class="finance-bar paid" style="width:${(p.paid / max) * 100}%" title="Despesas pagas: ${brl(p.paid)}"></div><span>Pago ${brl(p.paid)}</span></div></div>`,
-          )
-          .join("")
-      : '<p class="muted">Nenhum movimento neste período.</p>';
+    $("finance-chart").innerHTML = financeChart(report.periods, { cash: true });
     $("finance-period-table").innerHTML = report.periods
       .map(
         (p) =>
@@ -140,9 +153,11 @@ export function initFinance({
       );
     $("finance-notes").textContent =
       `Custos estimados dos orçamentos aprovados emitidos no período: ${brl(m.estimatedCost)} (não são despesas lançadas). Recebimentos usam a data do pagamento; pendências de clientes usam a emissão, pois não há vencimento cadastrado. Orçamentos sem aprovação não entram em “a receber”. ${report.undated.length ? `${report.undated.length} pagamento(s) sem data: corrija no Kanban; aparecem apenas em todo o período.` : ""} ${report.invalid.length ? `${report.invalid.length} orçamento(s) com cálculo inválido não foram incluídos: ${report.invalid.join(", ")}.` : ""}`;
+    advanced.render();
   }
   $("finance-filters").oninput = render;
   $("finance-filters").onchange = render;
+  $("finance-basis").onchange = render;
   function reset() {
     form.reset();
     form.elements.id.value = "";
@@ -220,6 +235,7 @@ export function initFinance({
         "Não foi possível consultar os orçamentos no Supabase. Atualize a conexão antes de usar os valores financeiros.",
       );
     render();
+    await advanced.refresh();
   }
   function download(blob, name) {
     const a = document.createElement("a"),
@@ -279,59 +295,7 @@ export function initFinance({
     const button = $("finance-pdf");
     button.disabled = true;
     try {
-      const snapshot = structuredClone(report),
-        period = filters();
-      const { jsPDF } = await import("jspdf"),
-        doc = new jsPDF();
-      let y = 20;
-      const line = (text, bold = false) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        for (const part of doc.splitTextToSize(text, 175)) {
-          if (y > 276) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(part, 18, y);
-          y += 6;
-        }
-      };
-      doc.setFontSize(12);
-      line("Papeled Maker · Relatório financeiro", true);
-      line(
-        `Período: ${period.from || "Início"} a ${period.to || "todo o período"} · agrupamento: ${$("finance-group").selectedOptions[0].text}`,
-      );
-      line(`Gerado em ${dateLabel(localDate())}`);
-      y += 4;
-      for (const [key, label] of Object.entries({
-        ...labels,
-        balance: "Saldo realizado",
-      }))
-        line(`${label}: ${brl(snapshot.metrics[key])}`);
-      y += 4;
-      line("Resumo por período", true);
-      for (const p of snapshot.periods)
-        line(
-          `${p.period} · Recebido ${brl(p.received)} · Pago ${brl(p.paid)} · Saldo ${brl(p.balance)} · A receber ${brl(p.receivable)} · A pagar ${brl(p.payable)}`,
-        );
-      y += 4;
-      line("Lançamentos", true);
-      for (const r of snapshot.rows)
-        line(
-          `${dateLabel(r.date)} · ${r.customer || ""} · ${r.description || ""} · ${labels[r.kind]} · ${brl(r.amount)}`,
-        );
-      y += 4;
-      line(
-        "Recebimentos por data de pagamento. Pendências de clientes por emissão. Custos estimados não são despesas pagas.",
-      );
-      if (snapshot.undated.length)
-        line(
-          `Pagamentos sem data (apenas em todo o período): ${snapshot.undated.join(", ")}`,
-        );
-      if (snapshot.invalid.length)
-        line(
-          `Orçamentos não incluídos por erro de cálculo: ${snapshot.invalid.join(", ")}`,
-        );
-      download(doc.output("blob"), `financeiro-${localDate()}.pdf`);
+      await advanced.exportPDF();
     } catch {
       message("Não foi possível gerar o relatório PDF. Tente novamente.");
     } finally {

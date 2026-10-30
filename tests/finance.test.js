@@ -197,3 +197,177 @@ test("database diagnostics query the actual tables defined by the installation s
       `Diagnostic references unknown table ${table}`,
     );
 });
+
+test("profitability reconciles mixed services, taxes, discounts, setup and freight without double counting cash expenses", async () => {
+  const { profitabilityReport, reportSnapshot } =
+    await import("../src/finance-analytics.js");
+  const { calculateEstimate, newEstimateItem, money } =
+    await import("../src/estimate-calculations.js");
+  const q = quote("approved");
+  q.number = "PM-20260110-000001";
+  q.pricing.taxPercent = 4;
+  q.setupPrice = 20;
+  q.setupMinutes = 12;
+  q.shipping = 15;
+  q.discount = 7.13;
+  q.adjustment = -0.45;
+  q.items[0].quantity = 3;
+  q.items[0].discount = 2.4;
+  const print = newEstimateItem("print");
+  print.description = "Suporte 3D";
+  print.hours = 2;
+  print.grams = 51;
+  print.quantity = 2;
+  q.items.push(print);
+  const result = calculateEstimate(q),
+    a = profitabilityReport([q]);
+  assert.equal(a.totals.revenue, result.total);
+  assert.equal(a.totals.tax, result.tax);
+  assert.equal(a.totals.cost, result.cost);
+  assert.equal(a.totals.profit, result.profit);
+  assert.equal(a.totals.discount, result.totalDiscount);
+  for (const [key, expected] of [
+    ["sale", result.taxable],
+    ["tax", result.tax],
+    ["cost", money(result.cost - q.shipping)],
+    ["profit", result.profit],
+  ])
+    assert.equal(
+      money(a.details.reduce((s, d) => s + d[key], 0)),
+      expected,
+      key,
+    );
+  assert.equal(a.services.length, 3);
+  assert.equal(a.periods.length, 1);
+  assert.equal(a.services.find((s) => s.process === "print").quantity, 2);
+  const r = financeReport(
+    [q],
+    [
+      {
+        status: "paid",
+        paid_on: "2026-01-12",
+        amount: 50,
+        description: "Energia",
+        category: "Energia",
+      },
+    ],
+  );
+  assert.equal(r.analytics.totals.profit, result.profit);
+  assert.equal(r.metrics.balance, -50);
+  const saved = reportSnapshot(
+    r,
+    { from: "2026-01-01", to: "2026-01-31", group: "month", basis: "issued" },
+    { businessName: "Papeled Maker" },
+    "Fechamento janeiro",
+  );
+  q.items[0].minutes = 900;
+  r.analytics.totals.profit = 0;
+  assert.equal(saved.report.analytics.totals.profit, result.profit);
+  assert.equal(saved.title, "Fechamento janeiro");
+});
+test("profitability separates issue and payment periods, excludes cancelled sales but preserves their cash receipt", async () => {
+  const { profitabilityReport } = await import("../src/finance-analytics.js");
+  const q = quote("approved", "paid", "2026-01-10", "2026-02-02"),
+    c = quote("cancelled", "paid", "2026-01-10", "2026-01-12"),
+    d = quote("draft"),
+    noDate = quote("approved", "paid", "2026-01-10", "");
+  assert.equal(
+    profitabilityReport([q, c, d], { from: "2026-01-01", to: "2026-01-31" })
+      .totals.revenue,
+    70,
+  );
+  assert.equal(
+    profitabilityReport([q, c, d], {
+      from: "2026-01-01",
+      to: "2026-01-31",
+      basis: "paid",
+    }).totals.revenue,
+    0,
+  );
+  assert.equal(
+    profitabilityReport([q], {
+      from: "2026-02-01",
+      to: "2026-02-28",
+      basis: "paid",
+    }).totals.revenue,
+    70,
+  );
+  assert.equal(
+    profitabilityReport([noDate], { basis: "paid", from: "2026-01-01" }).totals
+      .revenue,
+    0,
+  );
+  assert.equal(
+    profitabilityReport([noDate], { basis: "paid" }).totals.revenue,
+    70,
+  );
+  assert.equal(financeReport([c], []).metrics.received, 70);
+  assert.equal(financeReport([c], []).analytics.totals.revenue, 0);
+});
+test("financial report snapshots are private, immutable, validated and preserved by repeatable SQL", async () => {
+  const { PGlite } = await import("@electric-sql/pglite");
+  const { readFile } = await import("node:fs/promises");
+  const db = new PGlite();
+  try {
+    await db.exec(
+      "create role anon;create role authenticated;create function public.is_admin() returns boolean language sql as $$select current_setting('test.admin',true)='yes'$$;",
+    );
+    const sql = await readFile(
+      new URL("../public/finance-reports-update.sql", import.meta.url),
+      "utf8",
+    );
+    await db.exec(sql);
+    await db.exec("set role anon");
+    await assert.rejects(db.query("select * from public.finance_reports"));
+    await db.exec("reset role;set role authenticated;set test.admin='no'");
+    await assert.rejects(
+      db.query(
+        "insert into finance_reports(title,data)values('Mês','{\"version\":1,\"report\":{}}')",
+      ),
+    );
+    await db.exec("set test.admin='yes'");
+    await db.query(
+      "insert into finance_reports(title,data)values('Mês','{\"version\":1,\"report\":{}}')",
+    );
+    await assert.rejects(
+      db.query(
+        "insert into finance_reports(title,data)values('Inválido','{}')",
+      ),
+    );
+    await assert.rejects(db.query("update finance_reports set title='Mudou'"));
+    await assert.rejects(db.query("delete from finance_reports"));
+    await db.exec("reset role");
+    await db.exec(sql);
+    await db.exec("set role authenticated;set test.admin='yes'");
+    assert.equal(
+      (await db.query("select * from finance_reports")).rows.length,
+      1,
+    );
+    await db.exec("set test.admin='no'");
+    assert.equal(
+      (await db.query("select * from finance_reports")).rows.length,
+      0,
+    );
+  } finally {
+    await db.close();
+  }
+});
+test("professional financial PDF paginates long item descriptions and retains tax and profit totals", async () => {
+  const { financePDF } = await import("../src/professional-report.js");
+  const { reportSnapshot } = await import("../src/finance-analytics.js");
+  const q = quote("approved");
+  q.pricing.taxPercent = 4;
+  q.items[0].description = "Descrição longa ".repeat(80);
+  q.number = "PM-20260110-000001";
+  const report = financeReport([q], []);
+  const snapshot = reportSnapshot(report, {
+    from: "",
+    to: "",
+    group: "month",
+    basis: "issued",
+  });
+  const file = await financePDF(snapshot);
+  assert.equal(new TextDecoder().decode(file.bytes.slice(0, 4)), "%PDF");
+  assert.ok(file.pages >= 3);
+  assert.ok(file.pages < 10);
+});

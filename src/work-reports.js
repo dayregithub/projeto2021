@@ -22,6 +22,7 @@ export function initWorkReports({
   getQuotes,
   openQuote,
   isQuoteSourceReady = () => true,
+  getBrand = () => ({}),
 }) {
   const $ = (id) => document.getElementById(id);
   let visible = [];
@@ -191,53 +192,81 @@ export function initWorkReports({
     b.disabled = true;
     const rows = structuredClone(visible);
     try {
-      const { jsPDF } = await import("jspdf"),
-        doc = new jsPDF();
-      let y = 20;
-      function line(text, bold = false) {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(10);
-        for (const part of doc.splitTextToSize(String(text || ""), 174)) {
-          if (y > 276) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(part, 18, y);
-          y += 5;
-        }
-      }
-      line("Papeled Maker · Relatório de trabalhos", true);
-      line(
-        `Emissões: ${$("work-from").value || "início"} a ${$("work-to").value || "todo o período"}`,
+      const { professionalReport } = await import("./professional-report.js");
+      const pdf = await professionalReport({
+        brand: getBrand(),
+        title: "Relatório de trabalhos",
+        subtitle: `Emissões: ${$("work-from").value || "início"} a ${$("work-to").value || "todo o período"} | ${$("work-status").selectedOptions[0].text} | ${$("work-payment").selectedOptions[0].text}`,
+      });
+      pdf.section("Propostas selecionadas");
+      pdf.cards([
+        [
+          "Total das propostas",
+          brl(rows.reduce((s, r) => s + r.result.total, 0)),
+        ],
+        ["Impostos estimados", brl(rows.reduce((s, r) => s + r.result.tax, 0))],
+        ["Custos estimados", brl(rows.reduce((s, r) => s + r.result.cost, 0))],
+        ["Lucro estimado", brl(rows.reduce((s, r) => s + r.result.profit, 0))],
+      ]);
+      pdf.note(
+        "Os totais correspondem às propostas filtradas, incluindo situações não aprovadas quando selecionadas. Não são necessariamente faturamento realizado. Custos e impostos são os calculados em cada orçamento.",
       );
-      line(
-        `Situação: ${$("work-status").selectedOptions[0].text} · Pagamento: ${$("work-payment").selectedOptions[0].text} · Arquivo: ${$("work-archive").selectedOptions[0].text}`,
+      pdf.table(
+        [
+          "Emissão / número",
+          "Cliente / projeto",
+          "Situação",
+          "Pagamento",
+          "Valor",
+        ],
+        rows.map(({ quote: q, result: r }) => [
+          `${q.issuedOn}\n${q.number}`,
+          `${q.customer || "Não informado"}\n${q.title}`,
+          `${WORK_STATUS[q.status] || q.status}${q.archivedAt ? " / Arquivado" : ""}`,
+          `${q.paymentStatus === "paid" ? "Recebido" : "Pendente"}\n${q.paymentDate || ""}`,
+          brl(r.total),
+        ]),
+        [38, 105, 44, 40, 38],
       );
-      line(
-        `Busca: ${$("work-search").value || "todas"} · ${rows.length} trabalho(s) · Total ${brl(rows.reduce((sum, r) => sum + r.result.total, 0))}`,
-      );
-      y += 5;
-      for (const { quote: q, result: r } of rows) {
-        line(`${q.number} · ${q.issuedOn}`, true);
-        line(`Cliente: ${q.customer || "Não informado"} · ${q.contact || ""}`);
-        if (q.customerId) line(`CPF / CNPJ: ${q.customerId}`);
-        line(`Projeto: ${q.title}`, true);
-        line(
-          `${WORK_STATUS[q.status]}${q.archivedAt ? " · Arquivado" : ""} · ${q.paymentStatus === "paid" ? "Recebido" : "Pagamento pendente"} ${q.paymentDate || ""} · Total ${brl(r.total)}`,
+      if ($("work-detail").checked) {
+        pdf.newPage();
+        pdf.section("Itens por orçamento");
+        pdf.table(
+          [
+            "Orçamento / cliente",
+            "Item / especificação",
+            "Qtd.",
+            "Valor unitário",
+            "Subtotal",
+          ],
+          rows.flatMap(({ quote: q, result: r }) =>
+            (r.invoiceRows || r.items).map((item) => [
+              `${q.number}\n${q.customer || ""}`,
+              `${item.description}\n${item.technical || ""}`,
+              `${item.quantity} ${item.unit || "un."}`,
+              brl(item.unitPrice),
+              brl(item.subtotal),
+            ]),
+          ),
+          [50, 115, 22, 39, 39],
         );
-        if (q.notes) line(`Descrição do cliente: ${q.notes}`);
-        if ($("work-detail").checked)
-          for (const item of r.invoiceRows || r.items) {
-            line(
-              `${item.description} · ${item.quantity} ${item.unit || "un."} × ${brl(item.unitPrice)} = ${brl(item.subtotal)}`,
-            );
-            if (item.technical) line(item.technical);
-          }
-        if (q.delivery) line(`Entrega: ${q.delivery}`);
-        if (q.payment) line(`Condições: ${q.payment}`);
-        y += 7;
+        pdf.section("Contatos, prazos e condições");
+        pdf.table(
+          [
+            "Orçamento / cliente / contato",
+            "Descrição do cliente",
+            "Entrega e pagamento",
+          ],
+          rows.map(({ quote: q }) => [
+            `${q.number}\n${q.customer || ""}\n${[q.customerPhone, q.customerEmail, q.contact, q.customerId].filter(Boolean).join(" | ")}`,
+            q.notes || "-",
+            `${q.delivery || ""}\n${q.payment || ""}`,
+          ]),
+          [80, 95, 90],
+        );
       }
-      downloadReport(doc.output("blob"), `trabalhos-${localDate()}.pdf`);
+      const file = pdf.finish();
+      downloadReport(file.blob, `trabalhos-${localDate()}.pdf`);
     } catch {
       $("work-report-status").textContent =
         "Não foi possível gerar o PDF. Tente novamente.";

@@ -6,14 +6,15 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>Painel — Papeled Maker</title>
     <link rel="icon" href="./papeled-logo.png" />
-    <script type="module" crossorigin src="./assets/admin-BK2ZFtDY.js"></script>
+    <script type="module" crossorigin src="./assets/admin-dAB4vLHe.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/estimate-calculations-StUL75fX.js">
     <link rel="modulepreload" crossorigin href="./assets/_commonjsHelpers-Cpj98o6Y.js">
-    <link rel="modulepreload" crossorigin href="./assets/browser-eqoWqH1V.js">
-    <link rel="modulepreload" crossorigin href="./assets/geometry-CLxITJ_h.js">
-    <link rel="modulepreload" crossorigin href="./assets/download-archive-CDj8EgsM.js">
+    <link rel="modulepreload" crossorigin href="./assets/preload-helper-Ct5FWWRu.js">
+    <link rel="modulepreload" crossorigin href="./assets/geometry-BUw1xddH.js">
+    <link rel="modulepreload" crossorigin href="./assets/download-archive-BkBH2ErG.js">
+    <link rel="modulepreload" crossorigin href="./assets/browser-BNKhCVn9.js">
     <link rel="modulepreload" crossorigin href="./assets/customer-contacts-3ROrBREC.js">
-    <link rel="stylesheet" crossorigin href="./assets/admin-B4saYTpd.css">
+    <link rel="stylesheet" crossorigin href="./assets/admin-DLOvnoJF.css">
   </head>
   <body>
     <header>
@@ -189,11 +190,13 @@
           <div class="heading">
             <div>
               <p class="eyebrow">GESTÃO · FINANCEIRO</p>
-              <h2>Recebimentos e despesas</h2>
+              <h2>Financeiro e rentabilidade</h2>
             </div>
             <div class="actions">
               <button id="finance-refresh">Atualizar</button
               ><button id="finance-csv" class="secondary">Exportar CSV</button
+              ><button id="finance-excel" class="secondary">
+                Excel completo</button
               ><button id="finance-pdf" class="secondary">Relatório PDF</button>
             </div>
           </div>
@@ -235,6 +238,101 @@
               </select></label
             >
           </div>
+          <section class="card">
+            <h3>Faturamento, impostos e lucro dos projetos</h3>
+            <label
+              >Data usada na rentabilidade<select id="finance-basis">
+                <option value="issued">Emissão dos orçamentos aprovados</option>
+                <option value="paid">
+                  Pagamento das vendas aprovadas e recebidas
+                </option>
+              </select></label
+            >
+            <p class="muted">
+              Orçamentos aguardando aprovação e cancelados não são vendas
+              aprovadas. Faturamento aqui é gerencial, não emissão de nota
+              fiscal. Custos, impostos e lucro são estimados pelas regras salvas
+              em cada orçamento. O fluxo de caixa abaixo usa a data dos
+              pagamentos.
+            </p>
+            <div id="finance-profit-summary" class="metrics"></div>
+            <div id="finance-profit-chart"></div>
+            <div class="finance-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Faturamento aprovado</th>
+                    <th>Custos</th>
+                    <th>Impostos</th>
+                    <th>Lucro estimado</th>
+                    <th>Margem</th>
+                  </tr>
+                </thead>
+                <tbody id="finance-profit-periods"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="card">
+            <h3>Lucro por serviço e projeto</h3>
+            <div class="grid">
+              <label
+                >Processo<select id="finance-service-process">
+                  <option value="">Todos os processos</option>
+                  <option value="laser">Laser</option>
+                  <option value="print">Impressão 3D</option>
+                  <option value="setup">Preparação</option>
+                </select></label
+              ><label
+                >Buscar serviço<input
+                  id="finance-service-search"
+                  type="search"
+                  placeholder="Ex.: corte de peças, impressão de suporte"
+              /></label>
+            </div>
+            <p id="finance-service-result" class="muted"></p>
+            <div class="finance-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Serviço / item</th>
+                    <th>Quantidade</th>
+                    <th>Venda ajustada</th>
+                    <th>Custos</th>
+                    <th>Impostos</th>
+                    <th>Lucro estimado</th>
+                    <th>Margem</th>
+                  </tr>
+                </thead>
+                <tbody id="finance-services"></tbody>
+              </table>
+            </div>
+            <p class="muted">
+              Cada serviço representa um item do orçamento, incluindo material e
+              serviços adicionais. Venda ajustada considera todos os descontos e
+              ajustes. Preparação fica separada; frete é repasse sem lucro.
+            </p>
+            <details>
+              <summary>Detalhar por cliente e projeto</summary>
+              <div class="finance-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Data / orçamento</th>
+                      <th>Cliente / projeto / serviço</th>
+                      <th>Venda ajustada</th>
+                      <th>Custos</th>
+                      <th>Impostos</th>
+                      <th>Lucro estimado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="finance-projects"></tbody>
+                </table>
+              </div>
+            </details>
+            <p id="finance-analysis-notes" class="muted"></p>
+          </section>
+          <h3>Caixa · recebimentos e despesas</h3>
           <div id="finance-summary" class="metrics"></div>
           <section class="card">
             <h3>Fluxo realizado · recebido e pago</h3>
@@ -343,6 +441,36 @@
             </div>
           </section>
           <p id="finance-notes" class="muted"></p>
+          <section class="card">
+            <h3>Fechamentos e relatórios salvos</h3>
+            <p>
+              Guarde os valores desta consulta para recuperar o mesmo relatório
+              posteriormente, mesmo que os orçamentos sejam alterados. Ao gerar
+              um PDF, uma cópia do fechamento também será salva quando o
+              histórico estiver conectado.
+            </p>
+            <label
+              >Nome do fechamento<input
+                id="finance-report-title"
+                maxlength="160"
+                placeholder="Ex.: Fechamento outubro 2026"
+            /></label>
+            <button type="button" id="finance-save-report">
+              Salvar fechamento
+            </button>
+            <p id="finance-report-status" role="status"></p>
+            <div id="finance-reports-setup" hidden>
+              Para ativar o histórico privado, execute uma vez a
+              <a
+                href="./finance-reports-update.sql"
+                target="_blank"
+                rel="noopener"
+                >atualização dos relatórios financeiros</a
+              >
+              no SQL Editor do Supabase. Ela preserva os dados existentes.
+            </div>
+            <div id="finance-saved-reports"></div>
+          </section>
         </section>
         <section data-section="customer-projects" hidden>
           <h2>Projetos de clientes</h2>

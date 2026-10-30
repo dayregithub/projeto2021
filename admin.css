@@ -1095,3 +1095,58 @@ input[data-item="minutes"][aria-invalid="true"] {
   padding: 11px 18px;
   text-decoration: none;
 }
+
+.finance-plot {
+  width: 100%;
+  overflow-x: auto;
+}
+.finance-plot svg {
+  display: block;
+  width: 100%;
+  min-width: 560px;
+  height: auto;
+}
+.finance-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 10px 0 18px;
+  font-size: 13px;
+}
+.finance-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.finance-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.finance-loss,
+.finance-negative strong {
+  color: #a33e34;
+  font-weight: 700;
+}
+.finance-gain {
+  color: #21634e;
+  font-weight: 700;
+}
+.finance-saved-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  border-bottom: 1px solid #e4d8cf;
+}
+.finance-saved-row p {
+  margin: 4px 0;
+}
+@media (max-width: 650px) {
+  .finance-saved-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

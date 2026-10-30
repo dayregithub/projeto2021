@@ -2,6 +2,7 @@ import { validateExpense } from "./finance-data.js";
 import { readProject } from "./geometry.js";
 import { validateEstimate } from "./estimate-calculations.js";
 export const WORKSPACE_KEYS = [
+  "papeled-finance-reports-v1",
   "papeled-projects-v1",
   "papeled-finance-expenses-v1",
   "papeled-draft-v1",
@@ -29,6 +30,20 @@ export function validateWorkspace(data) {
     readProject(p.project);
   }
   if (data["papeled-draft-v1"]) readProject(data["papeled-draft-v1"]);
+  if (
+    data["papeled-finance-reports-v1"] !== undefined &&
+    !Array.isArray(data["papeled-finance-reports-v1"])
+  )
+    throw Error("Histórico de relatórios inválido.");
+  for (const report of data["papeled-finance-reports-v1"] || []) {
+    if (
+      typeof report.id !== "string" ||
+      report.data?.version !== 1 ||
+      !report.data.report?.analytics ||
+      !Number.isFinite(Date.parse(report.created_at))
+    )
+      throw Error("Fechamento financeiro inválido.");
+  }
   for (const expense of data["papeled-finance-expenses-v1"] || [])
     validateExpense(expense);
   for (const q of data["papeled-issued-estimates-v1"] || [])
@@ -52,6 +67,7 @@ export function restoreWorkspace(input, storage = localStorage) {
       if (!(key in data)) continue;
       let value = data[key];
       if (
+        key === "papeled-finance-reports-v1" ||
         key === "papeled-finance-expenses-v1" ||
         key === "papeled-projects-v1" ||
         key === "papeled-issued-estimates-v1"
